@@ -7,9 +7,35 @@
 */
 
 #include <cstdint>
+#include <cstddef>
 
 class MT19937
 {
+    template <typename T, size_t N, uint8_t ALIGN>
+    struct AlignedArray
+    {
+        AlignedArray() : m_data(calcDataPtr()) {}
+
+        const T& operator[](size_t i) const { return m_data[i]; }
+        T& operator[](size_t i) { return m_data[i]; }
+
+        const T* begin() const { return m_data; }
+        T* begin() { return m_data; }
+
+        uint32_t size() const { return N; }
+
+    private:
+        T* calcDataPtr()
+        {
+            uint8_t offset = static_cast<uint8_t>(ALIGN - reinterpret_cast<size_t>(&m_mem[0]) % ALIGN) % ALIGN;
+            return  reinterpret_cast<T*>(m_mem + offset);
+        }
+
+    private:
+        T* m_data;
+        unsigned char m_mem[N * sizeof(T) + ALIGN - 1];
+    };
+
     // Period parameters
     static const uint32_t N = 624;
     static const uint32_t M = 397;
@@ -17,8 +43,8 @@ class MT19937
     static const uint32_t UPPER_MASK = 0x80000000UL; // most significant w-r bits
     static const uint32_t LOWER_MASK = 0x7fffffffUL; // least significant r bits
 
-    uint32_t mt[N];  // the array for the state vector
-    uint32_t u32[N]; // a cache of uniform discrete random numbers in the range [0,0xffffffff]
+    AlignedArray<uint32_t, N, 64> mt;  // the array for the state vector
+    AlignedArray<uint32_t, N, 64> u32; // a cache of uniform discrete random numbers in the range [0,0xffffffff]
     uint32_t mti = N + 1;    // mti==N+1 means mt[N] is not initialized
 
     uint32_t temper(uint32_t y)
@@ -40,7 +66,7 @@ class MT19937
         if (mti == N + 1)   // if init_genrand() has not been called, 
             reinit(uint32_t(5489)); // a default initial seed is used 
 
-        uint32_t kk;
+        size_t kk;
 
         for (kk = 0; kk < N - M; kk++) {
             uint32_t y = (mt[kk] & UPPER_MASK) | (mt[kk + 1] & LOWER_MASK);
