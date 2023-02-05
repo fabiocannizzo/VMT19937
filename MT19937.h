@@ -7,9 +7,8 @@
 */
 
 #include <cstdint>
-//#include <cstddef>
 
-struct MT19937
+class MT19937
 {
     // Period parameters
     static const uint32_t N = 624;
@@ -18,9 +17,52 @@ struct MT19937
     static const uint32_t UPPER_MASK = 0x80000000UL; // most significant w-r bits
     static const uint32_t LOWER_MASK = 0x7fffffffUL; // least significant r bits
 
-    uint32_t mt[N];         // the array for the state vector
-    uint32_t mti = N + 1;   // mti==N+1 means mt[N] is not initialized
+    uint32_t mt[N];  // the array for the state vector
+    uint32_t u32[N]; // a cache of uniform discrete random numbers in the range [0,0xffffffff]
+    uint32_t mti = N + 1;    // mti==N+1 means mt[N] is not initialized
 
+    uint32_t temper(uint32_t y)
+    {
+        const uint32_t c1 = 0x9d2c5680UL;
+        const uint32_t c2 = 0xefc60000UL;
+        // Tempering 
+        y ^= (y >> 11);
+        y ^= (y << 7) & c1;
+        y ^= (y << 15) & c2;
+        y ^= (y >> 18);
+        return y;
+    }
+
+    void refill()
+    {
+        static uint32_t mag01[2] = { 0x0UL, MATRIX_A };
+
+        if (mti == N + 1)   // if init_genrand() has not been called, 
+            reinit(uint32_t(5489)); // a default initial seed is used 
+
+        uint32_t kk;
+
+        for (kk = 0; kk < N - M; kk++) {
+            uint32_t y = (mt[kk] & UPPER_MASK) | (mt[kk + 1] & LOWER_MASK);
+            y = mt[kk + M] ^ (y >> 1) ^ mag01[y & 0x1UL];
+            mt[kk] = y;
+            u32[kk] = temper(y);
+        }
+        for (; kk < N - 1; kk++) {
+            uint32_t y = (mt[kk] & UPPER_MASK) | (mt[kk + 1] & LOWER_MASK);
+            y = mt[kk + (M - N)] ^ (y >> 1) ^ mag01[y & 0x1UL];
+            mt[kk] = y;
+            u32[kk] = temper(y);
+        }
+        uint32_t y = (mt[N - 1] & UPPER_MASK) | (mt[0] & LOWER_MASK);
+        y = mt[M - 1] ^ (y >> 1) ^ mag01[y & 0x1UL];
+        mt[N - 1] = y;
+        u32[N - 1] = temper(y);
+
+        mti = 0;
+    }
+
+public:
     // constructors
     MT19937() : mti(N + 1) {}
 
@@ -79,41 +121,12 @@ struct MT19937
         mt[0] = 0x80000000UL; // MSB is 1; assuring non-zero initial array 
     }
 
-    // generates a random number on [0,0xffffffff]-int32_terval 
+    // generates a random number on [0,0xffffffff] interval 
     uint32_t genrand_uint32()
     {
-        uint32_t y;
-        static uint32_t mag01[2] = { 0x0UL, MATRIX_A };
-        // mag01[x] = x * MATRIX_A  for x=0,1 
-
-        if (mti >= N) { // generate N words at one time 
-            int32_t kk;
-
-            if (mti == N + 1)   // if init_genrand() has not been called, 
-                reinit(uint32_t(5489)); // a default initial seed is used 
-
-            for (kk = 0; kk < N - M; kk++) {
-                y = (mt[kk] & UPPER_MASK) | (mt[kk + 1] & LOWER_MASK);
-                mt[kk] = mt[kk + M] ^ (y >> 1) ^ mag01[y & 0x1UL];
-            }
-            for (; kk < N - 1; kk++) {
-                y = (mt[kk] & UPPER_MASK) | (mt[kk + 1] & LOWER_MASK);
-                mt[kk] = mt[kk + (M - N)] ^ (y >> 1) ^ mag01[y & 0x1UL];
-            }
-            y = (mt[N - 1] & UPPER_MASK) | (mt[0] & LOWER_MASK);
-            mt[N - 1] = mt[M - 1] ^ (y >> 1) ^ mag01[y & 0x1UL];
-
-            mti = 0;
-        }
-
-        y = mt[mti++];
-
-        // Tempering 
-        y ^= (y >> 11);
-        y ^= (y << 7) & 0x9d2c5680UL;
-        y ^= (y << 15) & 0xefc60000UL;
-        y ^= (y >> 18);
-
+        if (mti >= N) // generate N words at one time 
+            refill();
+        uint32_t y = u32[mti++];
         return y;
     }
 
@@ -152,3 +165,4 @@ struct MT19937
     }
     // These real versions are due to Isaku Wada, 2002/01/09 added 
 };
+
