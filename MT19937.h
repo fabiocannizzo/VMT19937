@@ -9,6 +9,40 @@
 #include <cstdint>
 #include <cstddef>
 
+// define FORCE_INLINE
+#if defined(__GNUC__)
+
+#elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
+#       define FORCE_INLINE __forceinline
+#else
+#       define FORCE_INLINE inline
+#endif
+
+
+#if defined(__GNUC__)
+#   define FORCE_INLINE __attribute__((always_inline)) inline
+#   if defined(__AVX__)
+#       define VECLEN 8
+#   elif defined(__SSE4_1__)
+#       define VECLEN 4
+#   endif
+#elif defined(_MSC_VER)
+#   define FORCE_INLINE __forceinline
+#   if _M_IX86_FP==2 || defined(_M_X64) || defined(__SSE2__)
+#       if defined(__AVX__)
+#           define VECLEN 8
+#       else
+#           define VECLEN 4
+#       endif
+#   endif
+#endif
+
+#define VECLEN 4
+
+#if VECLEN>0
+#   include <immintrin.h>
+#endif
+
 class MT19937
 {
     template <typename T, size_t N, uint8_t ALIGN>
@@ -16,16 +50,14 @@ class MT19937
     {
         AlignedArray() : m_data(calcDataPtr()) {}
 
-        const T& operator[](size_t i) const { return m_data[i]; }
-        T& operator[](size_t i) { return m_data[i]; }
+        FORCE_INLINE const T& operator[](size_t i) const { return m_data[i]; }
+        FORCE_INLINE T& operator[](size_t i) { return m_data[i]; }
 
-        const T* begin() const { return m_data; }
-        T* begin() { return m_data; }
-
-        uint32_t size() const { return N; }
+        FORCE_INLINE const T* begin() const { return m_data; }
+        FORCE_INLINE T* begin() { return m_data; }
 
     private:
-        T* calcDataPtr()
+        FORCE_INLINE T* calcDataPtr()
         {
             uint8_t offset = static_cast<uint8_t>(ALIGN - reinterpret_cast<size_t>(&m_mem[0]) % ALIGN) % ALIGN;
             return  reinterpret_cast<T*>(m_mem + offset);
@@ -40,17 +72,18 @@ class MT19937
     static const uint32_t N = 624;
     static const uint32_t M = 397;
     static const uint32_t MATRIX_A = 0x9908b0dfUL;   // constant vector a
-    static const uint32_t UPPER_MASK = 0x80000000UL; // most significant w-r bits
-    static const uint32_t LOWER_MASK = 0x7fffffffUL; // least significant r bits
+    static const int32_t UPPER_MASK = 0x80000000UL; // most significant w-r bits
+    static const int32_t LOWER_MASK = 0x7fffffffUL; // least significant r bits
+    static const uint32_t c1 = 0x9d2c5680UL;
+    static const uint32_t c2 = 0xefc60000UL;
 
-    AlignedArray<uint32_t, N, 64> mt;  // the array for the state vector
-    AlignedArray<uint32_t, N, 64> u32; // a cache of uniform discrete random numbers in the range [0,0xffffffff]
+    // both arrays are larger than necessary, because when we refill we read beyond the N-th element
+    AlignedArray<uint32_t, N + VECLEN, 64> mt;  // the array for the state vector
+    AlignedArray<uint32_t, N + VECLEN, 64> u32; // a cache of uniform discrete random numbers in the range [0,0xffffffff]
     uint32_t mti = N + 1;    // mti==N+1 means mt[N] is not initialized
 
-    uint32_t temper(uint32_t y)
+    FORCE_INLINE uint32_t temper(uint32_t y)
     {
-        const uint32_t c1 = 0x9d2c5680UL;
-        const uint32_t c2 = 0xefc60000UL;
         // Tempering 
         y ^= (y >> 11);
         y ^= (y << 7) & c1;
@@ -59,27 +92,124 @@ class MT19937
         return y;
     }
 
+#if VECLEN>1
+    struct Looper
+    {
+        const __m128i upper_mask = _mm_set1_epi32(UPPER_MASK);
+        const __m128i lower_mask = _mm_set1_epi32(LOWER_MASK);
+        const __m128i matrixa = _mm_set1_epi32(MATRIX_A);
+        const __m128i one = _mm_set1_epi32(1);
+        const __m128i xc1 = _mm_set1_epi32(c1);
+        const __m128i xc2 = _mm_set1_epi32(c2);
+
+        FORCE_INLINE __m128i temper(__m128i y)
+        {
+            // Tempering 
+            y = _mm_xor_si128(y, _mm_srli_epi32(y, 11));
+            y = _mm_xor_si128(y, _mm_and_si128(_mm_slli_epi32(y, 7), xc1));
+            y = _mm_xor_si128(y, _mm_and_si128(_mm_slli_epi32(y, 15), xc2));
+            y = _mm_xor_si128(y, _mm_srli_epi32(y, 18));
+            return y;
+        }
+
+        template <size_t N_ELEM>
+        FORCE_INLINE void body(uint32_t *pmt, uint32_t* fpmt, uint32_t* pu32)
+        {
+            const size_t vecLen = 4;
+            __m128i state = _mm_loadu_si128((__m128i*)pmt);
+            __m128i statef = _mm_loadu_si128((__m128i*)fpmt);
+            
+            uint32_t* pmtNext = pmt + vecLen;
+            __m128i statep = _mm_shuffle_epi32(state, 1 + (2 << 2) + (3 << 4));
+            statep = _mm_insert_epi32(statep, *(int32_t*)pmtNext, 3);
+            
+            __m128i y = _mm_or_si128(_mm_and_si128(state, upper_mask), _mm_and_si128(statep, lower_mask));
+            __m128i mag = _mm_and_si128(_mm_cmpeq_epi32(_mm_and_si128(y, one), one), matrixa);
+            y = _mm_xor_si128(_mm_xor_si128(statef, _mm_srli_epi32(y, 1)), mag);
+
+            __m128i u32 = temper(y);
+            
+            if (N_ELEM == 4) {
+                _mm_storeu_si128((__m128i*)pmt, y);
+                _mm_storeu_si128((__m128i*)pu32, u32);
+            }
+            else {
+                union { __m128i u128; uint32_t u32[4]; } yAux, u32Aux;
+                yAux.u128 = y;
+                u32Aux.u128 = u32;
+                for (size_t i = 0; i < N_ELEM; ++i) {
+                    pmt[i] = yAux.u32[i];
+                    pu32[i] = u32Aux.u32[i];
+                }
+            }
+        }
+
+    };
+#endif
+
     void refill()
     {
-        static uint32_t mag01[2] = { 0x0UL, MATRIX_A };
+        static uint32_t mag01[2] = { 0, MATRIX_A };
 
         if (mti == N + 1)   // if init_genrand() has not been called, 
             reinit(uint32_t(5489)); // a default initial seed is used 
 
-        size_t kk;
+#if VECLEN==4
+        Looper looper;
+        
+        {
+            // process N-M elements
 
-        for (kk = 0; kk < N - M; kk++) {
+            const size_t nFull = (N - M) / VECLEN;
+
+            uint32_t* pmt = mt.begin();
+            uint32_t* pu32 = u32.begin();
+            const uint32_t* pmt_end = pmt + nFull * VECLEN;
+
+            do {
+                looper.body<VECLEN>(pmt, pmt + M, pu32);
+                pmt += VECLEN;
+                pu32 += VECLEN;
+            } while (pmt != pmt_end);
+
+            // in this iteration we read beyond the end of the state buffer
+            // which is why we dimensioned the state buffer a little bit larger then necessary
+            looper.body<(N - M) - nFull * VECLEN>(pmt, pmt + M, pu32);
+        }
+
+        {
+            // process M-1 elements
+
+            const size_t nFull = (M - 1) / VECLEN;
+
+            uint32_t* pmt = mt.begin() + (N - M);
+            uint32_t* pu32 = u32.begin() + (N - M);
+            const uint32_t* pmt_end = pmt + nFull * VECLEN;
+
+            do {
+                looper.body<VECLEN>(pmt, pmt - (N-M), pu32);
+                pmt += VECLEN;
+                pu32 += VECLEN;
+            } while (pmt != pmt_end);
+        }
+
+#else
+        
+        for (size_t kk = 0; kk < N - M; kk++) {
             uint32_t y = (mt[kk] & UPPER_MASK) | (mt[kk + 1] & LOWER_MASK);
             y = mt[kk + M] ^ (y >> 1) ^ mag01[y & 0x1UL];
             mt[kk] = y;
             u32[kk] = temper(y);
         }
-        for (; kk < N - 1; kk++) {
+        for (size_t kk = N - M; kk < N - 1; kk++) {
             uint32_t y = (mt[kk] & UPPER_MASK) | (mt[kk + 1] & LOWER_MASK);
             y = mt[kk + (M - N)] ^ (y >> 1) ^ mag01[y & 0x1UL];
             mt[kk] = y;
             u32[kk] = temper(y);
         }
+#endif
+
+        // process last element
         uint32_t y = (mt[N - 1] & UPPER_MASK) | (mt[0] & LOWER_MASK);
         y = mt[M - 1] ^ (y >> 1) ^ mag01[y & 0x1UL];
         mt[N - 1] = y;
