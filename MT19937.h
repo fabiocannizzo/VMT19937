@@ -334,7 +334,7 @@ public:
             // In the previous versions, MSBs of the seed affect
             // only MSBs of the array mt[].
             // 2002/01/09 modified by Makoto Matsumoto
-            mt[mti] &= 0xffffffffUL;  // for >32 bit machines
+            // mt[mti] &= 0xffffffffUL;  // for >32 bit machines
         }
     }
 
@@ -351,7 +351,7 @@ public:
         for (; k; k--) {
             mt[i] = (mt[i] ^ ((mt[i - 1] ^ (mt[i - 1] >> 30)) * 1664525UL))
                 + seeds[j] + j; // non linear
-            mt[i] &= 0xffffffffUL; // for WORDSIZE > 32 machines
+            //mt[i] &= 0xffffffffUL; // for WORDSIZE > 32 machines
             i++; j++;
             if (i >= N) { mt[0] = mt[N - 1]; i = 1; }
             if (j >= n_seeds) j = 0;
@@ -359,7 +359,7 @@ public:
         for (k = N - 1; k; k--) {
             mt[i] = (mt[i] ^ ((mt[i - 1] ^ (mt[i - 1] >> 30)) * 1566083941UL))
                 - i; // non linear 
-            mt[i] &= 0xffffffffUL; // for WORDSIZE > 32 machines 
+            //mt[i] &= 0xffffffffUL; // for WORDSIZE > 32 machines 
             i++;
             if (i >= N) { mt[0] = mt[N - 1]; i = 1; }
         }
