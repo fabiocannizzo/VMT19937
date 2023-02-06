@@ -37,8 +37,6 @@
 #   endif
 #endif
 
-#define VECLEN 4
-
 #if VECLEN>0
 #   include <immintrin.h>
 #endif
@@ -113,24 +111,23 @@ class MT19937
         }
 
         template <size_t N_ELEM>
-        FORCE_INLINE void body(uint32_t *pmt, uint32_t* fpmt, uint32_t* pu32)
+        FORCE_INLINE __m128i body(__m128i& curState, uint32_t* pmtCur, const uint32_t* pmtFar, uint32_t* pu32)
         {
             const size_t vecLen = 4;
-            __m128i state = _mm_loadu_si128((__m128i*)pmt);
-            __m128i statef = _mm_loadu_si128((__m128i*)fpmt);
             
-            uint32_t* pmtNext = pmt + vecLen;
-            __m128i statep = _mm_shuffle_epi32(state, 1 + (2 << 2) + (3 << 4));
-            statep = _mm_insert_epi32(statep, *(int32_t*)pmtNext, 3);
+            __m128i nextState = _mm_loadu_si128((const __m128i*)(pmtCur + VECLEN));
+            __m128i farState  = _mm_loadu_si128((const __m128i*)pmtFar);
+
+            __m128i cusStatep = _mm_shuffle_epi32(_mm_blend_epi16(curState, nextState, 0x3), 1 + (2 << 2) + (3 << 4));
             
-            __m128i y = _mm_or_si128(_mm_and_si128(state, upper_mask), _mm_and_si128(statep, lower_mask));
+            __m128i y = _mm_or_si128(_mm_and_si128(curState, upper_mask), _mm_and_si128(cusStatep, lower_mask));
             __m128i mag = _mm_and_si128(_mm_cmpeq_epi32(_mm_and_si128(y, one), one), matrixa);
-            y = _mm_xor_si128(_mm_xor_si128(statef, _mm_srli_epi32(y, 1)), mag);
+            y = _mm_xor_si128(_mm_xor_si128(farState, _mm_srli_epi32(y, 1)), mag);
 
             __m128i u32 = temper(y);
             
             if (N_ELEM == 4) {
-                _mm_storeu_si128((__m128i*)pmt, y);
+                _mm_storeu_si128((__m128i*)pmtCur, y);
                 _mm_storeu_si128((__m128i*)pu32, u32);
             }
             else {
@@ -138,12 +135,13 @@ class MT19937
                 yAux.u128 = y;
                 u32Aux.u128 = u32;
                 for (size_t i = 0; i < N_ELEM; ++i) {
-                    pmt[i] = yAux.u32[i];
+                    pmtCur[i] = yAux.u32[i];
                     pu32[i] = u32Aux.u32[i];
                 }
             }
+            return nextState;
         }
-
+        
     };
 #endif
 
@@ -166,15 +164,16 @@ class MT19937
             uint32_t* pu32 = u32.begin();
             const uint32_t* pmt_end = pmt + nFull * VECLEN;
 
+            __m128i curState = _mm_load_si128((__m128i*)pmt);
             do {
-                looper.body<VECLEN>(pmt, pmt + M, pu32);
+                curState = looper.body<VECLEN>(curState, pmt, pmt + M, pu32);
                 pmt += VECLEN;
                 pu32 += VECLEN;
             } while (pmt != pmt_end);
 
             // in this iteration we read beyond the end of the state buffer
             // which is why we dimensioned the state buffer a little bit larger then necessary
-            looper.body<(N - M) - nFull * VECLEN>(pmt, pmt + M, pu32);
+            looper.body<(N - M) - nFull * VECLEN>(curState, pmt, pmt + M, pu32);
         }
 
         {
@@ -186,8 +185,9 @@ class MT19937
             uint32_t* pu32 = u32.begin() + (N - M);
             const uint32_t* pmt_end = pmt + nFull * VECLEN;
 
+            __m128i curState = _mm_loadu_si128((__m128i*)pmt);
             do {
-                looper.body<VECLEN>(pmt, pmt - (N-M), pu32);
+                curState = looper.body<VECLEN>(curState, pmt, pmt - (N-M), pu32);
                 pmt += VECLEN;
                 pu32 += VECLEN;
             } while (pmt != pmt_end);
