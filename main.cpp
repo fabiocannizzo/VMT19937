@@ -10,7 +10,7 @@
 int main()
 {
     uint32_t init[4] = { 0x123, 0x234, 0x345, 0x456 }, length = 4;
-    MT19937 mt(init, length);
+    MT19937<4> mt(init, length);
 
     std::cout << "1000 outputs of genrand_uint32()\n";
     for (size_t i = 0; i < 1000; i++)

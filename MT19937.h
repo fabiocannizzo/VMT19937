@@ -4,6 +4,7 @@
    Converted to C++ from the original code downloaded from:
    mt19937ar.c
    http://www.math.sci.hiroshima-u.ac.jp/m-mat/MT/MT2002/emt19937ar.html
+   and vectorized using SIMD
 */
 
 #include <cstdint>
@@ -164,10 +165,10 @@ struct V<1>
     FORCE_INLINE XV ifOddValueElseZero(XV value) const { return v & 0x1 ? value : 0; }
 };
 
-
+template <size_t _VecLen = VECLEN>
 class MT19937
 {
-    const static size_t VecLen = VECLEN;
+    const static size_t VecLen = _VecLen;
     typedef V<VecLen> XV;
 
     template <typename T, size_t N, uint8_t ALIGN>
