@@ -41,6 +41,45 @@
 #   include <immintrin.h>
 #endif
 
+template <size_t L>
+struct V;
+
+template <>
+struct V<4>
+{
+    __m128i v;
+
+    typedef V<4> XV;
+
+    V() {}
+    V(uint32_t v) : v(_mm_set1_epi32(v)){}
+    V(int32_t v) : v(_mm_set1_epi32(v)) {}
+    V(__m128i v) : v(v) {}
+
+    template <bool Aligned>
+    static FORCE_INLINE XV load(const uint32_t* p) { return Aligned ? _mm_load_si128((const __m128i*) p) : _mm_loadu_si128((const __m128i*) p); }
+
+    template <bool Aligned>
+    FORCE_INLINE void store(uint32_t* p) { if (Aligned) _mm_store_si128((__m128i*) p, v); else _mm_storeu_si128((__m128i*) p, v); }
+
+    friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { return _mm_or_si128(a.v, b.v); }
+    friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { return _mm_and_si128(a.v, b.v); }
+    friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { return _mm_xor_si128(a.v, b.v); }
+    friend FORCE_INLINE XV operator==(const XV& a, const XV& b) { return _mm_cmpeq_epi32(a.v, b.v); }
+    friend FORCE_INLINE XV operator>(const XV& a, const XV& b) { return _mm_cmpgt_epi32(a.v, b.v); }
+    friend FORCE_INLINE XV operator<(const XV& a, const XV& b) { return _mm_cmplt_epi32(a.v, b.v); }
+    friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return _mm_slli_epi32(a.v, n); }
+    friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm_srli_epi32(a.v, n); }
+
+    // shift left the first 32-bit element of b int a: {a1, a2, a3, b0}
+    static FORCE_INLINE XV shiftLeft(const XV& a, const XV& b) { return _mm_shuffle_epi32(_mm_blend_epi16(a.v, b.v, 0x3), 1 + (2 << 2) + (3 << 4)); }
+
+    static FORCE_INLINE XV zero() { return _mm_setzero_si128(); }
+
+    // returns 0xFFFFFFFF bitmask is the vale is odd
+    FORCE_INLINE V<4> isOdd() const { return (*this & XV(1)) == XV(1); }
+};
+
 class MT19937
 {
     template <typename T, size_t N, uint8_t ALIGN>
@@ -96,44 +135,45 @@ class MT19937
         const __m128i upper_mask = _mm_set1_epi32(UPPER_MASK);
         const __m128i lower_mask = _mm_set1_epi32(LOWER_MASK);
         const __m128i matrixa = _mm_set1_epi32(MATRIX_A);
-        const __m128i one = _mm_set1_epi32(1);
+        //const __m128i one = _mm_set1_epi32(1);
         const __m128i xc1 = _mm_set1_epi32(c1);
         const __m128i xc2 = _mm_set1_epi32(c2);
 
-        FORCE_INLINE __m128i temper(__m128i y)
+        template <size_t L>
+        FORCE_INLINE V<L> temper(V<L> y)
         {
-            // Tempering 
-            y = _mm_xor_si128(y, _mm_srli_epi32(y, 11));
-            y = _mm_xor_si128(y, _mm_and_si128(_mm_slli_epi32(y, 7), xc1));
-            y = _mm_xor_si128(y, _mm_and_si128(_mm_slli_epi32(y, 15), xc2));
-            y = _mm_xor_si128(y, _mm_srli_epi32(y, 18));
+            // Tempering
+            y = y ^ (y >> 11);
+            y = y ^ (y << 7) & c1;
+            y = y ^ (y << 15) & c2;
+            y = y ^ (y >> 18);
             return y;
         }
 
-        template <size_t N_ELEM>
-        FORCE_INLINE __m128i body(__m128i& curState, uint32_t* pmtCur, const uint32_t* pmtFar, uint32_t* pu32)
+        template <size_t N_ELEM, bool Align, size_t L>
+        FORCE_INLINE V<L> body(const V<L>& curState, uint32_t* pmtCur, const uint32_t* pmtFar, uint32_t* pu32)
         {
-            const size_t vecLen = 4;
+            typedef V<L> XV;
             
-            __m128i nextState = _mm_loadu_si128((const __m128i*)(pmtCur + VECLEN));
-            __m128i farState  = _mm_loadu_si128((const __m128i*)pmtFar);
+            XV nextState = XV::template load<Align>(pmtCur + L);
+            XV farState  = XV::template load<!Align>(pmtFar);
 
-            __m128i cusStatep = _mm_shuffle_epi32(_mm_blend_epi16(curState, nextState, 0x3), 1 + (2 << 2) + (3 << 4));
+            XV cusStateP = XV::shiftLeft(curState, nextState);
             
-            __m128i y = _mm_or_si128(_mm_and_si128(curState, upper_mask), _mm_and_si128(cusStatep, lower_mask));
-            __m128i mag = _mm_and_si128(_mm_cmpeq_epi32(_mm_and_si128(y, one), one), matrixa);
-            y = _mm_xor_si128(_mm_xor_si128(farState, _mm_srli_epi32(y, 1)), mag);
+            XV y = (curState & upper_mask) | (cusStateP & lower_mask);
+            XV mag = y.isOdd() & matrixa;
+            y = farState ^ (y >> 1) ^ mag;
 
-            __m128i u32 = temper(y);
+            XV u32 = temper(y);
             
             if (N_ELEM == 4) {
-                _mm_storeu_si128((__m128i*)pmtCur, y);
-                _mm_storeu_si128((__m128i*)pu32, u32);
+                y.template store<Align>(pmtCur);
+                u32.template store<Align>(pu32);
             }
             else {
                 union { __m128i u128; uint32_t u32[4]; } yAux, u32Aux;
-                yAux.u128 = y;
-                u32Aux.u128 = u32;
+                yAux.u128 = y.v;
+                u32Aux.u128 = u32.v;
                 for (size_t i = 0; i < N_ELEM; ++i) {
                     pmtCur[i] = yAux.u32[i];
                     pu32[i] = u32Aux.u32[i];
@@ -153,8 +193,12 @@ class MT19937
             reinit(uint32_t(5489)); // a default initial seed is used 
 
 #if VECLEN==4
+
+        const size_t vecLen = 4;
+        typedef V<vecLen> XV;
+
         Looper looper;
-        
+
         {
             // process N-M elements
 
@@ -164,16 +208,16 @@ class MT19937
             uint32_t* pu32 = u32.begin();
             const uint32_t* pmt_end = pmt + nFull * VECLEN;
 
-            __m128i curState = _mm_load_si128((__m128i*)pmt);
+            XV curState = XV::load<true>(pmt);
             do {
-                curState = looper.body<VECLEN>(curState, pmt, pmt + M, pu32);
+                curState = looper.body<VECLEN, true>(curState, pmt, pmt + M, pu32);
                 pmt += VECLEN;
                 pu32 += VECLEN;
             } while (pmt != pmt_end);
 
             // in this iteration we read beyond the end of the state buffer
             // which is why we dimensioned the state buffer a little bit larger then necessary
-            looper.body<(N - M) - nFull * VECLEN>(curState, pmt, pmt + M, pu32);
+            looper.body<(N - M) - nFull * VECLEN, true>(curState, pmt, pmt + M, pu32);
         }
 
         {
@@ -185,9 +229,9 @@ class MT19937
             uint32_t* pu32 = u32.begin() + (N - M);
             const uint32_t* pmt_end = pmt + nFull * VECLEN;
 
-            __m128i curState = _mm_loadu_si128((__m128i*)pmt);
+            XV curState = XV::load<false>(pmt);
             do {
-                curState = looper.body<VECLEN>(curState, pmt, pmt - (N-M), pu32);
+                curState = looper.body<VECLEN, false>(curState, pmt, pmt - (N-M), pu32);
                 pmt += VECLEN;
                 pu32 += VECLEN;
             } while (pmt != pmt_end);

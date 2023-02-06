@@ -12,15 +12,13 @@ int main()
     uint32_t init[4] = { 0x123, 0x234, 0x345, 0x456 }, length = 4;
     MT19937 mt(init, length);
 
-
-    char c;
-    std::cin >> c;
-
-    /*
     std::cout << "1000 outputs of genrand_uint32()\n";
     for (size_t i = 0; i < 1000; i++)
         std::cout << std::setw(10) << mt.genrand_uint32() << (i % 5 == 4 ? "\n" : " ");
-    */
+
+    char c;
+    std::cout << "enter any character to continue...";
+    std::cin >> c;
 
     auto start = std::chrono::system_clock::now();
     for (size_t i = 0; i < 3000000000; ++i)
