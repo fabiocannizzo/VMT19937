@@ -19,31 +19,31 @@
 #   define FORCE_INLINE inline
 #endif
 
-// define VECLEN
+// define MT19937_SIMD_VEC_LEN
 #if defined(__GNUC__) || defined(__INTEL_COMPILER)
 #   if defined(__AVX__)
-#       define VECLEN 8
+#       define MT19937_SIMD_VEC_LEN 8
 #   elif defined(__SSE4_1__)
-#       define VECLEN 4
+#       define MT19937_SIMD_VEC_LEN 4
 #   endif
 #elif defined(_MSC_VER)
 #   if _M_IX86_FP==2 || defined(_M_X64) || defined(__SSE2__)
 #       if defined(__AVX__)
-#           define VECLEN 8
+#           define MT19937_SIMD_VEC_LEN 8
 #       else
-#           define VECLEN 4
+#           define MT19937_SIMD_VEC_LEN 4
 #       endif
 #   endif
 #else
-#    define VECLEN 1
+#    define MT19937_SIMD_VEC_LEN 1
 #endif
 
-//#undef VECLEN
-//#define VECLEN 1
+//#undef MT19937_SIMD_VEC_LEN
+//#define MT19937_SIMD_VEC_LEN 1
 //#undef FORCE_INLINE
 //#define FORCE_INLINE __declspec(noinline)
 
-#if VECLEN>0
+#if MT19937_SIMD_VEC_LEN>0
 #   include <immintrin.h>
 #else
 #error d
@@ -52,39 +52,41 @@
 template <size_t L>
 struct V;
 
-#if VECLEN>4
+#if MT19937_SIMD_VEC_LEN>4
 template <>
 struct V<8>
 {
-    __m256i v;
+    __m256i m_v;
 
     typedef V<8> XV;
 
     V() {}
-    V(uint32_t _v) : v(_mm256_set1_epi32(_v)) {}
-    V(int32_t _v) : v(_mm256_set1_epi32(_v)) {}
-    V(__m256i _v) : v(_v) {}
+    V(uint32_t v) : m_v(_mm256_set1_epi32(v)) {}
+    V(int32_t v) : m_v(_mm256_set1_epi32(v)) {}
+    V(__m256i v) : m_v(v) {}
 
     template <bool Aligned>
     static FORCE_INLINE XV load(const uint32_t* p) { return Aligned ? _mm256_load_si256((const __m256i*) p) : _mm256_loadu_si256((const __m256i*) p); }
 
     template <bool Aligned>
-    FORCE_INLINE void store(uint32_t* p) { if (Aligned) _mm256_store_si256((__m256i*) p, v); else _mm256_storeu_si256((__m256i*) p, v); }
+    FORCE_INLINE void store(uint32_t* p) { if (Aligned) _mm256_store_si256((__m256i*) p, m_v); else _mm256_storeu_si256((__m256i*) p, m_v); }
 
     template <size_t N>
-    FORCE_INLINE void storeN(uint32_t* p) { _mm256_maskstore_epi32((int32_t*)p, _mm256_set_epi32(0, N > 6, N > 5, N > 4, N > 3, N > 2, N > 1, 1), v); }
+    FORCE_INLINE void storeN(uint32_t* p) {
+        _mm256_maskstore_epi32((int32_t*)p, _mm256_set_epi32(0, N > 6, N > 5, N > 4, N > 3, N > 2, N > 1, 1), m_v);
+    }
 
-    friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { return _mm256_or_si256(a.v, b.v); }
-    friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { return _mm256_and_si256(a.v, b.v); }
-    friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { return _mm256_xor_si256(a.v, b.v); }
-    friend FORCE_INLINE XV operator==(const XV& a, const XV& b) { return _mm256_cmpeq_epi32(a.v, b.v); }
-    friend FORCE_INLINE XV operator>(const XV& a, const XV& b) { return _mm256_cmpgt_epi32(a.v, b.v); }
-    friend FORCE_INLINE XV operator<(const XV& a, const XV& b) { return _mm256_cmpgt_epi32(b.v, a.v); }
-    friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return _mm256_slli_epi32(a.v, n); }
-    friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm256_srli_epi32(a.v, n); }
+    friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { return _mm256_or_si256(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { return _mm256_and_si256(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { return _mm256_xor_si256(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator==(const XV& a, const XV& b) { return _mm256_cmpeq_epi32(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator>(const XV& a, const XV& b) { return _mm256_cmpgt_epi32(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator<(const XV& a, const XV& b) { return _mm256_cmpgt_epi32(b.m_v, a.m_v); }
+    friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return _mm256_slli_epi32(a.m_v, n); }
+    friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm256_srli_epi32(a.m_v, n); }
 
     // shift left the first 32-bit element of b int a: {a1, a2, a3, a4, a5, a6, a7, b0}
-    static FORCE_INLINE XV shiftLeft(const XV& a, const XV& b) { return _mm256_permutevar8x32_epi32(_mm256_blend_epi32(a.v, b.v, 0x1), XV(1 | (2 << 3) | (3 << 3) | (4 << 3) | (5 << 3) | (6 << 3) | (7 << 3)).v); }
+    static FORCE_INLINE XV shiftLeft(const XV& a, const XV& b) { return _mm256_permutevar8x32_epi32(_mm256_blend_epi32(a.m_v, b.m_v, 0x1), XV(1 | (2 << 3) | (3 << 3) | (4 << 3) | (5 << 3) | (6 << 3) | (7 << 3)).m_v); }
 
     // returns value if v is odd, zero otherwise
     FORCE_INLINE XV ifOddValueElseZero(const XV& value) const { return ((*this & XV(1)) == XV(1)) & value; }
@@ -95,38 +97,42 @@ struct V<8>
 template <>
 struct V<4>
 {
-    __m128i v;
+    __m128i m_v;
 
     typedef V<4> XV;
 
     V() {}
-    V(uint32_t _v) : v(_mm_set1_epi32(_v)){}
-    V(int32_t _v) : v(_mm_set1_epi32(_v)) {}
-    V(__m128i _v) : v(_v) {}
-#if VECLEN>4
-    V(const V<8>& _v) : v(_mm256_castsi256_si128(_v.v)) {}
+    V(uint32_t v) : m_v(_mm_set1_epi32(v)){}
+    V(int32_t v) : m_v(_mm_set1_epi32(v)) {}
+    V(__m128i v) : m_v(v) {}
+#if MT19937_SIMD_VEC_LEN>4
+    V(const V<8>& v) : m_v(_mm256_castsi256_si128(v.m_v)) {}
 #endif
 
     template <bool Aligned>
     static FORCE_INLINE XV load(const uint32_t* p) { return Aligned ? _mm_load_si128((const __m128i*) p) : _mm_loadu_si128((const __m128i*) p); }
 
     template <bool Aligned>
-    FORCE_INLINE void store(uint32_t* p) { if (Aligned) _mm_store_si128((__m128i*) p, v); else _mm_storeu_si128((__m128i*) p, v); }
+    FORCE_INLINE void store(uint32_t* p) { if (Aligned) _mm_store_si128((__m128i*) p, m_v); else _mm_storeu_si128((__m128i*) p, m_v); }
 
     template <size_t N>
-    FORCE_INLINE void storeN(uint32_t* p) { _mm_maskmoveu_si128(v, _mm_set_epi8(0, 0, 0, 0, N > 2, N > 2, N > 2, N > 2, N > 1, N > 1, N > 1, N > 1, 1, 1, 1, 1), (char*)p); }
+    FORCE_INLINE void storeN(uint32_t* p) {
+        const char y1 = N > 1 ? -1 : 0;  // store element 1 ?
+        const char y2 = N > 2 ? -1 : 0;  // store element 2 ?
+        _mm_maskmoveu_si128(m_v, _mm_set_epi8(0, 0, 0, 0, y2, y2, y2, y2, y1, y1, y1, y1, -1, -1, -1, -1), (char*)p);
+    }
 
-    friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { return _mm_or_si128(a.v, b.v); }
-    friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { return _mm_and_si128(a.v, b.v); }
-    friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { return _mm_xor_si128(a.v, b.v); }
-    friend FORCE_INLINE XV operator==(const XV& a, const XV& b) { return _mm_cmpeq_epi32(a.v, b.v); }
-    friend FORCE_INLINE XV operator>(const XV& a, const XV& b) { return _mm_cmpgt_epi32(a.v, b.v); }
-    friend FORCE_INLINE XV operator<(const XV& a, const XV& b) { return _mm_cmplt_epi32(a.v, b.v); }
-    friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return _mm_slli_epi32(a.v, n); }
-    friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm_srli_epi32(a.v, n); }
+    friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { return _mm_or_si128(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { return _mm_and_si128(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { return _mm_xor_si128(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator==(const XV& a, const XV& b) { return _mm_cmpeq_epi32(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator>(const XV& a, const XV& b) { return _mm_cmpgt_epi32(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator<(const XV& a, const XV& b) { return _mm_cmplt_epi32(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return _mm_slli_epi32(a.m_v, n); }
+    friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm_srli_epi32(a.m_v, n); }
 
     // shift left the first 32-bit element of b int a: {a1, a2, a3, b0}
-    static FORCE_INLINE XV shiftLeft(const XV& a, const XV& b) { return _mm_shuffle_epi32(_mm_blend_epi16(a.v, b.v, 0x3), 1 + (2 << 2) + (3 << 4)); }
+    static FORCE_INLINE XV shiftLeft(const XV& a, const XV& b) { return _mm_shuffle_epi32(_mm_blend_epi16(a.m_v, b.m_v, 0x3), 1 + (2 << 2) + (3 << 4)); }
 
     // returns value if v is odd, zero otherwise
     FORCE_INLINE XV ifOddValueElseZero(const XV& value) const { return ((*this & XV(1)) == XV(1)) & value; }
@@ -135,63 +141,63 @@ struct V<4>
 template <>
 struct V<1>
 {
-    uint32_t v;
+    uint32_t m_v;
 
     typedef V<1> XV;
 
     V() {}
-    V(uint32_t _v) : v(_v) {}
-    V(int32_t _v) : v(_v) {}
+    V(uint32_t v) : m_v(v) {}
+    V(int32_t v) : m_v(v) {}
 
     template <bool Aligned>
     static FORCE_INLINE XV load(const uint32_t* p) { return *p; }
 
     template <bool Aligned>
-    FORCE_INLINE void store(uint32_t* p) { *p = v; }
+    FORCE_INLINE void store(uint32_t* p) { *p = m_v; }
 
     template <size_t N>
-    FORCE_INLINE void storeN(uint32_t* p) { /* we should never get here */ }
+    FORCE_INLINE void storeN(uint32_t* p) { throw; /* we should never get here */ }
 
-    friend FORCE_INLINE XV operator|(XV a, XV b) { return a.v | b.v; }
-    friend FORCE_INLINE XV operator&(XV a, XV b) { return a.v & b.v; }
-    friend FORCE_INLINE XV operator^(XV a, XV b) { return a.v ^ b.v; }
-    friend FORCE_INLINE XV operator<<(XV a, int32_t n) { return a.v << n; }
-    friend FORCE_INLINE XV operator>>(XV a, int32_t n) { return a.v >> n; }
+    friend FORCE_INLINE XV operator|(XV a, XV b) { return a.m_v | b.m_v; }
+    friend FORCE_INLINE XV operator&(XV a, XV b) { return a.m_v & b.m_v; }
+    friend FORCE_INLINE XV operator^(XV a, XV b) { return a.m_v ^ b.m_v; }
+    friend FORCE_INLINE XV operator<<(XV a, uint32_t n) { return a.m_v << n; }
+    friend FORCE_INLINE XV operator>>(XV a, uint32_t n) { return a.m_v >> n; }
 
     // return b
     static FORCE_INLINE XV shiftLeft(XV a, XV b) { return b; }
 
     // returns value if v is odd, zero otherwise
-    FORCE_INLINE XV ifOddValueElseZero(XV value) const { return v & 0x1 ? value : 0; }
+    FORCE_INLINE XV ifOddValueElseZero(XV value) const { return m_v & 0x1 ? value : 0; }
 };
 
-template <size_t _VecLen = VECLEN>
+template <size_t _VecLen = MT19937_SIMD_VEC_LEN>
 class MT19937
 {
     const static size_t VecLen = _VecLen;
     typedef V<VecLen> XV;
 
-    template <typename T, size_t N, uint8_t ALIGN>
+    template <typename VecTy, size_t N, uint8_t ALIGN>
     struct AlignedArray
     {
         AlignedArray() : m_data(calcDataPtr()) {}
 
-        FORCE_INLINE const T& operator[](size_t i) const { return m_data[i]; }
-        FORCE_INLINE T& operator[](size_t i) { return m_data[i]; }
+        FORCE_INLINE const VecTy& operator[](size_t i) const { return m_data[i]; }
+        FORCE_INLINE VecTy& operator[](size_t i) { return m_data[i]; }
 
-        FORCE_INLINE const T* begin() const { return m_data; }
-        FORCE_INLINE T* begin() { return m_data; }
+        FORCE_INLINE const VecTy* begin() const { return m_data; }
+        FORCE_INLINE VecTy* begin() { return m_data; }
 
     private:
-        FORCE_INLINE T* calcDataPtr()
+        FORCE_INLINE VecTy* calcDataPtr()
         {
             uint8_t offset = static_cast<uint8_t>(ALIGN - reinterpret_cast<size_t>(&m_mem[0]) % ALIGN) % ALIGN;
-            return  reinterpret_cast<T*>(m_mem + offset);
+            return  reinterpret_cast<VecTy*>(m_mem + offset);
         }
 
     private:
-        T* m_data;
-        unsigned char m_mem[N * sizeof(T) + ALIGN - 1];
+        VecTy* m_data;
+        unsigned char m_mem[N * sizeof(VecTy) + ALIGN - 1];
     };
 
     // Period parameters
@@ -208,13 +214,13 @@ class MT19937
     AlignedArray<uint32_t, N + VecLen, 64> u32; // a cache of uniform discrete random numbers in the range [0,0xffffffff]
     uint32_t mti = N + 1;    // mti==N+1 means mt[N] is not initialized
 
-    template <typename T>
-    FORCE_INLINE T temper(T y)
+    template <typename VecTy>
+    FORCE_INLINE VecTy temper(VecTy y)
     {
         // Tempering
         y = y ^ (y >> 11);
-        y = y ^ (y << 7) & T(s_temperMask1);
-        y = y ^ (y << 15) & T(s_temperMask2);
+        y = y ^ (y << 7) & VecTy(s_temperMask1);
+        y = y ^ (y << 15) & VecTy(s_temperMask2);
         y = y ^ (y >> 18);
         return y;
     }
@@ -222,18 +228,18 @@ class MT19937
     template <size_t N_ELEM, bool Align, size_t L>
     FORCE_INLINE V<L> body(const V<L>& curState, uint32_t* pmtCur, const uint32_t* pmtFar, uint32_t* pu32)
     {
-        typedef V<L> T;
+        typedef V<L> VecTy;
 
-        T nextState(T::template load<Align>(pmtCur + L));
-        T farState(T::template load<!Align>(pmtFar));
+        VecTy nextState(VecTy::template load<Align>(pmtCur + L));
+        VecTy farState(VecTy::template load<!Align>(pmtFar));
 
-        T cusStateP(T::shiftLeft(curState, nextState));
+        VecTy cusStateP(VecTy::shiftLeft(curState, nextState));
             
-        T y = (curState & s_upperMask) | (cusStateP & s_lowerMask);
-        T mag = y.ifOddValueElseZero(T(s_matrixA));
+        VecTy y = (curState & s_upperMask) | (cusStateP & s_lowerMask);
+        VecTy mag = y.ifOddValueElseZero(VecTy(s_matrixA));
         y = farState ^ (y >> 1) ^ mag;
 
-        T u32 = temper(y);
+        VecTy u32 = temper(y);
             
         if (N_ELEM == L) {
             y.template store<Align>(pmtCur);
@@ -276,7 +282,7 @@ class MT19937
         // in this iteration we read beyond the end of the state buffer
         // which is why we dimensioned the state buffer a little bit larger then necessary
         if (nLeft1)
-            body<nLeft1, true, (nLeft1<=1 ? 1 : nLeft1 <= 4 ? 4 :8)>(curState, pmt, pmt + M, pu32);
+            body<nLeft1, true, (nLeft1 <= 1 ? 1 : nLeft1 <= 4 ? 4 :8)>(curState, pmt, pmt + M, pu32);
 
         // process remaining M-1 elements
 
