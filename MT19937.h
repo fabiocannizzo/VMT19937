@@ -86,7 +86,7 @@ struct V<8>
     friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm256_srli_epi32(a.m_v, n); }
 
     // shift left the first 32-bit element of b int a: {a1, a2, a3, a4, a5, a6, a7, b0}
-    static FORCE_INLINE XV shiftLeft(const XV& a, const XV& b) { return _mm256_permutevar8x32_epi32(_mm256_blend_epi32(a.m_v, b.m_v, 0x1), XV(1 | (2 << 3) | (3 << 3) | (4 << 3) | (5 << 3) | (6 << 3) | (7 << 3)).m_v); }
+    static FORCE_INLINE XV shiftLeft(const XV& a, const XV& b) { return _mm256_permutevar8x32_epi32(_mm256_blend_epi32(a.m_v, b.m_v, 0x1), _mm256_set_epi32(0, 7, 6, 5, 4, 3, 2, 1)); }
 
     // returns value if v is odd, zero otherwise
     FORCE_INLINE XV ifOddValueElseZero(const XV& value) const { return ((*this & XV(1)) == XV(1)) & value; }
@@ -272,7 +272,7 @@ class MT19937
         pu32 = u32.begin();
         pmt_end = pmt + nFull1 * VecLen;
 
-        XV curState = XV::load<true>(pmt);
+        XV curState = XV::template load<true>(pmt);
         do {
             curState = body<VecLen, true>(curState, pmt, pmt + M, pu32);
             pmt += VecLen;
@@ -293,7 +293,7 @@ class MT19937
         pu32 = u32.begin() + (N - M);
         pmt_end = pmt + nFull2 * VecLen;
 
-        curState = XV::load<false>(pmt);
+        curState = XV::template load<false>(pmt);
         do {
             curState = body<VecLen, false>(curState, pmt, pmt - (N-M), pu32);
             pmt += VecLen;
@@ -301,7 +301,7 @@ class MT19937
         } while (pmt != pmt_end);
 
         if (nLeft2)
-            body<(nLeft2 <= 1 ? 1 : nLeft2 <= 4 ? 4 : 8), true>(curState, pmt, pmt + M, pu32);
+            body<nLeft2, true, (nLeft2 <= 1 ? 1 : nLeft2 <= 4 ? 4 : 8)>(curState, pmt, pmt - (N - M), pu32);
 
         // ****************************
         // process last element
