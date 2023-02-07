@@ -234,30 +234,28 @@ class MT19937
     }
 
     template <size_t N_ELEM, bool Align, size_t L>
-    FORCE_INLINE Vec<L> body(const Vec<L>& curState, uint32_t* pmtCur, const uint32_t* pmtFar, uint32_t* pu32)
+    FORCE_INLINE void body(uint32_t* pCurState, const uint32_t* pNextState, const uint32_t* pFarState, uint32_t* pu32)
     {
         typedef Vec<L> VecTy;
 
-        VecTy nextState(VecTy::template load<Align>(pmtCur + L));
-        VecTy farState(VecTy::template load<!Align>(pmtFar));
+        VecTy curState(VecTy::template load<false>(pCurState));
+        VecTy nextState(VecTy::template load<false>(pNextState));
+        VecTy farState(VecTy::template load<false>(pFarState));
 
-        VecTy cusStateP(VecTy::shiftLeft(curState, nextState));
-            
-        VecTy y = (curState & s_upperMask) | (cusStateP & s_lowerMask);
+        VecTy y = (curState & s_upperMask) | (nextState & s_lowerMask);
         VecTy mag = y.ifOddValueElseZero(VecTy(s_matrixA));
         y = farState ^ (y >> 1) ^ mag;
 
         VecTy u32 = temper(y);
             
         if (N_ELEM == L) {
-            y.template store<Align>(pmtCur);
+            y.template store<Align>(pCurState);
             u32.template store<Align>(pu32);
         }
         else {
-            y.template storeN<N_ELEM>(pmtCur);
+            y.template storeN<N_ELEM>(pCurState);
             u32.template storeN<N_ELEM>(pu32);
         }
-        return nextState;
     }
 
     void refill()
@@ -280,9 +278,8 @@ class MT19937
         pu32 = u32.begin();
         pmt_end = pmt + nFull1 * VecLen;
 
-        XV curState = XV::template load<true>(pmt);
         do {
-            curState = body<VecLen, true>(curState, pmt, pmt + M, pu32);
+            body<VecLen, true, VecLen>(pmt, pmt + 1, pmt + M, pu32);
             pmt += VecLen;
             pu32 += VecLen;
         } while (pmt != pmt_end);
@@ -290,7 +287,7 @@ class MT19937
         // in this iteration we read beyond the end of the state buffer
         // which is why we dimensioned the state buffer a little bit larger then necessary
         if (nLeft1)
-            body<nLeft1, true, (nLeft1 <= 1 ? 1 : nLeft1 <= 4 ? 4 :8)>(curState, pmt, pmt + M, pu32);
+            body<nLeft1, true, (nLeft1 <= 1 ? 1 : nLeft1 <= 4 ? 4 :8)>(pmt, pmt + 1, pmt + M, pu32);
 
         // process remaining M-1 elements
 
@@ -301,25 +298,21 @@ class MT19937
         pu32 = u32.begin() + (N - M);
         pmt_end = pmt + nFull2 * VecLen;
 
-        curState = XV::template load<false>(pmt);
         do {
-            curState = body<VecLen, false>(curState, pmt, pmt - (N - M), pu32);
+            body<VecLen, false, VecLen>(pmt, pmt + 1, pmt - (N - M), pu32);
             pmt += VecLen;
             pu32 += VecLen;
         } while (pmt != pmt_end);
 
         if (nLeft2)
-            body<nLeft2, true, (nLeft2 <= 1 ? 1 : nLeft2 <= 4 ? 4 : 8)>(curState, pmt, pmt - (N - M), pu32);
+            body<nLeft2, true, (nLeft2 <= 1 ? 1 : nLeft2 <= 4 ? 4 : 8)>(pmt, pmt + 1, pmt - (N - M), pu32);
 
         // ****************************
         // process last element
         //
 
-        //static uint32_t mag01[2] = { 0, s_matrixA };
-        uint32_t y = (mt[N - 1] & s_upperMask) | (mt[0] & s_lowerMask);
-        y = mt[M - 1] ^ (y >> 1) ^ (y & 0x1UL ? s_matrixA : 0);
-        mt[N - 1] = y;
-        u32[N - 1] = temper(y);
+        pmt = mt.begin();
+        body<1, true, 1>(pmt + N - 1, pmt, pmt + (M - 1), u32.begin() + (N - 1));
 
         mti = 0;
     }
