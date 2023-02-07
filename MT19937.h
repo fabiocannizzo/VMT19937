@@ -253,9 +253,6 @@ class MT19937
 
     void refill()
     {
-        if (mti == N + 1)   // if init_genrand() has not been called,
-            reinit(uint32_t(5489)); // a default initial seed is used
-
         uint32_t* pmt;
         uint32_t* pu32;
         const uint32_t* pmt_end;
@@ -371,33 +368,35 @@ public:
     // generates a random number on [0,0xffffffff] interval
     uint32_t genrand_uint32()
     {
-        if (mti >= N) // generate N words at one time
-            refill();
-        uint32_t y = u32[mti++];
-        return y;
+        if (mti < N)
+            return u32[mti++];
+        else {
+            refill();  // generate N words at one time
+            return u32[mti++];
+        }
     }
 
-    // generates a random number on [0,0x7fffffff]-int32_terval
+    // generates a random number on [0,0x7fffffff]-interval
     uint32_t genrand_uint31(void)
     {
         return (long)(genrand_uint32() >> 1);
     }
 
-    // generates a random number on [0,1]-real-int32_terval
+    // generates a random number on [0,1]-real-interval
     double genrand_real1(void)
     {
         return genrand_uint32() * (1.0 / 4294967295.0);
         // divided by 2^32-1
     }
 
-    // generates a random number on [0,1)-real-int32_terval
+    // generates a random number on [0,1)-real interval
     double genrand_real2(void)
     {
         return genrand_uint32() * (1.0 / 4294967296.0);
         // divided by 2^32
     }
 
-    // generates a random number on (0,1)-real-int32_terval
+    // generates a random number on (0,1)-real-interval
     double genrand_real3(void)
     {
         return (((double)genrand_uint32()) + 0.5) * (1.0 / 4294967296.0);
