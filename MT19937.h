@@ -253,9 +253,6 @@ class MT19937
 
     void refill()
     {
-        if (mti == N + 1)   // if init_genrand() has not been called, 
-            reinit(uint32_t(5489)); // a default initial seed is used 
-
         uint32_t* pmt;
         uint32_t* pu32;
         const uint32_t* pmt_end;
@@ -360,44 +357,46 @@ public:
         for (k = N - 1; k; k--) {
             mt[i] = (mt[i] ^ ((mt[i - 1] ^ (mt[i - 1] >> 30)) * 1566083941UL))
                 - i; // non linear 
-            //mt[i] &= 0xffffffffUL; // for WORDSIZE > 32 machines 
+            //mt[i] &= 0xffffffffUL; // for WORDSIZE > 32 machines
             i++;
             if (i >= N) { mt[0] = mt[N - 1]; i = 1; }
         }
 
-        mt[0] = 0x80000000UL; // MSB is 1; assuring non-zero initial array 
+        mt[0] = 0x80000000UL; // MSB is 1; assuring non-zero initial array
     }
 
-    // generates a random number on [0,0xffffffff] interval 
+    // generates a random number on [0,0xffffffff] interval
     uint32_t genrand_uint32()
     {
-        if (mti >= N) // generate N words at one time 
-            refill();
-        uint32_t y = u32[mti++];
-        return y;
+        if (mti < N)
+            return u32[mti++];
+        else {
+            refill();  // generate N words at one time
+            return u32[mti++];
+        }
     }
 
-    // generates a random number on [0,0x7fffffff]-int32_terval 
+    // generates a random number on [0,0x7fffffff]-interval
     uint32_t genrand_uint31(void)
     {
         return (long)(genrand_uint32() >> 1);
     }
 
-    // generates a random number on [0,1]-real-int32_terval 
+    // generates a random number on [0,1]-real-interval
     double genrand_real1(void)
     {
         return genrand_uint32() * (1.0 / 4294967295.0);
         // divided by 2^32-1 
     }
 
-    // generates a random number on [0,1)-real-int32_terval 
+    // generates a random number on [0,1)-real interval 
     double genrand_real2(void)
     {
         return genrand_uint32() * (1.0 / 4294967296.0);
         // divided by 2^32 
     }
 
-    // generates a random number on (0,1)-real-int32_terval 
+    // generates a random number on (0,1)-real-interval
     double genrand_real3(void)
     {
         return (((double)genrand_uint32()) + 0.5) * (1.0 / 4294967296.0);
@@ -410,6 +409,6 @@ public:
         uint32_t a = genrand_uint32() >> 5, b = genrand_uint32() >> 6;
         return(a * 67108864.0 + b) * (1.0 / 9007199254740992.0);
     }
-    // These real versions are due to Isaku Wada, 2002/01/09 added 
+    // These real versions are due to Isaku Wada, 2002/01/09 added
 };
 
