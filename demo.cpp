@@ -104,21 +104,21 @@ void originalPerformance()
 
 int main()
 {
-    //generateBenchmark();
+    generateBenchmark();
 
-    //testEquivalence<1>();
-    //testEquivalence<4>();
+    testEquivalence<1>();
+    testEquivalence<4>();
 #if MT19937_SIMD_VEC_LEN > 4
-    //testEquivalence<8>();
+    testEquivalence<8>();
 #endif
 
     std::cout << "\n";
 
-    //originalPerformance();
-    //testPerformance<1>();
+    originalPerformance();
+    testPerformance<1>();
     testPerformance<4>();
 #if MT19937_SIMD_VEC_LEN > 4
-    //testPerformance<8>();
+    testPerformance<8>();
 #endif
 
     return 0;
