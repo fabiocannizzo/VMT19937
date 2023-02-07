@@ -333,7 +333,7 @@ public:
         reinit(seed);
     }
 
-    MT19937(uint32_t seeds[], uint32_t n_seeds)
+    MT19937(const uint32_t seeds[], uint32_t n_seeds)
     {
         reinit(seeds, n_seeds);
     }
@@ -357,7 +357,7 @@ public:
     // init_key is the array for initializing keys
     // key_length is its length
     // slight change for C++, 2004/2/26
-    void reinit(uint32_t seeds[], uint32_t n_seeds)
+    void reinit(const uint32_t seeds[], uint32_t n_seeds)
     {
         uint32_t i, j, k;
         reinit(uint32_t(19650218));
