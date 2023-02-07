@@ -155,7 +155,7 @@ struct Vec<1>
     Vec() {}
     Vec(uint32_t v) : m_v(v) {}
     Vec(int32_t v) : m_v(v) {}
-    Vec(const Vec<4>& v) : m_v(_mm_extract_epi32(v.m_v, 0)) {}
+    //Vec(const Vec<4>& v) : m_v(_mm_extract_epi32(v.m_v, 0)) {}
 
     template <bool Aligned>
     static FORCE_INLINE XV load(const uint32_t* p) { return *p; }
@@ -222,17 +222,6 @@ class MT19937
     AlignedArray<uint32_t, N + VecLen, 64> u32; // a cache of uniform discrete random numbers in the range [0,0xffffffff]
     uint32_t mti = N + 1;    // mti==N+1 means mt[N] is not initialized
 
-    template <typename VecTy>
-    FORCE_INLINE VecTy temper(VecTy y)
-    {
-        // Tempering
-        y = y ^ (y >> 11);
-        y = y ^ (y << 7) & VecTy(s_temperMask1);
-        y = y ^ (y << 15) & VecTy(s_temperMask2);
-        y = y ^ (y >> 18);
-        return y;
-    }
-
     template <size_t N_ELEM, bool Align, size_t L>
     FORCE_INLINE void body(uint32_t* pCurState, const uint32_t* pNextState, const uint32_t* pFarState, uint32_t* pu32)
     {
@@ -246,7 +235,11 @@ class MT19937
         VecTy mag = y.ifOddValueElseZero(VecTy(s_matrixA));
         y = farState ^ (y >> 1) ^ mag;
 
-        VecTy u32 = temper(y);
+        // Tempering
+        VecTy u32 = y ^ (y >> 11);
+        u32 = u32 ^ (u32 << 7) & VecTy(s_temperMask1);
+        u32 = u32 ^ (u32 << 15) & VecTy(s_temperMask2);
+        u32 = u32 ^ (u32 >> 18);
             
         if (N_ELEM == L) {
             y.template store<Align>(pCurState);
