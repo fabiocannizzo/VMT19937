@@ -32,7 +32,7 @@ void printSome(const std::vector<uint32_t>& v)
 template <size_t VecLen>
 double testPerformance()
 {
-    std::cout << "Generate " << nRandomPerf << " random numbers with SIMD length " << VecLen << "    ... ";
+    std::cout << "Generate " << nRandomPerf << " random numbers with SIMD length " << VecLen << " ... ";
 
     MT19937<VecLen> mt(seedinit, seedlength);
 
@@ -92,7 +92,7 @@ void originalPerformance()
         init[i] = seedinit[i];
 
     init_by_array(init, seedlength);
-    std::cout << "Generate " << nRandomPerf << " random number with the original code ... ";
+    std::cout << "Generate " << nRandomPerf << " random numbers with original code ... ";
     auto start = std::chrono::system_clock::now();
     for (size_t i = 0; i < nRandomPerf; ++i)
         genrand_int32();
