@@ -5,46 +5,61 @@
 #include <iostream>
 #include <iomanip>
 #include <chrono>
-#include <ctime>
+#include <vector>
+
+const uint32_t seedlength = 4;
+const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
+
+const uint64_t nRandomTest = 500000;
+const uint64_t nRandomPerf = 2000000000;
+
+std::vector<uint32_t> benchmark(nRandomTest);
+
+void printSome(const std::vector<uint32_t>& v)
+{
+    std::cout << "\n";
+    for (size_t i = 0; i < 16; ++i)
+        std::cout << std::setw(10) << v[i] << ((i+1) % 8 == 0 ? "\n" : " ");
+    std::cout << "...\n";
+    for (size_t i = 240; i < 240+16; ++i)
+        std::cout << std::setw(10) << v[i] << ((i + 1) % 8 == 0 ? "\n" : " ");
+    std::cout << "...\n";
+    for (size_t i = 624 - 16; i < 624; ++i)
+        std::cout << std::setw(10) << v[i] << ((i + 1) % 8 == 0 ? "\n" : " ");
+    std::cout << "\n";
+}
 
 template <size_t VecLen>
 double testPerformance()
 {
-    const uint64_t nRandom = 2000000000;
-    uint32_t init[4] = { 0x123, 0x234, 0x345, 0x456 }, length = 4;
+    std::cout << "Generate " << nRandomPerf << " random numbers with SIMD length " << VecLen << "    ... ";
 
-    std::cout << "Generating " << nRandom << " discrete uniform 32-bit random numbers in [0,2^32) with SIMD length " << VecLen << "\n";
-
-    MT19937<VecLen> mt(init, length);
+    MT19937<VecLen> mt(seedinit, seedlength);
 
     auto start = std::chrono::system_clock::now();
-    for (size_t i = 0; i < 3000000000; ++i)
+    for (size_t i = 0; i < nRandomPerf; ++i)
         mt.genrand_uint32();
     auto end = std::chrono::system_clock::now();
 
     std::chrono::duration<double> elapsed_seconds = end - start;
 
-    std::cout << "Completed in: " << elapsed_seconds.count() << "s" << std::endl;
+    std::cout << "done in: " << std::fixed << std::setprecision(2) << elapsed_seconds.count() << "s" << std::endl;
 
     return 0;
 }
 
-template <size_t VecLen1, size_t VecLen2>
+template <size_t VecLen>
 void testEquivalence()
 {
-    std::cout << "Testing equivalence of generators with SIMD length " << VecLen1 << " and " << VecLen2 << " ... ";
+    std::cout << "Testing equivalence of generators with SIMD length " << VecLen << " ... ";
 
-    const uint64_t nRandom = 500000;
-    uint32_t init[4] = { 0x123, 0x234, 0x345, 0x456 }, length = 4;
+    MT19937<VecLen> mt(seedinit, seedlength);
 
-    MT19937<VecLen1> mt1(init, length);
-    MT19937<VecLen2> mt2(init, length);
-
-    for (size_t i = 0; i < nRandom; ++i) {
-        uint32_t r1 = mt1.genrand_uint32();
-        uint32_t r2 = mt2.genrand_uint32();
-        if (r1 != r2) {
-            std::cout << "FAILED!\n";
+    for (size_t i = 0; i < nRandomTest; ++i) {
+        uint32_t r2 = mt.genrand_uint32();
+        if (benchmark[i] != r2) {
+            std::cout << "FAILED!\n"
+                      << "Difference found at index " << i << ": expected " << benchmark[i] << ", but got " << r2 << "\n";
             throw;
         }
     }
@@ -52,17 +67,58 @@ void testEquivalence()
     std::cout << "SUCCESS!\n";
 }
 
+extern "C" unsigned long genrand_int32();
+extern "C" void init_by_array(unsigned long init_key[], int key_length);
+
+
+void generateBenchmark()
+{
+    unsigned long init[seedlength];
+    for (size_t i = 0; i < seedlength; ++i)
+        init[i] = seedinit[i];
+
+    std::cout << "Generate random numbers with the original source code ... ";
+    init_by_array(init, seedlength);
+    for (size_t i = 0; i < nRandomTest; ++i)
+        benchmark[i] = (uint32_t) genrand_int32();
+    std::cout << "done!\n";
+    printSome(benchmark);
+}
+
+void originalPerformance()
+{
+    unsigned long init[seedlength];
+    for (size_t i = 0; i < seedlength; ++i)
+        init[i] = seedinit[i];
+
+    init_by_array(init, seedlength);
+    std::cout << "Generate " << nRandomPerf << " random number with the original code ... ";
+    auto start = std::chrono::system_clock::now();
+    for (size_t i = 0; i < nRandomPerf; ++i)
+        genrand_int32();
+    auto end = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end - start;
+    double nSeconds = elapsed_seconds.count();
+    std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s\n";
+}
+
 int main()
 {
-    testEquivalence<1, 4>();
+    generateBenchmark();
+
+    testEquivalence<1>();
+    testEquivalence<4>();
 #if MT19937_SIMD_VEC_LEN > 4
-    testEquivalence<1, 8>();
+    //testEquivalence<8>();
 #endif
 
+    std::cout << "\n";
+
+    originalPerformance();
     testPerformance<1>();
     testPerformance<4>();
 #if MT19937_SIMD_VEC_LEN > 4
-    testPerformance<8>();
+    //testPerformance<8>();
 #endif
 
     return 0;
