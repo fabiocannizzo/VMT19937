@@ -65,11 +65,9 @@ struct Vec<8>
     Vec(int32_t v) : m_v(_mm256_set1_epi32(v)) {}
     Vec(__m256i v) : m_v(v) {}
 
-    template <bool Aligned>
-    static FORCE_INLINE XV load(const uint32_t* p) { return Aligned ? _mm256_load_si256((const __m256i*) p) : _mm256_loadu_si256((const __m256i*) p); }
+    static FORCE_INLINE XV load(const uint32_t* p) { return _mm256_loadu_si256((const __m256i*) p); }
 
-    template <bool Aligned>
-    FORCE_INLINE void store(uint32_t* p) { if (Aligned) _mm256_store_si256((__m256i*) p, m_v); else _mm256_storeu_si256((__m256i*) p, m_v); }
+    FORCE_INLINE void store(uint32_t* p) { _mm256_storeu_si256((__m256i*) p, m_v); }
 
     template <size_t N>
     FORCE_INLINE void storeN(uint32_t* p) {
@@ -89,10 +87,10 @@ struct Vec<8>
     friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm256_srli_epi32(a.m_v, n); }
 
     // shift left the first 32-bit element of b into a: {a1, a2, a3, a4, a5, a6, a7, b0}
-    static FORCE_INLINE XV shiftLeft(const XV& a, const XV& b) {
-        const __m256i index = _mm256_set_epi32(0, 7, 6, 5, 4, 3, 2, 1);
-        return _mm256_permutevar8x32_epi32(_mm256_blend_epi32(a.m_v, b.m_v, 0x1), index);
-    }
+    //static FORCE_INLINE XV shiftLeft(const XV& a, const XV& b) {
+    //    const __m256i index = _mm256_set_epi32(0, 7, 6, 5, 4, 3, 2, 1);
+    //    return _mm256_permutevar8x32_epi32(_mm256_blend_epi32(a.m_v, b.m_v, 0x1), index);
+    //}
 
     // returns value if v is odd, zero otherwise
     FORCE_INLINE XV ifOddValueElseZero(const XV& value) const { return ((*this & XV(1)) == XV(1)) & value; }
@@ -115,11 +113,9 @@ struct Vec<4>
     Vec(const Vec<8>& v) : m_v(_mm256_castsi256_si128(v.m_v)) {}
 #endif
 
-    template <bool Aligned>
-    static FORCE_INLINE XV load(const uint32_t* p) { return Aligned ? _mm_load_si128((const __m128i*) p) : _mm_loadu_si128((const __m128i*) p); }
+    static FORCE_INLINE XV load(const uint32_t* p) { return _mm_loadu_si128((const __m128i*) p); }
 
-    template <bool Aligned>
-    FORCE_INLINE void store(uint32_t* p) { if (Aligned) _mm_store_si128((__m128i*) p, m_v); else _mm_storeu_si128((__m128i*) p, m_v); }
+    FORCE_INLINE void store(uint32_t* p) { _mm_storeu_si128((__m128i*) p, m_v); }
 
     template <size_t N>
     FORCE_INLINE void storeN(uint32_t* p) {
@@ -139,7 +135,7 @@ struct Vec<4>
     friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm_srli_epi32(a.m_v, n); }
 
     // shift left the first 32-bit element of b into a: {a1, a2, a3, b0}
-    static FORCE_INLINE XV shiftLeft(const XV& a, const XV& b) { return _mm_shuffle_epi32(_mm_blend_epi16(a.m_v, b.m_v, 0x3), 1 + (2 << 2) + (3 << 4)); }
+    //static FORCE_INLINE XV shiftLeft(const XV& a, const XV& b) { return _mm_shuffle_epi32(_mm_blend_epi16(a.m_v, b.m_v, 0x3), 1 + (2 << 2) + (3 << 4)); }
 
     // returns value if v is odd, zero otherwise
     FORCE_INLINE XV ifOddValueElseZero(const XV& value) const { return ((*this & XV(1)) == XV(1)) & value; }
@@ -157,10 +153,8 @@ struct Vec<1>
     Vec(int32_t v) : m_v(v) {}
     //Vec(const Vec<4>& v) : m_v(_mm_extract_epi32(v.m_v, 0)) {}
 
-    template <bool Aligned>
     static FORCE_INLINE XV load(const uint32_t* p) { return *p; }
 
-    template <bool Aligned>
     FORCE_INLINE void store(uint32_t* p) { *p = m_v; }
 
     template <size_t N>
@@ -173,7 +167,7 @@ struct Vec<1>
     friend FORCE_INLINE XV operator>>(XV a, uint32_t n) { return a.m_v >> n; }
 
     // return b
-    static FORCE_INLINE XV shiftLeft(XV a, XV b) { return b; }
+    //static FORCE_INLINE XV shiftLeft(XV a, XV b) { return b; }
 
     // returns value if v is odd, zero otherwise
     FORCE_INLINE XV ifOddValueElseZero(XV value) const { return m_v & 0x1 ? value : 0; }
@@ -222,14 +216,14 @@ class MT19937
     AlignedArray<uint32_t, N + VecLen, 64> u32; // a cache of uniform discrete random numbers in the range [0,0xffffffff]
     uint32_t mti = N + 1;    // mti==N+1 means mt[N] is not initialized
 
-    template <size_t N_ELEM, bool Align, size_t L>
+    template <size_t N_ELEM, size_t L>
     FORCE_INLINE void body(uint32_t* pCurState, const uint32_t* pNextState, const uint32_t* pFarState, uint32_t* pu32)
     {
         typedef Vec<L> VecTy;
 
-        VecTy curState(VecTy::template load<false>(pCurState));
-        VecTy nextState(VecTy::template load<false>(pNextState));
-        VecTy farState(VecTy::template load<false>(pFarState));
+        VecTy curState(VecTy::load(pCurState));
+        VecTy nextState(VecTy::load(pNextState));
+        VecTy farState(VecTy::load(pFarState));
 
         VecTy y = (curState & s_upperMask) | (nextState & s_lowerMask);
         VecTy mag = y.ifOddValueElseZero(VecTy(s_matrixA));
@@ -242,8 +236,8 @@ class MT19937
         u32 = u32 ^ (u32 >> 18);
             
         if (N_ELEM == L) {
-            y.template store<Align>(pCurState);
-            u32.template store<Align>(pu32);
+            y.store(pCurState);
+            u32.store(pu32);
         }
         else {
             y.template storeN<N_ELEM>(pCurState);
@@ -269,7 +263,7 @@ class MT19937
         pmt_end = pmt + nFull1 * VecLen;
 
         do {
-            body<VecLen, true, VecLen>(pmt, pmt + 1, pmt + M, pu32);
+            body<VecLen, VecLen>(pmt, pmt + 1, pmt + M, pu32);
             pmt += VecLen;
             pu32 += VecLen;
         } while (pmt != pmt_end);
@@ -277,7 +271,7 @@ class MT19937
         // in this iteration we read beyond the end of the state buffer
         // which is why we dimensioned the state buffer a little bit larger then necessary
         if (nLeft1)
-            body<nLeft1, true, (nLeft1 <= 1 ? 1 : nLeft1 <= 4 ? 4 :8)>(pmt, pmt + 1, pmt + M, pu32);
+            body<nLeft1, (nLeft1 <= 1 ? 1 : nLeft1 <= 4 ? 4 :8)>(pmt, pmt + 1, pmt + M, pu32);
 
         // process remaining M-1 elements
 
@@ -289,20 +283,20 @@ class MT19937
         pmt_end = pmt + nFull2 * VecLen;
 
         do {
-            body<VecLen, false, VecLen>(pmt, pmt + 1, pmt - (N - M), pu32);
+            body<VecLen, VecLen>(pmt, pmt + 1, pmt - (N - M), pu32);
             pmt += VecLen;
             pu32 += VecLen;
         } while (pmt != pmt_end);
 
         if (nLeft2)
-            body<nLeft2, true, (nLeft2 <= 1 ? 1 : nLeft2 <= 4 ? 4 : 8)>(pmt, pmt + 1, pmt - (N - M), pu32);
+            body<nLeft2, (nLeft2 <= 1 ? 1 : nLeft2 <= 4 ? 4 : 8)>(pmt, pmt + 1, pmt - (N - M), pu32);
 
         // ****************************
         // process last element
         //
 
         pmt = mt.begin();
-        body<1, true, 1>(pmt + N - 1, pmt, pmt + (M - 1), u32.begin() + (N - 1));
+        body<1, 1>(pmt + N - 1, pmt, pmt + (M - 1), u32.begin() + (N - 1));
 
         mti = 0;
     }
