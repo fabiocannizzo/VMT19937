@@ -1,4 +1,4 @@
-#include "bit_matrix.h"
+#include "jump_matrix.h"
 
 enum EncodeMode {Base64, Hex};
 
@@ -37,52 +37,74 @@ void testEncoder(const BinaryMatrix<nRows, nCols>& m, EncodeMode enc)
 }
 
 template <size_t N>
-void testSquare(const BinaryMatrix<N, N>& m)
+void testSquare(const BinarySquareMatrix<N>& m)
 {
-    BinaryMatrix<N, N> m2, m3;
+    BinarySquareMatrix<N> m2, m3;
 
     // slow bit by bit multiplication
+    std::cout << "compute matrix multiplication the classical way\n";
     for (size_t r = 0; r < N; ++r) {
+        //std::cout << r << "\n";
         for (size_t c = 0; c < N; ++c) {
             size_t s = 0;
-            for (size_t k = 0; k < N; ++c) {
-                s += m.getBit(r, k) & m.getBit(k, c);
+            for (size_t k = 0; k < N; ++k) {
+                s ^= m.getBit(r, k) && m.getBit(k, c);
             }
-            if (s & 1)
+            if (s)
                 m2.setBit(r, c);
         }
     }
 
+    const size_t nThreads = 4;
+    std::cout << "compute matrix multiplication vectorially\n";
+    std::vector<typename BinarySquareMatrix<N>::buffer_t> buffers(nThreads);
+    m3.square(m, buffers, nullptr);
 
+    if (!(m2 == m3))
+        throw std::exception("error in square");
+
+    std::cout << "SUCCESS\n";
 }
 
 template <size_t nRows, size_t nCols>
-void runTests()
+void encodingTests()
 {
     BinaryMatrix<nRows, nCols> m;
     m.initRand();
-    std::cout << "\ngenerated random matrix with size (" << m.s_nBitCols << "x" << m.s_nBitCols << ") with " << m.nnz() << " non zero elements\n";
+    std::cout << "\ngenerated random matrix with size (" << m.s_nBitRows << "x" << m.s_nBitCols << ") with " << m.nnz() << " non zero elements\n";
     m.printBits(0, 0, 10, 32);
 
     testEncoder(m, Base64);
     testEncoder(m, Hex);
+}
 
-    if constexpr (nRows == nCols)
+template <size_t N>
+void squareTest()
+{
+    std::cout << "testing multiplication with matrices of size: " << N << "\n";
+    BinarySquareMatrix<N> m;
+    for (size_t i = 0; i < 10; ++i) {
+        m.resetZero();
+        m.initRand();
         testSquare(m);
+    }
+}
+
+template <size_t...N>
+void squareTests(std::index_sequence<N...>&&)
+{
+    (squareTest<N>(), ...);
 }
 
 int main()
 {
     try {
-        runTests<19937, 19937>();
-        runTests<19937, 1007>();
-        runTests<1007, 19937>();
+        encodingTests<19937, 19937>();
+        encodingTests<19937, 1007>();
+        encodingTests<1007, 19937>();
+        encodingTests<1007, 1007>();
 
-        //testMatrixSquare;
-        //testMatrixByVectorMult;
-
-        //testMatlabEncoder;
-        //testF0Matrix;
+        squareTests(std::index_sequence<1, 5, 8, 13, 16, 20, 28, 32, 36, 60, 64, 68, 85, 126, 128, 150>{});
     }
     catch (const std::exception& e) {
         std::cout << e.what() << "\n";
