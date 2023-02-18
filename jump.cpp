@@ -56,8 +56,47 @@ std::string mkFileName(size_t n)
     return os.str();
 }
 
-int main(int narg, const char* args[])
+void usage()
 {
+    std::cerr
+        << "Invalid command line arguments\n"
+        << "Example:\n"
+        << "jump [-j nthreads] [-p filepath] [-f savefrequency]\n"
+        << "  nthreads defaults to 1\n"
+        << "  filepath defaults to ./"
+        << "  savefrequency defaults to 100";
+    std::exit(-1);
+}
+
+int main(int argc, const char** argv)
+{
+    // parse command line arguments
+    size_t nThreads = std::thread::hardware_concurrency();
+    std::string filepath = "./dat/";
+    size_t saveFrequency = 100;
+    if (argc % 2 == 0)
+        usage();
+    for (int i = 1; i < argc; i += 2) {
+        string key(argv[i]);
+        const char* value = argv[i + 1];
+        if (key == "-j") {
+            nThreads = atoi(value);
+        }
+        else if (key == "-p") {
+            filepath = value;
+            if (filepath.back() != '/')
+                filepath.push_back('/');
+        }
+        else if (key == "-f") {
+            saveFrequency = atoi(value);
+        }
+        else
+            usage();
+    }
+    std::cout << "nThreads = " << nThreads << "\n";
+    std::cout << "filepath = " << filepath << "\n";
+    std::cout << "savefrequency = " << saveFrequency << "\n";
+
     MT19937Matrix f[2];
 
     int lastComputed = -1;
@@ -87,12 +126,9 @@ int main(int narg, const char* args[])
     std::cout << "  ";
     f[lastComputed % 2].printSparsity();
 
-    const size_t nThreads = 4;
-    const size_t saveFrequency = 100;
-
     std::vector<MT19937Matrix::buffer_t> buffers(nThreads);
 
-    for (size_t i = lastComputed + 1; i <= 19937; ++i) {
+    for (size_t i = (size_t) lastComputed + 1; i <= 19937; ++i) {
         std::cout << "computing F^(2^" << i << ")\n";
         size_t in = (i + 1) % 2;
         size_t out = (i) % 2;
@@ -108,7 +144,6 @@ int main(int narg, const char* args[])
             f[out].toBase64(of);
             std::cout << "saved\n";
         }
-
 
     }
 
