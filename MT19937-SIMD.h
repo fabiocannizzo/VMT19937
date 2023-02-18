@@ -27,8 +27,8 @@ class MT19937SIMD
     static const size_t s_N = 624;
     static const size_t s_M = 397;
     static const uint32_t s_matrixA = 0x9908b0dfUL;   // constant vector a
-    static const int32_t s_upperMask = 0x80000000UL; // most significant w-r bits
-    static const int32_t s_lowerMask = 0x7fffffffUL; // least significant r bits
+    static const uint32_t s_upperMask = 0x80000000UL; // most significant w-r bits
+    static const uint32_t s_lowerMask = 0x7fffffffUL; // least significant r bits
     static const uint32_t s_temperMask1 = 0x9d2c5680UL;
     static const uint32_t s_temperMask2 = 0xefc60000UL;
 
@@ -43,8 +43,6 @@ class MT19937SIMD
         const XV v_lowerMask;
         const XV v_temperMask1;
         const XV v_temperMask2;
-        const XV v_one;
-        const XV v_zero;
 
         Loop()
             : v_matrixA(s_matrixA)
@@ -52,8 +50,6 @@ class MT19937SIMD
             , v_lowerMask(s_lowerMask)
             , v_temperMask1(s_temperMask1)
             , v_temperMask2(s_temperMask2)
-            , v_one(uint32_t(0x1))
-            , v_zero(XV::zero())
         {
         }
 
@@ -69,7 +65,7 @@ class MT19937SIMD
         FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm)
         {
             XV y = (s & v_upperMask) | (sp & v_lowerMask);
-            XV r = sm ^ (y >> 1) ^ (((y & v_one) > v_zero) & v_matrixA);
+            XV r = sm ^ (y >> 1) ^ y.ifOddValueElseZero(v_matrixA);
             return r;
         }
     };

@@ -19,11 +19,13 @@
 #endif
 
 #if defined(__AVX512F__)
-#       define SIMD_N_BITS 512
+#   define SIMD_N_BITS 512
+#elif defined(__AVX2__)
+#   define SIMD_N_BITS 256
 #elif defined(__AVX__)
-#       define SIMD_N_BITS 256
+#   error AVX2 is needed
 #elif defined(__SSE4_1__)
-#       define SIMD_N_BITS 128
+#   define SIMD_N_BITS 128
 #endif
 
 #ifdef SIMD_N_BITS

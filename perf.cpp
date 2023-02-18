@@ -69,6 +69,7 @@ int main()
 {
     originalPerformance();
     testPerformance<32>();
+    testPerformance<64>();
     testPerformance<128>();
 #if SIMD_N_BITS > 256
     testPerformance<256>();

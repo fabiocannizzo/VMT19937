@@ -169,6 +169,7 @@ int main()
         generateBenchmark();
 
         testEquivalence<32>();
+        testEquivalence<64>();
         testEquivalence<128>();
 #if SIMD_N_BITS > 128
         testEquivalence<256>();
