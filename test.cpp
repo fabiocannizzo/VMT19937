@@ -58,7 +58,7 @@ void testEncoder(const BinaryMatrix<nRows, nCols>& m, EncodeMode enc)
 
     std::cout << "compare with original matrix\n";
     if (!(m == m2))
-        throw std::exception("error in roundtrip");
+        throw std::invalid_argument("error in roundtrip");
 
     std::cout << "completed\n";
 }
@@ -88,7 +88,7 @@ void testSquare(const BinarySquareMatrix<N>& m)
     m3.square(m, buffers, nullptr);
 
     if (!(m2 == m3))
-        throw std::exception("error in square");
+        throw std::invalid_argument("error in square");
 
     std::cout << "SUCCESS\n";
 }
