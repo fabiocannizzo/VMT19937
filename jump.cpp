@@ -49,10 +49,10 @@ void square(const MT19937Matrix& src, MT19937Matrix& dst, std::vector<MT19937Mat
 
 const std::string extension = ".b64";
 
-std::string mkFileName(size_t n)
+std::string mkFileName(const std::string& path, size_t n)
 {
     std::ostringstream os;
-    os << "F" << std::setw(5) << std::setfill('0') << n << extension;
+    os << path << "F" << std::setw(5) << std::setfill('0') << n << extension;
     return os.str();
 }
 
@@ -101,7 +101,7 @@ int main(int argc, const char** argv)
 
     int lastComputed = -1;
 
-    for (const auto& entry : std::filesystem::directory_iterator("./")) {
+    for (const auto& entry : std::filesystem::directory_iterator(filepath)) {
         if (std::filesystem::is_regular_file(entry) && entry.path().has_extension() && entry.path().extension().string() == extension) {
             std::string s = entry.path().filename().string();
             s = s.substr(1, s.length() - 1 - extension.length());
@@ -117,8 +117,8 @@ int main(int argc, const char** argv)
         lastComputed = 0;
     }
     else {
-        std::string fn = mkFileName(lastComputed);
-        std::cout << "initializing from file "<< fn << "\n";
+        std::string fn = mkFileName(filepath, lastComputed);
+        std::cout << "initializing from file " << fn << "\n";
         std::ifstream is(fn);
         f[lastComputed % 2].fromBase64(is);
     }
@@ -138,7 +138,7 @@ int main(int argc, const char** argv)
         f[out].printSparsity();
 
         if ((i  % saveFrequency) == 0 || i > 19930) {
-            std::string fn = mkFileName(i);
+            std::string fn = mkFileName(filepath, i);
             std::cout << "  saving file: " << fn << " ... ";
             std::ofstream of(fn);
             f[out].toBase64(of);
