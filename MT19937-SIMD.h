@@ -74,8 +74,6 @@ class MT19937SIMD
         }
     };
 
-    
-
     void refill()
     {
 
