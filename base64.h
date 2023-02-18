@@ -4,6 +4,7 @@
 #include <string>
 #include <cassert>
 #include <cctype>
+#include <exception>
 
 using namespace std;
 
@@ -39,7 +40,7 @@ namespace Encoder {
             return hex - 'A' + 10;
         char t[2] = { hex, 0 };
         cout << "not a hex character: " << t << endl;
-        throw std::exception("not a hex character");
+        throw std::invalid_argument("not a hex character");
     }
 
     inline uint8_t b64ToDec(char b64)
@@ -57,7 +58,7 @@ namespace Encoder {
             return 63;
         char t[2] = { b64, 0 };
         cout << "not a base 64 character: " << t << endl;
-        throw std::exception("not a b64 character");
+        throw std::invalid_argument("not a b64 character");
     }
 
     inline uint8_t hexPairToDec(const char hex[2])
@@ -137,7 +138,11 @@ namespace Encoder {
     inline void base64ToText(string& res, const string& b64)
     {
         size_t n = b64.size();
-        assert((n % 4) == 0 && n > 0);
+        if (!((n % 4) == 0 && n > 0)) {
+            std::cout << "bad stream size: " << n << "\n";
+            throw std::invalid_argument("bad stream size");
+        }
+        //assert((n % 4) == 0 && n > 0);
         size_t nEq = (b64[n - 1] == '=' ? 1 : 0) + (b64[n - 2] == '=' ? 1 : 0);
         size_t n4 = n / 4 - (nEq > 0);
         res.resize(n4 * 3 + ((nEq > 0) ? 3 - nEq : 0));

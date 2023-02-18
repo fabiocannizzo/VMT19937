@@ -3,6 +3,7 @@
 #include <thread>
 #include <memory>
 #include <sstream>
+#include <filesystem>
 
 void wait()
 {
@@ -46,8 +47,79 @@ void square(const MT19937Matrix& src, MT19937Matrix& dst, std::vector<MT19937Mat
     std::cout << "done in: " << std::fixed << std::setprecision(2) << elapsed_seconds.count() << "s" << std::endl;
 }
 
+const std::string extension = ".b64";
+
+std::string mkFileName(size_t n)
+{
+    std::ostringstream os;
+    os << "F" << std::setw(5) << std::setfill('0') << n << extension;
+    return os.str();
+}
+
+int main(int narg, const char* args[])
+{
+    MT19937Matrix f[2];
+
+    int lastComputed = -1;
+
+    for (const auto& entry : std::filesystem::directory_iterator("./")) {
+        if (std::filesystem::is_regular_file(entry) && entry.path().has_extension() && entry.path().extension().string() == extension) {
+            std::string s = entry.path().filename().string();
+            s = s.substr(1, s.length() - 1 - extension.length());
+            int n = atoi(s.c_str());
+            if (n > lastComputed)
+                lastComputed = n;
+        }
+    }
+
+    if (lastComputed == -1) {
+        std::cout << "initializing from base matrix\n";
+        initMT19937(f[0]);
+        lastComputed = 0;
+    }
+    else {
+        std::string fn = mkFileName(lastComputed);
+        std::cout << "initializing from file "<< fn << "\n";
+        std::ifstream is(fn);
+        f[lastComputed % 2].fromBase64(is);
+    }
+
+    std::cout << "  ";
+    f[lastComputed % 2].printSparsity();
+
+    const size_t nThreads = 4;
+    const size_t saveFrequency = 100;
+
+    std::vector<MT19937Matrix::buffer_t> buffers(nThreads);
+
+    for (size_t i = lastComputed + 1; i <= 19937; ++i) {
+        std::cout << "computing F^(2^" << i << ")\n";
+        size_t in = (i + 1) % 2;
+        size_t out = (i) % 2;
+        f[out].resetZero();
+        square(f[in], f[out], buffers, nullptr);
+        std::cout << "  ";
+        f[out].printSparsity();
+
+        if ((i  % saveFrequency) == 0 || i > 19930) {
+            std::string fn = mkFileName(i);
+            std::cout << "  saving file: " << fn << " ... ";
+            std::ofstream of(fn);
+            f[out].toBase64(of);
+            std::cout << "saved\n";
+        }
+
+
+    }
+
+    return 0;
+
+}
+
+#if 0
 int main(int narg, const char *args[])
 {
+
     MT19937Matrix f[2];
     initMT19937(f[0]);
     f[0].printBits(MT19937Matrix::s_nBits - 32, 0, 32, 32);
@@ -71,7 +143,7 @@ int main(int narg, const char *args[])
     std::vector<MT19937Matrix::buffer_t> buffers(nThreads);
 
 
-    for (size_t i = 0; i < 19936; ++i) {
+    for (size_t i = 0; i <= 19937; ++i) {
         std::cout << "computing F^(2^" << i + 1 << ")\n";
         size_t in = i % 2;
         size_t out = (i + 1) % 2;
@@ -87,6 +159,7 @@ int main(int narg, const char *args[])
                 std::cout << "base matrix is different\n";
         f[out].printSparsity();
 
+#if 0
         std::ofstream os("temp");
         f[out].toBase64(os);
         os.close();
@@ -96,15 +169,21 @@ int main(int narg, const char *args[])
         is.close();
         if (!(f[in] == f[out]))
             std::cout << "read save problem\n";
-/*
+#endif
+
         if ((i % 200) == 0 || i > 19930) {
             std::ostringstream os;
             os << "F" << std::setw(5) << std::setfill('0') << i+1;
-            f[out].base64Out("", os.str().c_str());
+            std::cout << "saving file: " << os.str() << "...";
+            std::ofstream of(os.str());
+            f[out].toBase64(of);
+            std::cout << "saved\n";
         }
-*/
+
 
     }
 
     return 0;
 }
+
+#endif

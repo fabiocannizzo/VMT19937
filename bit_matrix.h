@@ -8,6 +8,7 @@
 #include <sstream>
 #include <fstream>
 #include <iomanip>
+#include <cstring>
 
 inline constexpr uint8_t bitmask(size_t b)
 {
@@ -185,35 +186,35 @@ public:
     void txtRowEncoder(OS& os, void (*encoder)(std::string&, const std::string&)) const
     {
         // FIXME: too many copies
-        std::string binStr(s_nBytesPerRow, '\0');
-        std::string encodedStr;
+        std::string binStr;
+        binStr.resize(s_nBytesPerRow * s_nBitRows);
+        char* pout = &binStr[0];
         for (size_t r = 0; r < s_nBitRows; ++r) {
             auto prow = (const char*)rowBegin(r);
-            std::copy(prow, prow + s_nBytesPerRow, binStr.begin());
-            (*encoder)(encodedStr, binStr);
-            os << encodedStr << "\n";
+            std::copy(prow, prow + s_nBytesPerRow, pout);
+            pout += s_nBytesPerRow;
         }
+        
+        std::string encodedStr;
+        (*encoder)(encodedStr, binStr);
+        os << encodedStr;
     }
 
     template <typename IS>
     void txtRowDecoder(IS& is, void (*decoder)(std::string&, const std::string&))
     {
         std::string encodedStr, binStr;
-        size_t r = 0;
-        for (size_t r = 0; r < s_nBitRows; ++r) {
-            std::getline(is, encodedStr);
-            if (is.bad()) {
-                std::cout << "error reading row " << r << " from stream\n";
-                throw std::exception("cannot read row");
-            }
+        std::getline(is, encodedStr);
+        (*decoder)(binStr, encodedStr);
 
-            (*decoder)(binStr, encodedStr);
-            if (binStr.size() != s_nBytesPerRow) {
-                std::cout << "row " << r << " has bad length stream, got " << binStr.length() << ", expect " << s_nBytesPerRow << "\n";
-                throw std::exception("bad row lenght");
-            }
-            std::copy(binStr.begin(), binStr.end(), (char *) rowBegin(r));
+        if (binStr.length() != s_nBytesPerRow * s_nBitRows) {
+            //std::cout << "row " << r << " has bad length stream, got " << binStr.length() << ", expect " << s_nBytesPerRow << "\n";
+            throw std::invalid_argument("bad stream length");
         }
+
+        const uint8_t* p = (const uint8_t*)&binStr[0];
+        for (size_t r = 0; r < s_nBitRows; ++r, p += s_nBytesPerRow)
+            std::copy(p, p + s_nBytesPerRow, (char *) rowBegin(r));
     }
 
     template <typename OS>
