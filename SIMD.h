@@ -6,6 +6,57 @@ template <size_t NumBits>
 struct SimdRegister;
 
 template <>
+struct SimdRegister<32>
+{
+    uint32_t m_v;
+
+    typedef SimdRegister<32> XV;
+
+    SimdRegister() {}
+    SimdRegister(const void* p) : m_v(*(const uint32_t*)p) {}
+    SimdRegister(uint32_t v) : m_v(v) {}
+
+    friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { return a.m_v & b.m_v; }
+    friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { return a.m_v ^ b.m_v; }
+    friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { return a.m_v | b.m_v; }
+    friend FORCE_INLINE XV operator>(const XV& a, const XV& b) { return a.m_v > b.m_v ? uint32_t(-1) : uint32_t(0); }
+    friend FORCE_INLINE XV operator>>(const XV& a, int n) { return uint32_t(a.m_v >> n); }
+    friend FORCE_INLINE XV operator<<(const XV& a, int n) { return uint32_t(a.m_v << n); }
+    
+
+    static FORCE_INLINE XV zero() { return uint32_t(0); }
+};
+
+template <>
+struct SimdRegister<64>
+{
+    uint64_t m_v;
+
+    typedef SimdRegister<64> XV;
+
+    SimdRegister() {}
+    SimdRegister(const void* p) : m_v(*(const uint64_t*)p) {}
+    SimdRegister(uint32_t v) : m_v(v | (uint64_t(v) << 32)) {}
+    SimdRegister(uint64_t v) : m_v(v) {}
+
+    friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { return a.m_v & b.m_v; }
+    friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { return a.m_v ^ b.m_v; }
+    friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { return a.m_v | b.m_v; }
+    friend FORCE_INLINE XV operator>(const XV& a, const XV& b)
+    {
+        const uint64_t mask = 0xFFFFFFFFul;
+        uint64_t vHi = (a.m_v >> 32) > (b.m_v >> 32) ? mask : 0;
+        uint64_t vLo = (a.m_v & mask) > (b.m_v & mask) ? 0xFFFFFFFFul : 0;
+        return (vHi << 32) | vLo;
+    }
+    friend FORCE_INLINE XV operator>>(const XV& a, int n) { return uint64_t(a.m_v >> n); }
+    friend FORCE_INLINE XV operator<<(const XV& a, int n) { return uint64_t(a.m_v << n); }
+
+    static FORCE_INLINE XV zero() { return uint64_t(0); }
+};
+
+#if SIMD_N_BITS>=128
+template <>
 struct SimdRegister<128>
 {
     __m128i m_v;
@@ -13,11 +64,16 @@ struct SimdRegister<128>
     typedef SimdRegister<128> XV;
 
     SimdRegister() {}
+    SimdRegister(uint32_t v) : m_v(_mm_set1_epi32(v)){}
     SimdRegister(const void* p) : m_v(_mm_loadu_si128((const __m128i*)p)) {}
     SimdRegister(__m128i v) : m_v(v) {}
 
     friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { return _mm_and_si128(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { return _mm_xor_si128(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { return _mm_or_si128(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator>(const XV& a, const XV& b) { return _mm_cmpgt_epi32(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return _mm_slli_epi32(a.m_v, n); }
+    friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm_srli_epi32(a.m_v, n); }
 
     static FORCE_INLINE XV zero() { return _mm_setzero_si128(); }
 
@@ -35,6 +91,7 @@ struct SimdRegister<128>
         uint64_t m_u64[2];
     };
 };
+#endif
 
 #if SIMD_N_BITS>=256
 template <>
@@ -50,6 +107,10 @@ struct SimdRegister<256>
 
     friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { return _mm256_and_si256(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { return _mm256_xor_si256(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { return _mm256_or_si256(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator>(const XV& a, const XV& b) { return _mm256_cmpgt_epi32(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return _mm256_slli_epi32(a.m_v, n); }
+    friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm256_srli_epi32(a.m_v, n); }
 
     static FORCE_INLINE XV zero() { return _mm256_setzero_si256(); }
 
@@ -87,6 +148,10 @@ struct SimdRegister<512>
 
     friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { return _mm512_and_si512(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { return _mm512_xor_si512(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { return _mm512_or_si512(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator>(const XV& a, const XV& b) { return _mm512_cmpgt_epi32(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return _mm512_slli_epi32(a.m_v, n); }
+    friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm512_srli_epi32(a.m_v, n); }
 
     static FORCE_INLINE XV zero() { return _mm512_setzero_si512(); }
 
