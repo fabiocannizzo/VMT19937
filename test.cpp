@@ -1,5 +1,32 @@
 #include "jump_matrix.h"
 
+#include "MT19937-SIMD.h"
+
+const uint32_t seedlength = 4;
+const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
+
+const uint64_t nRandomTest = 500000;
+
+extern "C" unsigned long genrand_int32();
+extern "C" void init_by_array(unsigned long init_key[], int key_length);
+
+
+std::vector<uint32_t> benchmark(nRandomTest);
+
+void printSome(const std::vector<uint32_t>& v)
+{
+    std::cout << "\n";
+    for (size_t i = 0; i < 16; ++i)
+        std::cout << std::setw(10) << v[i] << ((i + 1) % 8 == 0 ? "\n" : " ");
+    std::cout << "...\n";
+    for (size_t i = 240; i < 240 + 16; ++i)
+        std::cout << std::setw(10) << v[i] << ((i + 1) % 8 == 0 ? "\n" : " ");
+    std::cout << "...\n";
+    for (size_t i = 624 - 16; i < 624; ++i)
+        std::cout << std::setw(10) << v[i] << ((i + 1) % 8 == 0 ? "\n" : " ");
+    std::cout << "\n";
+}
+
 enum EncodeMode {Base64, Hex};
 
 template <size_t nRows, size_t nCols>
@@ -96,6 +123,39 @@ void squareTests(std::index_sequence<N...>&&)
     (squareTest<N>(), ...);
 }
 
+template <size_t VecLen>
+void testEquivalence()
+{
+    std::cout << "Testing equivalence of generators with SIMD length " << VecLen << " ... ";
+
+    MT19937SIMD<VecLen> mt(seedinit, seedlength);
+
+    for (size_t i = 0; i < nRandomTest; ++i) {
+        uint32_t r2 = mt.genrand_uint32();
+        if (benchmark[i / (VecLen / 32)] != r2) {
+            std::cout << "FAILED!\n"
+                << "Difference found at index " << i << ": expected " << benchmark[i] << ", but got " << r2 << "\n";
+            throw;
+        }
+    }
+
+    std::cout << "SUCCESS!\n";
+}
+
+void generateBenchmark()
+{
+    unsigned long init[seedlength];
+    for (size_t i = 0; i < seedlength; ++i)
+        init[i] = seedinit[i];
+
+    std::cout << "Generate random numbers with the original source code ... ";
+    init_by_array(init, seedlength);
+    for (size_t i = 0; i < nRandomTest; ++i)
+        benchmark[i] = (uint32_t)genrand_int32();
+    std::cout << "done!\n";
+    printSome(benchmark);
+}
+
 int main()
 {
     try {
@@ -105,6 +165,18 @@ int main()
         encodingTests<1007, 1007>();
 
         squareTests(std::index_sequence<1, 5, 8, 13, 16, 20, 28, 32, 36, 60, 64, 68, 85, 126, 128, 150>{});
+
+        generateBenchmark();
+
+        testEquivalence<32>();
+        testEquivalence<128>();
+#if SIMD_N_BITS > 128
+        testEquivalence<256>();
+#endif
+#if SIMD_N_BITS > 256
+        testEquivalence<512>();
+#endif
+
     }
     catch (const std::exception& e) {
         std::cout << e.what() << "\n";

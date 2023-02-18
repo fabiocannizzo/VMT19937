@@ -10,10 +10,10 @@
 const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 
-const uint64_t nRandomTest = 500000;
 const uint64_t nRandomPerf = 2000000000;
 
-std::vector<uint32_t> benchmark(nRandomTest);
+extern "C" unsigned long genrand_int32();
+extern "C" void init_by_array(unsigned long init_key[], int key_length);
 
 void printSome(const std::vector<uint32_t>& v)
 {
@@ -34,7 +34,7 @@ double testPerformance()
 {
     std::cout << "Generate " << nRandomPerf << " random numbers with SIMD length " << VecLen << " ... ";
 
-    MT19937SIMD<VecLen*32> mt(seedinit, seedlength);
+    MT19937SIMD<VecLen> mt(seedinit, seedlength);
 
     auto start = std::chrono::system_clock::now();
     for (size_t i = 0; i < nRandomPerf; ++i)
@@ -46,43 +46,6 @@ double testPerformance()
     std::cout << "done in: " << std::fixed << std::setprecision(2) << elapsed_seconds.count() << "s" << std::endl;
 
     return 0;
-}
-
-template <size_t VecLen>
-void testEquivalence()
-{
-    std::cout << "Testing equivalence of generators with SIMD length " << VecLen << " ... ";
-
-    MT19937SIMD<VecLen*32> mt(seedinit, seedlength);
-
-    for (size_t i = 0; i < nRandomTest; ++i) {
-        uint32_t r2 = mt.genrand_uint32();
-        if (benchmark[i / VecLen] != r2) {
-            std::cout << "FAILED!\n"
-                      << "Difference found at index " << i << ": expected " << benchmark[i] << ", but got " << r2 << "\n";
-            throw;
-        }
-    }
-
-    std::cout << "SUCCESS!\n";
-}
-
-extern "C" unsigned long genrand_int32();
-extern "C" void init_by_array(unsigned long init_key[], int key_length);
-
-
-void generateBenchmark()
-{
-    unsigned long init[seedlength];
-    for (size_t i = 0; i < seedlength; ++i)
-        init[i] = seedinit[i];
-
-    std::cout << "Generate random numbers with the original source code ... ";
-    init_by_array(init, seedlength);
-    for (size_t i = 0; i < nRandomTest; ++i)
-        benchmark[i] = (uint32_t) genrand_int32();
-    std::cout << "done!\n";
-    printSome(benchmark);
 }
 
 void originalPerformance()
@@ -104,21 +67,14 @@ void originalPerformance()
 
 int main()
 {
-    generateBenchmark();
-
-    testEquivalence<1>();
-    testEquivalence<4>();
-#if MT19937_SIMD_VEC_LEN > 4
-    testEquivalence<8>();
-#endif
-
-    std::cout << "\n";
-
     originalPerformance();
-    testPerformance<1>();
-    testPerformance<4>();
-#if MT19937_SIMD_VEC_LEN > 4
-    testPerformance<8>();
+    testPerformance<32>();
+    testPerformance<128>();
+#if SIMD_N_BITS > 256
+    testPerformance<256>();
+#endif
+#if SIMD_N_BITS > 512
+    testPerformance<512>();
 #endif
 
     return 0;
