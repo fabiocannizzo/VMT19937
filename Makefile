@@ -1,9 +1,12 @@
 INCLUDE_DIR=./
 
-COMMONFLAGS = -c -O3 -msse4.1 -I$(INCLUDE_DIR)
+ISA ?= -msse4.2
+$(info ISA: $(ISA))
+
+COMMONFLAGS = -c -O3 $(ISA) -I$(INCLUDE_DIR)
 
 CFLAGS += $(COMMONFLAGS)
-CPPFLAGS += $(COMMONFLAGS) -O3 -msse4.1 -I$(INCLUDE_DIR)
+CPPFLAGS += $(COMMONFLAGS) -O3 $(ISA) -I$(INCLUDE_DIR)
 
 
 HEADERS := $(shell find $(INCLUDE_DIR) -name "*.h")
