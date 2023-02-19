@@ -85,9 +85,6 @@ private:
 
 public:
 
-
-public:
-
     BinaryMatrix()
         : m_storage(s_nUsedBytes + (s_nAlignBytes - 1), 0)
     {

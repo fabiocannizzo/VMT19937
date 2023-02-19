@@ -133,3 +133,28 @@ struct BinarySquareMatrix : BinaryMatrix<N, N>
     }
 };
 
+typedef BinarySquareMatrix<19937>  MT19937Matrix;
+
+// initialize the matrix as per MT19937 32 bit generartor transition matrix
+void initMT19937(MT19937Matrix& m)
+{
+    static_assert(MT19937Matrix::s_nBits == 19937);
+    static const size_t s_nBits = MT19937Matrix::s_nBits;
+    static const size_t s_nWordBits = MT19937Matrix::s_nWordBits;
+    static const uint32_t s_matA = 0x9908B0DF;
+    static const uint32_t s_M = 397;
+
+    // from row 0 to to row nBits - 32, state bits are just shifted left by 32 bits
+    for (uint32_t r = 0; r < s_nBits - s_nWordBits; ++r)
+        m.setBit(r, r + s_nWordBits);
+
+    // the new state element is composed of element which was in position M
+    for (uint32_t i = 0; i < s_nWordBits; i++)
+        m.setBit(s_nBits - s_nWordBits + i, 1 + (s_M - 1) * s_nWordBits + i);
+    for (uint32_t i = 0; i < s_nWordBits; ++i)
+        if (s_matA & (uint32_t(1) << i))
+            m.setBit(s_nBits - s_nWordBits + i, 1);
+    m.setBit(s_nBits - 2, 0);
+    for (uint32_t i = 0; i < s_nWordBits - 2; ++i)
+        m.setBit(s_nBits - s_nWordBits + i, 2 + i);
+}
