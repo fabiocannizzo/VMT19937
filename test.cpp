@@ -69,7 +69,7 @@ void testSquare(const BinarySquareMatrix<N>& m)
     BinarySquareMatrix<N> m2, m3;
 
     // slow bit by bit multiplication
-    std::cout << "compute matrix multiplication the classical way\n";
+    //std::cout << "compute matrix multiplication the classical way\n";
     for (size_t r = 0; r < N; ++r) {
         //std::cout << r << "\n";
         for (size_t c = 0; c < N; ++c) {
@@ -83,14 +83,14 @@ void testSquare(const BinarySquareMatrix<N>& m)
     }
 
     const size_t nThreads = 4;
-    std::cout << "compute matrix multiplication vectorially\n";
+    //std::cout << "compute matrix multiplication vectorially\n";
     std::vector<typename BinarySquareMatrix<N>::buffer_t> buffers(nThreads);
     m3.square(m, buffers, nullptr);
 
     if (!(m2 == m3))
         throw std::invalid_argument("error in square");
 
-    std::cout << "SUCCESS\n";
+    //std::cout << "SUCCESS\n";
 }
 
 template <size_t nRows, size_t nCols>
@@ -148,7 +148,7 @@ void generateBenchmark()
     for (size_t i = 0; i < seedlength; ++i)
         init[i] = seedinit[i];
 
-    std::cout << "Generate random numbers with the original source code ... ";
+    std::cout << "Generate random numbers with the original C source code ... ";
     init_by_array(init, seedlength);
     for (size_t i = 0; i < nRandomTest; ++i)
         benchmark[i] = (uint32_t)genrand_int32();

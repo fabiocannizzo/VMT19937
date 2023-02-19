@@ -24,8 +24,10 @@
 #   define SIMD_N_BITS 256
 #elif defined(__AVX__)
 #   error AVX2 is needed
-#elif defined(__SSE4_1__)
+#elif defined(__SSE4_2__)
 #   define SIMD_N_BITS 128
+#elif defined(__SSE2__)
+#   error SSE4.2 is needed
 #endif
 
 #ifdef SIMD_N_BITS
