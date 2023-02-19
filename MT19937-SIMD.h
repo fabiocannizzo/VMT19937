@@ -72,29 +72,34 @@ class MT19937SIMD
 
     void refill()
     {
-
         static Cst cst;
 
-        size_t kk;
-        XV cur = m_state[0];
-        for (kk = 0; kk < s_N - s_M; kk++) {
-            XV nextp = m_state[kk + 1];
-            XV tmp = advance1(cur, nextp, m_state[kk + s_M], cst);
-            m_state[kk] = tmp;
-            m_rnd[kk] = temper(tmp, cst);
+        XV* stCur = m_state;
+        XV* stNxt = m_state + 1;
+        XV* rndCur = m_rnd;
+        const XV* stMid = m_state + s_M;
+        const XV* stEnd = m_state + s_N;
+
+        //size_t kk;
+        XV cur = *stCur;
+        for (; stMid != stEnd; ++stMid, stCur = stNxt++, ++rndCur) {
+            XV nextp = *stNxt;
+            XV tmp = advance1(cur, nextp, *stMid, cst);
+            *stCur = tmp;
+            *rndCur = temper(tmp, cst);
             cur = nextp;
         }
-        for (; kk < s_N - 1; kk++) {
-            XV nextp = m_state[kk + 1];
-            XV tmp = advance1(cur, nextp, m_state[kk - (s_N - s_M)], cst);
-            m_state[kk] = tmp;
-            m_rnd[kk] = temper(tmp, cst);
+        for (stMid = m_state; stNxt != stEnd; ++stMid, stCur = stNxt++, ++rndCur) {
+            XV nextp = *stNxt;
+            XV tmp = advance1(cur, nextp, *stMid, cst);
+            *stCur = tmp;
+            *rndCur = temper(tmp, cst);
             cur = nextp;
         }
         {
-            XV tmp = advance1(cur, m_state[0], m_state[s_M - 1], cst);
-            m_state[s_N - 1] = tmp;
-            m_rnd[s_N - 1] = temper(tmp, cst);
+            XV tmp = advance1(cur, m_state[0], *stMid, cst);
+            *stCur = tmp;
+            *rndCur = temper(tmp, cst);
         }
 
         m_prnd = (const uint32_t*)m_rnd;
