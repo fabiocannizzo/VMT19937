@@ -15,26 +15,12 @@ const uint64_t nRandomPerf = 5000000000;
 extern "C" unsigned long genrand_int32();
 extern "C" void init_by_array(unsigned long init_key[], int key_length);
 
-void printSome(const std::vector<uint32_t>& v)
-{
-    std::cout << "\n";
-    for (size_t i = 0; i < 16; ++i)
-        std::cout << std::setw(10) << v[i] << ((i+1) % 8 == 0 ? "\n" : " ");
-    std::cout << "...\n";
-    for (size_t i = 240; i < 240+16; ++i)
-        std::cout << std::setw(10) << v[i] << ((i + 1) % 8 == 0 ? "\n" : " ");
-    std::cout << "...\n";
-    for (size_t i = 624 - 16; i < 624; ++i)
-        std::cout << std::setw(10) << v[i] << ((i + 1) % 8 == 0 ? "\n" : " ");
-    std::cout << "\n";
-}
-
 template <size_t VecLen>
 double testPerformance()
 {
     std::cout << "Generate " << nRandomPerf << " random numbers with SIMD length " << VecLen << " ... ";
 
-    MT19937SIMD<VecLen> mt(seedinit, seedlength);
+    MT19937SIMD<VecLen> mt(seedinit, seedlength, NULL);
 
     auto start = std::chrono::system_clock::now();
     for (size_t i = 0; i < nRandomPerf; ++i)

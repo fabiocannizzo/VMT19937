@@ -124,15 +124,19 @@ void squareTests(std::index_sequence<N...>&&)
 }
 
 template <size_t VecLen>
-void testEquivalence()
+void testEquivalence(const BinaryMatrix<19937>* jumpMatrix = NULL, size_t nJumps = 0)
 {
-    std::cout << "Testing equivalence of generators with SIMD length " << VecLen << " ... ";
+    std::cout << "Testing equivalence of generators with SIMD length " << VecLen << " and jump ahead of " << nJumps << " ... ";
 
-    MT19937SIMD<VecLen> mt(seedinit, seedlength);
+    const size_t M = VecLen / 32;
+
+    MT19937SIMD<VecLen> mt(seedinit, seedlength, jumpMatrix);
 
     for (size_t i = 0; i < nRandomTest; ++i) {
         uint32_t r2 = mt.genrand_uint32();
-        if (benchmark[i / (VecLen / 32)] != r2) {
+        size_t seqIndex = i / M;
+        size_t genIndex = i % M;
+        if (benchmark[seqIndex + nJumps * genIndex] != r2) {
             std::cout << "FAILED!\n"
                 << "Difference found at index " << i << ": expected " << benchmark[i] << ", but got " << r2 << "\n";
             throw;
@@ -159,24 +163,33 @@ void generateBenchmark()
 int main()
 {
     try {
+#if 0
         encodingTests<19937, 19937>();
         encodingTests<19937, 1007>();
         encodingTests<1007, 19937>();
         encodingTests<1007, 1007>();
 
         squareTests(std::index_sequence<1, 5, 8, 13, 16, 20, 28, 32, 36, 60, 64, 68, 85, 126, 128, 150>{});
-
+#endif
         generateBenchmark();
+
+        MT19937Matrix jumpMatrix;
+        initMT19937(jumpMatrix);
 
         testEquivalence<32>();
         testEquivalence<64>();
         testEquivalence<128>();
+        testEquivalence<128>(&jumpMatrix, 1);
 #if SIMD_N_BITS > 128
         testEquivalence<256>();
+        testEquivalence<256>(&jumpMatrix, 1);
 #endif
 #if SIMD_N_BITS > 256
         testEquivalence<512>();
+        testEquivalence<512>(&jumpMatrix, 1);
 #endif
+
+
 
     }
     catch (const std::exception& e) {

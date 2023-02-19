@@ -30,6 +30,20 @@ struct SimdRegister<32>
     }
 
     static FORCE_INLINE XV zero() { return uint32_t(0); }
+
+    struct Konst
+    {
+        Konst() : m_simd(0) {}
+        Konst(uint32_t v) : m_simd(v) {}
+
+        void operator^=(XV v) { m_simd ^= v.m_v; }
+
+        uint8_t parity() const
+        {
+            return popcnt(m_simd) % 2;
+        }
+        uint32_t m_simd;
+    };
 };
 
 template <>
@@ -66,6 +80,20 @@ struct SimdRegister<64>
     }
 
     static FORCE_INLINE XV zero() { return uint64_t(0); }
+
+    struct Konst
+    {
+        Konst() : m_simd(0) {}
+        Konst(uint64_t v) : m_simd(v) {}
+
+        void operator^=(XV v) { m_simd ^= v.m_v; }
+
+        uint8_t parity() const
+        {
+            return popcnt(m_simd) % 2;
+        }
+        uint64_t m_simd;
+    };
 };
 
 #if SIMD_N_BITS>=128
