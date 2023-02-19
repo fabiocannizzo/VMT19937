@@ -33,10 +33,10 @@ class MT19937SIMD
     static const uint32_t s_temperMask2 = 0xefc60000UL;
 
     XV m_state[s_N];  // the array os state vectors
-    XV m_u32[s_N]; // a cache of uniform discrete random numbers in the range [0,0xffffffff]
-    uint32_t m_pos = s_N + 1;    // m_pos==s_N+1 means m_state[s_N] is not initialized
+    XV m_rnd[s_N]; // a cache of uniform discrete random numbers in the range [0,0xffffffff]
+    const uint32_t *m_prnd, *m_prnd_end;    // m_pos==s_N+1 means m_state[s_N] is not initialized
 
-    struct Loop
+    struct Cst
     {
         const XV v_matrixA;
         const XV v_upperMask;
@@ -44,7 +44,7 @@ class MT19937SIMD
         const XV v_temperMask1;
         const XV v_temperMask2;
 
-        Loop()
+        Cst()
             : v_matrixA(s_matrixA)
             , v_upperMask(s_upperMask)
             , v_lowerMask(s_lowerMask)
@@ -52,53 +52,54 @@ class MT19937SIMD
             , v_temperMask2(s_temperMask2)
         {
         }
-
-        FORCE_INLINE XV temper(XV y)
-        {
-            y = y ^ (y >> 11);
-            y = y ^ ((y << 7) & v_temperMask1);
-            y = y ^ ((y << 15) & v_temperMask2);
-            y = y ^ (y >> 18);
-            return y;
-        }
-
-        FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm)
-        {
-            XV y = (s & v_upperMask) | (sp & v_lowerMask);
-            XV r = sm ^ (y >> 1) ^ y.ifOddValueElseZero(v_matrixA);
-            return r;
-        }
     };
+
+    static FORCE_INLINE XV temper(XV y, const Cst& cst)
+    {
+        y = y ^ (y >> 11);
+        y = y ^ ((y << 7) & cst.v_temperMask1);
+        y = y ^ ((y << 15) & cst.v_temperMask2);
+        y = y ^ (y >> 18);
+        return y;
+    }
+
+    static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, const Cst& cst)
+    {
+        XV y = (s & cst.v_upperMask) | (sp & cst.v_lowerMask);
+        XV r = sm ^ (y >> 1) ^ y.ifOddValueElseZero(cst.v_matrixA);
+        return r;
+    }
 
     void refill()
     {
 
-        Loop loop;
+        static Cst cst;
 
         size_t kk;
         XV cur = m_state[0];
         for (kk = 0; kk < s_N - s_M; kk++) {
             XV nextp = m_state[kk + 1];
-            XV tmp = loop.advance1(cur, nextp, m_state[kk + s_M]);;
+            XV tmp = advance1(cur, nextp, m_state[kk + s_M], cst);
             m_state[kk] = tmp;
-            m_u32[kk] = loop.temper(tmp);
+            m_rnd[kk] = temper(tmp, cst);
             cur = nextp;
         }
         for (; kk < s_N - 1; kk++) {
             XV nextp = m_state[kk + 1];
-            XV tmp = loop.advance1(cur, nextp, m_state[kk - (s_N - s_M)]);
+            XV tmp = advance1(cur, nextp, m_state[kk - (s_N - s_M)], cst);
             m_state[kk] = tmp;
-            m_u32[kk] = loop.temper(tmp);
+            m_rnd[kk] = temper(tmp, cst);
             cur = nextp;
         }
         {
-            XV tmp = loop.advance1(cur, m_state[0], m_state[s_M - 1]);
+            XV tmp = advance1(cur, m_state[0], m_state[s_M - 1], cst);
             m_state[s_N - 1] = tmp;
-            m_u32[s_N - 1] = loop.temper(tmp);
+            m_rnd[s_N - 1] = temper(tmp, cst);
         }
 
-        m_pos = 0;
+        m_prnd = (const uint32_t*)m_rnd;
     }
+
 
     uint32_t& scalarState(uint32_t scalarIndex)
     {
@@ -107,14 +108,18 @@ class MT19937SIMD
 
 public:
     // constructors
-    MT19937SIMD() : m_pos(s_N + 1) {}
+    MT19937SIMD()
+        : m_prnd_end((const uint32_t *)(m_rnd+s_N))
+    {}
 
     MT19937SIMD(uint32_t seed)
+        : m_prnd_end((const uint32_t*)(m_rnd + s_N))
     {
         reinit(seed);
     }
 
     MT19937SIMD(const uint32_t seeds[], uint32_t n_seeds)
+        : m_prnd_end((const uint32_t*)(m_rnd + s_N))
     {
         reinit(seeds, n_seeds);
     }
@@ -126,7 +131,6 @@ public:
         uint32_t prev = scalarState(0) = s;
         for (uint32_t i = 1; i < s_N; i++)
             prev = scalarState(i) = (mask * (prev ^ (prev >> 30)) + i);
-        m_pos = s_N * s_regLenWords;
         if(fillOthers)
             fillOtherStates();
     }
@@ -167,16 +171,17 @@ public:
         for (size_t i = 0; i < s_N; ++i)
             for (size_t j = 1; j < s_regLenWords; ++j)
                 p[i * s_regLenWords + j] = p[i * s_regLenWords];
+        m_prnd = m_prnd_end;
     }
 
     // generates a random number on [0,0xffffffff] interval
     uint32_t genrand_uint32()
     {
-        if (m_pos < s_N * s_regLenWords)
+        if (m_prnd != m_prnd_end)
             /* do nothing*/;
         else
             refill();
-        return ((const uint32_t *) m_u32)[m_pos++];
+        return *m_prnd++;
     }
 
     // generates a random number on [0,0x7fffffff]-interval
