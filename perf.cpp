@@ -10,7 +10,7 @@
 const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 
-const uint64_t nRandomPerf = 2000000000;
+const uint64_t nRandomPerf = 5000000000;
 
 extern "C" unsigned long genrand_int32();
 extern "C" void init_by_array(unsigned long init_key[], int key_length);
@@ -69,12 +69,12 @@ int main()
 {
     originalPerformance();
     testPerformance<32>();
-    testPerformance<64>();
+    //testPerformance<64>();
     testPerformance<128>();
-#if SIMD_N_BITS > 256
+#if SIMD_N_BITS >= 256
     testPerformance<256>();
 #endif
-#if SIMD_N_BITS > 512
+#if SIMD_N_BITS >= 512
     testPerformance<512>();
 #endif
 
