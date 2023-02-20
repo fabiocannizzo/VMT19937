@@ -46,12 +46,14 @@ namespace Encoder {
     inline uint8_t b64ToDec(char b64)
     {
         const size_t nAlpha = 'Z' - 'A' + 1;
+        if (b64 >= 'A') {
+            if (b64 <= 'Z')
+                return b64 - 'A';
+            if (b64 >= 'a' && b64 <= 'z')
+                return b64 - 'a' + nAlpha;
+        }
         if (b64 >= '0' && b64 <= '9')
             return b64 - '0' + 2 * nAlpha;
-        if (b64 >= 'a' && b64 <= 'z')
-            return b64 - 'a' + nAlpha;
-        if (b64 >= 'A' && b64 <= 'Z')
-            return b64 - 'A';
         if (b64 == '+')
             return 62;
         if (b64 == '/')

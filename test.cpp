@@ -163,7 +163,7 @@ void generateBenchmark()
 int main()
 {
     try {
-#if 0
+#if 1
         encodingTests<19937, 19937>();
         encodingTests<19937, 1007>();
         encodingTests<1007, 19937>();
