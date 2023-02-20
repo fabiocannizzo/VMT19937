@@ -35,8 +35,10 @@ class MT19937SIMD
     static const uint32_t s_temperMask2 = 0xefc60000UL;
 
     XV m_state[s_N];  // the array os state vectors
-    XV m_rnd[s_N]; // a cache of uniform discrete random numbers in the range [0,0xffffffff]
-    const uint32_t *m_prnd, *m_prnd_end;    // m_pos==s_N+1 means m_state[s_N] is not initialized
+    //XV m_rnd[s_N]; // a cache of uniform discrete random numbers in the range [0,0xffffffff]
+    XV m_rnd;
+    const XV *m_pst, *m_pst_end;    // m_pos==s_N+1 means m_state[s_N] is not initialized
+    uint32_t m_curGen;
 
     struct Cst
     {
@@ -78,33 +80,26 @@ class MT19937SIMD
     {
         XV* stCur = m_state;
         XV* stNxt = m_state + 1;
-        XV* rndCur = m_rnd;
         const XV* stMid = m_state + s_M;
         const XV* stEnd = m_state + s_N;
 
         //size_t kk;
         XV cur = *stCur;
-        for (; stMid != stEnd; ++stMid, stCur = stNxt++, ++rndCur) {
+        for (; stMid != stEnd; ++stMid, stCur = stNxt++) {
             XV nextp = *stNxt;
-            XV tmp = advance1(cur, nextp, *stMid);
-            *stCur = tmp;
-            *rndCur = temper(tmp);
+            *stCur = advance1(cur, nextp, *stMid);
             cur = nextp;
         }
-        for (stMid = m_state; stNxt != stEnd; ++stMid, stCur = stNxt++, ++rndCur) {
+        for (stMid = m_state; stNxt != stEnd; ++stMid, stCur = stNxt++) {
             XV nextp = *stNxt;
-            XV tmp = advance1(cur, nextp, *stMid);
-            *stCur = tmp;
-            *rndCur = temper(tmp);
+            *stCur = advance1(cur, nextp, *stMid);
             cur = nextp;
         }
         {
-            XV tmp = advance1(cur, m_state[0], *stMid);
-            *stCur = tmp;
-            *rndCur = temper(tmp);
+            *stCur = advance1(cur, m_state[0], *stMid);
         }
 
-        m_prnd = (const uint32_t*)m_rnd;
+        m_pst = m_state;
     }
 
 
@@ -188,7 +183,8 @@ class MT19937SIMD
                     pstate[w * s_regLenWords + j] = pstate[w * s_regLenWords];
         }
 
-        m_prnd = m_prnd_end;
+        m_pst = m_pst_end;
+        m_curGen = s_regLenWords;
     }
 
     // initializes m_state[s_N] with a seed
@@ -203,17 +199,17 @@ class MT19937SIMD
 public:
     // constructors
     MT19937SIMD()
-        : m_prnd_end((const uint32_t *)(m_rnd+s_N))
+        : m_pst_end(m_state+s_N)
     {}
 
     MT19937SIMD(uint32_t seed, const BinaryMatrix<s_nBits>*jumpMatrix)
-        : m_prnd_end((const uint32_t*)(m_rnd + s_N))
+        : m_pst_end(m_state + s_N)
     {
         reinit(seed, jumpMatrix, jumpMatrix);
     }
 
     MT19937SIMD(const uint32_t seeds[], uint32_t n_seeds, const BinaryMatrix<s_nBits>* jumpMatrix)
-        : m_prnd_end((const uint32_t*)(m_rnd + s_N))
+        : m_pst_end(m_state + s_N)
     {
         reinit(seeds, n_seeds, jumpMatrix);
     }
@@ -258,11 +254,21 @@ public:
     // generates a random number on [0,0xffffffff] interval
     uint32_t genrand_uint32()
     {
-        if (m_prnd != m_prnd_end)
-            /* do nothing*/;
+        if (s_regLenWords > 1 && m_curGen < s_regLenWords)
+            return ((const uint32_t *) (&m_rnd))[m_curGen++];
+
+        if (m_pst != m_pst_end)
+            /* do nothing*/; // most likely case first
         else
             refill();
-        return *m_prnd++;
+        XV rnd = temper(*m_pst++);
+        if constexpr (s_regLenWords > 1) {
+            m_rnd = rnd;
+            m_curGen = 1;
+            return ((const uint32_t*)(&m_rnd))[0];
+        }
+        else
+            return rnd.m_v;
     }
 
     // generates a random number on [0,0x7fffffff]-interval
