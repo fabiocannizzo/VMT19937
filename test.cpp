@@ -160,6 +160,34 @@ void generateBenchmark()
     printSome(benchmark);
 }
 
+
+#include <fstream>
+void recode()
+{
+    MT19937Matrix f, g;
+
+    const char* fi = "./dat/F15700.b64";
+    const char* fo = "./dat/F15700.bin";
+
+    {
+        std::ifstream is(fi);
+        f.fromBase64(is);
+    }
+    {
+        std::ofstream os(fo, std::ios::binary);
+        f.toBin(os);
+    }
+    {
+        std::ifstream is(fo, std::ios::binary);
+        g.fromBin(is);
+    }
+
+    if (!(f == g)) {
+        std::cout << "binary round trip error" << "\n";
+        std::exit(-1);
+    }
+}
+
 int main()
 {
     try {

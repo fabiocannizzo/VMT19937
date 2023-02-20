@@ -56,26 +56,26 @@ class MT19937SIMD
         }
     };
 
-    static FORCE_INLINE XV temper(XV y, const Cst& cst)
+    inline static const Cst s_cst;
+
+    static FORCE_INLINE XV temper(XV y)
     {
         y = y ^ (y >> 11);
-        y = y ^ ((y << 7) & cst.v_temperMask1);
-        y = y ^ ((y << 15) & cst.v_temperMask2);
+        y = y ^ ((y << 7) & s_cst.v_temperMask1);
+        y = y ^ ((y << 15) & s_cst.v_temperMask2);
         y = y ^ (y >> 18);
         return y;
     }
 
-    static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, const Cst& cst)
+    static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm)
     {
-        XV y = (s & cst.v_upperMask) | (sp & cst.v_lowerMask);
-        XV r = sm ^ (y >> 1) ^ y.ifOddValueElseZero(cst.v_matrixA);
+        XV y = (s & s_cst.v_upperMask) | (sp & s_cst.v_lowerMask);
+        XV r = sm ^ (y >> 1) ^ y.ifOddValueElseZero(s_cst.v_matrixA);
         return r;
     }
 
     void refill()
     {
-        static Cst cst;
-
         XV* stCur = m_state;
         XV* stNxt = m_state + 1;
         XV* rndCur = m_rnd;
@@ -86,22 +86,22 @@ class MT19937SIMD
         XV cur = *stCur;
         for (; stMid != stEnd; ++stMid, stCur = stNxt++, ++rndCur) {
             XV nextp = *stNxt;
-            XV tmp = advance1(cur, nextp, *stMid, cst);
+            XV tmp = advance1(cur, nextp, *stMid);
             *stCur = tmp;
-            *rndCur = temper(tmp, cst);
+            *rndCur = temper(tmp);
             cur = nextp;
         }
         for (stMid = m_state; stNxt != stEnd; ++stMid, stCur = stNxt++, ++rndCur) {
             XV nextp = *stNxt;
-            XV tmp = advance1(cur, nextp, *stMid, cst);
+            XV tmp = advance1(cur, nextp, *stMid);
             *stCur = tmp;
-            *rndCur = temper(tmp, cst);
+            *rndCur = temper(tmp);
             cur = nextp;
         }
         {
-            XV tmp = advance1(cur, m_state[0], *stMid, cst);
+            XV tmp = advance1(cur, m_state[0], *stMid);
             *stCur = tmp;
-            *rndCur = temper(tmp, cst);
+            *rndCur = temper(tmp);
         }
 
         m_prnd = (const uint32_t*)m_rnd;
