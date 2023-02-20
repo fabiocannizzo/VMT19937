@@ -156,12 +156,12 @@ class MT19937SIMD
                     for (r = 0; r + 8 < s_nBits; r += 8) {
                         for (size_t h = 0; h < 8; ++h)
                             rowptrs[h] = jumpMatrix->rowBegin(r + h);
-                        pres[r / 8] = BinaryVectorMultiplier<s_regLenBits>::multiply8<8, s_nBits, tmp.s_nBitColsPadded>(ps, rowptrs);
+                        pres[r / 8] = BinaryVectorMultiplier<s_regLenBits>::template multiply8<8, s_nBits, tmp.s_nBitColsPadded>(ps, rowptrs);
                     }
                     { // this takes care of the residual rows, because 19937 is not a multiple of 8
                         for (size_t h = 0; h < s_nBits % 8; ++h)
                             rowptrs[h] = jumpMatrix->rowBegin(r + h);
-                        pres[r / 8] = BinaryVectorMultiplier<s_regLenBits>::multiply8<s_nBits % 8, s_nBits, tmp.s_nBitColsPadded>(ps, rowptrs);
+                        pres[r / 8] = BinaryVectorMultiplier<s_regLenBits>::template multiply8<s_nBits % 8, s_nBits, tmp.s_nBitColsPadded>(ps, rowptrs);
                     }
 
                     // copy the result to the state s
