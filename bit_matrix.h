@@ -215,13 +215,27 @@ public:
     }
 
     template <typename OS>
+    void toBin(OS& os) const
+    {
+        for (size_t r = 0; r < s_nBitRows; ++r)
+            os.write((const char *) rowBegin(r), s_nBytesPerRow);
+    }
+
+    template <typename IS>
+    void fromBin(IS& is)
+    {
+        for (size_t r = 0; r < s_nBitRows; ++r)
+            is.read((char*) rowBegin(r), s_nBytesPerRow);
+    }
+
+    template <typename OS>
     void toBase64(OS& os) const
     {
         txtRowEncoder(os, &Encoder::textToBase64);
     }
 
-    template <typename OS>
-    void fromBase64(OS& os)
+    template <typename IS>
+    void fromBase64(IS& os)
     {
         txtRowDecoder(os, &Encoder::base64ToText);
     }
@@ -233,8 +247,8 @@ public:
         txtRowEncoder(os, &Encoder::textToHex);
     }
 
-    template <typename OS>
-    void fromHex(OS& os)
+    template <typename IS>
+    void fromHex(IS& os)
     {
         txtRowDecoder(os, &Encoder::hexToText);
     }
