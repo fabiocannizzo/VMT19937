@@ -34,10 +34,10 @@ class MT19937SIMD
     static const uint32_t s_temperMask1 = 0x9d2c5680UL;
     static const uint32_t s_temperMask2 = 0xefc60000UL;
 
-    XV m_state[s_N];  // the array os state vectors
+    alignas(64) XV m_state[s_N];  // the array os state vectors
     //XV m_rnd[s_N]; // a cache of uniform discrete random numbers in the range [0,0xffffffff]
     XV m_rnd;
-    const XV *m_pst, *m_pst_end;    // m_pos==s_N+1 means m_state[s_N] is not initialized
+    const XV *m_pst, *m_pst_end;    // m_pos==m_pst_end means the state vector has been consumed and need to be regenerated
     uint32_t m_curGen;
 
     struct Cst
@@ -72,7 +72,11 @@ class MT19937SIMD
     static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm)
     {
         XV y = (s & s_cst.v_upperMask) | (sp & s_cst.v_lowerMask);
-        XV r = sm ^ (y >> 1) ^ y.ifOddValueElseZero(s_cst.v_matrixA);
+        // y and sp are either both even or both odd,
+        // hence in the next line we can check if sp is odd
+        // so that the operation is independent on the clauclation of y
+        // and the compiler is free to rearrange the code
+        XV r = sm ^ (y >> 1) ^ sp.ifOddValueElseZero(s_cst.v_matrixA);
         return r;
     }
 
