@@ -1,12 +1,20 @@
 INCLUDE_DIR=./
 
-ISA ?= sse4.2
-$(info ISA: $(ISA))
+NBITS ?= 128
+$(info NBITS: $(NBITS))
 
-COMMONFLAGS = -c -O3 -m$(ISA) -I$(INCLUDE_DIR)
+ifeq ($(NBITS), 512)
+   SIMD=-mavx512f -mavx512dq
+else ifeq ($(NBITS), 256)
+   SIMD=-mavx2
+else ifeq ($(NBITS), 128)
+   SIMD=-msse4.2
+endif
+
+COMMONFLAGS = -c -O3 $(SIMD) -I$(INCLUDE_DIR)
 
 CFLAGS += $(COMMONFLAGS)
-CPPFLAGS += $(COMMONFLAGS) -O3 -m$(ISA) -I$(INCLUDE_DIR)
+CPPFLAGS += $(COMMONFLAGS) -O3 $(SIMD) -I$(INCLUDE_DIR)
 
 
 HEADERS := $(shell find $(INCLUDE_DIR) -name "*.h")
