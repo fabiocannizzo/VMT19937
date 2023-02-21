@@ -16,17 +16,31 @@ struct SimdRegister<32>
     SimdRegister(const void* p) : m_v(*(const uint32_t*)p) {}
     SimdRegister(uint32_t v) : m_v(v) {}
 
-    friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { return a.m_v & b.m_v; }
-    friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { return a.m_v ^ b.m_v; }
-    friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { return a.m_v | b.m_v; }
+    friend FORCE_INLINE XV operator&(const XV a, const XV b) { return a.m_v & b.m_v; }
+    friend FORCE_INLINE XV operator^(const XV a, const XV b) { return a.m_v ^ b.m_v; }
+    friend FORCE_INLINE XV operator|(const XV a, const XV b) { return a.m_v | b.m_v; }
     //friend FORCE_INLINE XV operator>(const XV& a, const XV& b) { return a.m_v > b.m_v ? uint32_t(-1) : uint32_t(0); }
-    friend FORCE_INLINE XV operator>>(const XV& a, int n) { return uint32_t(a.m_v >> n); }
-    friend FORCE_INLINE XV operator<<(const XV& a, int n) { return uint32_t(a.m_v << n); }
+    friend FORCE_INLINE XV operator>>(const XV a, int n) { return uint32_t(a.m_v >> n); }
+    friend FORCE_INLINE XV operator<<(const XV a, int n) { return uint32_t(a.m_v << n); }
 
-    FORCE_INLINE XV ifOddValueElseZero(const XV& value) const
+    FORCE_INLINE XV ifOddValueElseZero(const XV value) const
     {
+#if defined(__GNUC__) && defined(__x86_64__)
+        // force the use of cmov with gcc
+        uint32_t z;
+        __asm__(
+            "mov %[a], %[z]\n"
+            "and $0x1, %[z]\n"
+            "cmovne %[b], %[z]\n"
+            : [z] "=r"(z)
+            : [a] "r"(m_v), [b] "r"(value.m_v)
+            : "cc"
+        );
+        return z;
+#else
         const uint32_t lowestBit = m_v & 0x1;
         return lowestBit ? value.m_v : 0;
+#endif
     }
 
     static FORCE_INLINE XV zero() { return uint32_t(0); }
