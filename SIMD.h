@@ -181,9 +181,11 @@ struct SimdRegister<256>
     FORCE_INLINE XV ifOddValueElseZero(const XV& value) const
     {
         const __m256i z = zero().m_v;
-        const __m256i lowestBit = _mm256_slli_epi32(m_v, 31);
-        const __m256i isOdd = _mm256_cmpgt_epi32(z, lowestBit);
-        return _mm256_and_si256(isOdd, value.m_v);
+        const __m256i lowestBit = _mm256_slli_epi32(m_v, 31); // move least significant bit to most significant bit
+        const int isOdd = _mm256_movemask_ps(_mm256_castsi256_ps(lowestBit));
+        //const __m256i isOdd = _mm256_cmpgt_epi32(z, lowestBit);
+        // return _mm256_and_si256(value.m_v, isOdd);
+        return _mm256_blend_epi32(value.m_v, z, isOdd);
     }
 
     union Konst
@@ -228,8 +230,9 @@ struct SimdRegister<512>
     FORCE_INLINE XV ifOddValueElseZero(const XV& value) const
     {
         const __m512i z = zero().m_v;
-        const __m512i lowestBit = _mm512_slli_epi32(m_v, 31);
-        const __mmask16 isOdd = _mm512_cmpneq_epi32_mask(lowestBit, z);
+        const __m512i lowestBit = _mm512_slli_epi32(m_v, 31); // move least significant bit to most significant bit
+        //const __mmask16 isOdd = _mm512_cmpneq_epi32_mask(lowestBit, z);
+        const __mmask16 isOdd = _mm512_movepi32_mask(lowestBit);
         return _mm512_mask_blend_epi32(isOdd, z, value.m_v);
     }
 
