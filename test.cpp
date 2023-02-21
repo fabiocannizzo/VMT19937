@@ -166,30 +166,38 @@ void recode()
 {
     MT19937Matrix f, g;
 
-    const char* fi = "./dat/F15700.b64";
-    const char* fo = "./dat/F15700.bin";
+    for (size_t i = 19931; i <= 19937; ++i) {
 
-    {
-        std::ifstream is(fi);
-        f.fromBase64(is);
-    }
-    {
-        std::ofstream os(fo, std::ios::binary);
-        f.toBin(os);
-    }
-    {
-        std::ifstream is(fo, std::ios::binary);
-        g.fromBin(is);
-    }
+        std::ostringstream fIn; fIn  << "C:/workspace/repos/MT19937-SIMD/dat/F" << i << ".b64";
+        std::ostringstream fOut; fOut << "C:/workspace/repos/MT19937-SIMD/dat/F" << i << ".bits";
 
-    if (!(f == g)) {
-        std::cout << "binary round trip error" << "\n";
-        std::exit(-1);
+        //    const char* fi = "C:/workspace/repos/MT19937/dat/F15700.b64";
+        //const char* fo = "./dat/F15700.bin";
+
+        {
+            std::ifstream is(fIn.str());
+            f.fromBase64(is);
+        }
+        {
+            std::ofstream os(fOut.str(), std::ios::binary);
+            f.toBin(os);
+        }
+        {
+            std::ifstream is(fOut.str(), std::ios::binary);
+            g.fromBin(is);
+        }
+
+        if (!(f == g)) {
+            std::cout << "binary round trip error" << "\n";
+            std::exit(-1);
+        }
     }
+    exit(0);
 }
 
 int main()
 {
+    //recode();
     try {
 #if 1
         encodingTests<19937, 19937>();
