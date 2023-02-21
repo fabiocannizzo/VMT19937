@@ -34,17 +34,19 @@ class MT19937SIMD
     static const uint32_t s_temperMask1 = 0x9d2c5680UL;
     static const uint32_t s_temperMask2 = 0xefc60000UL;
 
-    alignas(64) XV m_state[s_N];  // the array os state vectors
-    //XV m_rnd[s_N]; // a cache of uniform discrete random numbers in the range [0,0xffffffff]
-    XV m_rnd;
-    const XV *m_pst, *m_pst_end;    // m_pos==m_pst_end means the state vector has been consumed and need to be regenerated
-    uint32_t m_curGen;
-
     static const inline XV v_upperMask = XV(s_upperMask);
     static const inline XV v_lowerMask = XV(s_lowerMask);
     static const inline XV v_matrixA = XV(s_matrixA);
     static const inline XV v_temperMask1 = XV(s_temperMask1);
     static const inline XV v_temperMask2 = XV(s_temperMask2);
+
+    static const size_t s_rndBufferSize = (s_regLenWords > 4) ? 1 : ((s_regLenWords == 4) ? 2 : 4);
+
+    alignas(64) XV m_state[s_N];  // the array os state vectors
+    //XV m_rnd[s_N]; // a cache of uniform discrete random numbers in the range [0,0xffffffff]
+    alignas(64) XV m_rnd[s_rndBufferSize];
+    const XV *m_pst, *m_pst_end;    // m_pos==m_pst_end means the state vector has been consumed and need to be regenerated
+    const uint32_t* m_prnd, * m_prnd_end;    // m_prnd==m_prnd_end means the random buffer has been consumed and need to be refilled
 
     static FORCE_INLINE XV temper(XV y)
     {
@@ -53,6 +55,13 @@ class MT19937SIMD
         y = y ^ ((y << 15) & v_temperMask2);
         y = y ^ (y >> 18);
         return y;
+    }
+
+    FORCE_INLINE void rndRefill()
+    {
+        for (size_t i = 0; i < s_rndBufferSize; ++i)
+            m_rnd[i] = temper(*m_pst++);
+        m_prnd = (const uint32_t*) m_rnd;
     }
 
     static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, XV upperMask, XV lowerMask, XV matrixA)
@@ -182,7 +191,7 @@ class MT19937SIMD
         }
 
         m_pst = m_pst_end;
-        m_curGen = s_regLenWords;
+        m_prnd = m_prnd_end;
     }
 
     // initializes m_state[s_N] with a seed
@@ -198,16 +207,19 @@ public:
     // constructors
     MT19937SIMD()
         : m_pst_end(m_state+s_N)
+        , m_prnd_end((const uint32_t*)(m_rnd + s_rndBufferSize))
     {}
 
     MT19937SIMD(uint32_t seed, const BinaryMatrix<s_nBits>*jumpMatrix)
         : m_pst_end(m_state + s_N)
+        , m_prnd_end((const uint32_t*)(m_rnd + s_rndBufferSize))
     {
         reinit(seed, jumpMatrix, jumpMatrix);
     }
 
     MT19937SIMD(const uint32_t seeds[], uint32_t n_seeds, const BinaryMatrix<s_nBits>* jumpMatrix)
         : m_pst_end(m_state + s_N)
+        , m_prnd_end((const uint32_t*)(m_rnd + s_rndBufferSize))
     {
         reinit(seeds, n_seeds, jumpMatrix);
     }
@@ -252,21 +264,17 @@ public:
     // generates a random number on [0,0xffffffff] interval
     uint32_t genrand_uint32()
     {
-        if (s_regLenWords > 1 && m_curGen < s_regLenWords)
-            return ((const uint32_t *) (&m_rnd))[m_curGen++];
+        if (m_prnd != m_prnd_end)
+            return *m_prnd++;
 
         if (m_pst != m_pst_end)
             /* do nothing*/; // most likely case first
         else
             refill();
-        XV rnd = temper(*m_pst++);
-        if constexpr (s_regLenWords > 1) {
-            m_rnd = rnd;
-            m_curGen = 1;
-            return ((const uint32_t*)(&m_rnd))[0];
-        }
-        else
-            return rnd.m_v;
+
+        rndRefill();
+
+        return *m_prnd++;
     }
 
     // generates a random number on [0,0x7fffffff]-interval
