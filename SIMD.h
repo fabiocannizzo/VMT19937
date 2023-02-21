@@ -188,10 +188,13 @@ struct SimdRegister<256>
     {
         const __m256i z = zero().m_v;
         const __m256i lowestBit = _mm256_slli_epi32(m_v, 31); // move least significant bit to most significant bit
-        const int isOdd = _mm256_movemask_ps(_mm256_castsi256_ps(lowestBit));
-        //const __m256i isOdd = _mm256_cmpgt_epi32(z, lowestBit);
-        // return _mm256_and_si256(value.m_v, isOdd);
-        return _mm256_blend_epi32(value.m_v, z, isOdd);
+#if 0
+        const __m256i isOdd = _mm256_cmpgt_epi32(z, lowestBit);
+        return _mm256_and_si256(value.m_v, isOdd);
+#else
+        const __m256 mask = _mm256_castsi256_ps(lowestBit);
+        return _mm256_castps_si256(_mm256_blendv_ps(_mm256_castsi256_ps(z), _mm256_castsi256_ps(value.m_v), mask));
+#endif
     }
 
     union Konst
