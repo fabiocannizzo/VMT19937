@@ -134,10 +134,16 @@ struct SimdRegister<128>
 
     FORCE_INLINE XV ifOddValueElseZero(const XV& value) const
     {
+#if 0
+        const __m128 z = _mm_setzero_ps();
+        const __m128 lowestBit = _mm_castsi128_ps(_mm_slli_epi32(m_v, 31));
+        return _mm_castps_si128(_mm_blendv_ps(z, _mm_castsi128_ps(value.m_v), lowestBit));
+#else
         const __m128i z = zero().m_v;
         const __m128i lowestBit = _mm_slli_epi32(m_v, 31);
         const __m128i isOdd = _mm_cmpgt_epi32(z, lowestBit);
         return _mm_and_si128(isOdd, value.m_v);
+#endif
     }
 
     union Konst
