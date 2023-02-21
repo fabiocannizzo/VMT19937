@@ -40,43 +40,29 @@ class MT19937SIMD
     const XV *m_pst, *m_pst_end;    // m_pos==m_pst_end means the state vector has been consumed and need to be regenerated
     uint32_t m_curGen;
 
-    struct Cst
-    {
-        const XV v_matrixA;
-        const XV v_upperMask;
-        const XV v_lowerMask;
-        const XV v_temperMask1;
-        const XV v_temperMask2;
-
-        Cst()
-            : v_matrixA(s_matrixA)
-            , v_upperMask(s_upperMask)
-            , v_lowerMask(s_lowerMask)
-            , v_temperMask1(s_temperMask1)
-            , v_temperMask2(s_temperMask2)
-        {
-        }
-    };
-
-    inline static const Cst s_cst;
+    static const inline XV v_upperMask = XV(s_upperMask);
+    static const inline XV v_lowerMask = XV(s_lowerMask);
+    static const inline XV v_matrixA = XV(s_matrixA);
+    static const inline XV v_temperMask1 = XV(s_temperMask1);
+    static const inline XV v_temperMask2 = XV(s_temperMask2);
 
     static FORCE_INLINE XV temper(XV y)
     {
         y = y ^ (y >> 11);
-        y = y ^ ((y << 7) & s_cst.v_temperMask1);
-        y = y ^ ((y << 15) & s_cst.v_temperMask2);
+        y = y ^ ((y << 7) & v_temperMask1);
+        y = y ^ ((y << 15) & v_temperMask2);
         y = y ^ (y >> 18);
         return y;
     }
 
-    static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm)
+    static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, XV upperMask, XV lowerMask, XV matrixA)
     {
-        XV y = (s & s_cst.v_upperMask) | (sp & s_cst.v_lowerMask);
+        XV y = (s & upperMask) | (sp & lowerMask);
         // y and sp are either both even or both odd,
         // hence in the next line we can check if sp is odd
         // so that the operation is independent on the clauclation of y
         // and the compiler is free to rearrange the code
-        XV r = sm ^ (y >> 1) ^ sp.ifOddValueElseZero(s_cst.v_matrixA);
+        XV r = sm ^ (y >> 1) ^ sp.ifOddValueElseZero(matrixA);
         return r;
     }
 
@@ -87,20 +73,28 @@ class MT19937SIMD
         const XV* stMid = m_state + s_M;
         const XV* stEnd = m_state + s_N;
 
+        // Load the variables in registers and passes them to the function as argument,
+        // to avoid to re-read the static variables from memory at every iteration
+        // Note that since the function is forced inline, the function arguments
+        // do no need to be loaded on the stack.
+        const XV upperMask(v_upperMask);
+        const XV lowerMask(v_lowerMask);
+        const XV matrixA(v_matrixA);
+
         //size_t kk;
         XV cur = *stCur;
         for (; stMid != stEnd; ++stMid, stCur = stNxt++) {
             XV nextp = *stNxt;
-            *stCur = advance1(cur, nextp, *stMid);
+            *stCur = advance1(cur, nextp, *stMid, upperMask, lowerMask, matrixA);
             cur = nextp;
         }
         for (stMid = m_state; stNxt != stEnd; ++stMid, stCur = stNxt++) {
             XV nextp = *stNxt;
-            *stCur = advance1(cur, nextp, *stMid);
+            *stCur = advance1(cur, nextp, *stMid, upperMask, lowerMask, matrixA);
             cur = nextp;
         }
         {
-            *stCur = advance1(cur, m_state[0], *stMid);
+            *stCur = advance1(cur, m_state[0], *stMid, upperMask, lowerMask, matrixA);
         }
 
         m_pst = m_state;
