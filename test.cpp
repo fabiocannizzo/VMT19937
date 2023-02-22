@@ -124,19 +124,19 @@ void squareTests(std::index_sequence<N...>&&)
 }
 
 template <size_t VecLen>
-void testEquivalence(const BinaryMatrix<19937>* jumpMatrix = NULL, size_t nJumps = 0)
+void testEquivalence(const BinaryMatrix<19937>* commonJump, const BinaryMatrix<19937>* seqJump, size_t commonJumpSize, size_t sequenceJumpSize)
 {
-    std::cout << "Testing equivalence of generators with SIMD length " << VecLen << " and jump ahead of " << nJumps << " ... ";
+    std::cout << "Testing equivalence of generators with SIMD length " << VecLen << " and common jump ahead of " << commonJumpSize << " and sequence jump size of " << sequenceJumpSize << " ... ";
 
     const size_t M = VecLen / 32;
 
-    MT19937SIMD<VecLen> mt(seedinit, seedlength, jumpMatrix);
+    MT19937SIMD<VecLen> mt(seedinit, seedlength, commonJump, seqJump);
 
-    for (size_t i = 0; i < nRandomTest; ++i) {
+    for (size_t i = 0; i < nRandomTest - commonJumpSize; ++i) {
         uint32_t r2 = mt.genrand_uint32();
         size_t seqIndex = i / M;
         size_t genIndex = i % M;
-        if (benchmark[seqIndex + nJumps * genIndex] != r2) {
+        if (benchmark[seqIndex + commonJumpSize + sequenceJumpSize * genIndex] != r2) {
             std::cout << "FAILED!\n"
                 << "Difference found at index " << i << ": expected " << benchmark[i] << ", but got " << r2 << "\n";
             throw;
@@ -160,8 +160,18 @@ void generateBenchmark()
     printSome(benchmark);
 }
 
+void getBinaryMatrix(const char* filename, MT19937Matrix& dst)
+{
+    std::ifstream is(filename, std::ios::binary);
+    if (!is.is_open()) {
+        std::cout << "error opening binary file: " << filename << "\n";
+        exit(-1);
+    }
+    dst.fromBin(is);
+    std::cout << "loaded matrix from file: " << filename << "\n";
+    dst.printSparsity();
+}
 
-#include <fstream>
 void recode()
 {
     MT19937Matrix f, g;
@@ -177,15 +187,14 @@ void recode()
         {
             std::ifstream is(fIn.str());
             f.fromBase64(is);
+            f.printSparsity();
         }
         {
             std::ofstream os(fOut.str(), std::ios::binary);
             f.toBin(os);
         }
-        {
-            std::ifstream is(fOut.str(), std::ios::binary);
-            g.fromBin(is);
-        }
+
+        getBinaryMatrix(fOut.str().c_str(), g);
 
         if (!(f == g)) {
             std::cout << "binary round trip error" << "\n";
@@ -209,24 +218,31 @@ int main()
 #endif
         generateBenchmark();
 
-        MT19937Matrix jumpMatrix;
-        initMT19937(jumpMatrix);
+        MT19937Matrix jumpMatrix1, jumpMatrix1024, jumpMatrixPeriod;
 
-        testEquivalence<32>();
-        testEquivalence<64>();
-        testEquivalence<128>();
-        testEquivalence<128>(&jumpMatrix, 1);
+        initMT19937(jumpMatrix1);
+        getBinaryMatrix("./dat/F00010.bits", jumpMatrix1024);
+        getBinaryMatrix("./dat/F19937.bits", jumpMatrixPeriod);
+
+        testEquivalence<32>(nullptr, nullptr, 0, 0);
+        testEquivalence<32>(&jumpMatrix1024, nullptr, 1024, 0);
+        // since the period is 2^19937-1, after applying a jump matrix of 2^19937, we restart from the sequence from step 1
+        testEquivalence<32>(&jumpMatrixPeriod, nullptr, 1, 0);
+        testEquivalence<64>(nullptr, nullptr, 0, 0);
+        testEquivalence<128>(nullptr, nullptr, 0, 0);
+        testEquivalence<128>(nullptr, &jumpMatrix1, 0, 1);
+        testEquivalence<128>(nullptr, &jumpMatrix1024, 0, 1024);
+
 #if SIMD_N_BITS > 128
-        testEquivalence<256>();
-        testEquivalence<256>(&jumpMatrix, 1);
+        testEquivalence<256>(nullptr, nullptr, 0, 0);
+        testEquivalence<256>(nullptr, &jumpMatrix1, 0, 1);
+        testEquivalence<256>(nullptr, &jumpMatrix1024, 0, 1024);
 #endif
 #if SIMD_N_BITS > 256
-        testEquivalence<512>();
-        testEquivalence<512>(&jumpMatrix, 1);
+        testEquivalence<512>(nullptr, nullptr, 0, 0);
+        testEquivalence<512>(nullptr, &jumpMatrix1, 0, 1);
+        testEquivalence<512>(nullptr, &jumpMatrix1024, 0, 1024);
 #endif
-
-
-
     }
     catch (const std::exception& e) {
         std::cout << e.what() << "\n";

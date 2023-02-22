@@ -133,11 +133,25 @@ class MT19937SIMD
         pstate[w * s_regLenWords + stateIndex] |= pw[w] << 31;
     }
 
-    void fillOtherStates(const BinaryMatrix<s_nBits>* jumpMatrix)
+    void fillOtherStates(const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
     {
         uint32_t* pstate = (uint32_t*)m_state;
 
-        if (s_regLenWords > 1 && jumpMatrix) {
+        // temporary workspace matrix
+        BinaryMatrix<2, s_nBits> tmp;
+        tmp.resetZero();
+
+        if (commonJump) {
+            // copy state to the first row shifting all bits to the left by 31
+            stateToVector(0, (uint32_t*)tmp.rowBegin(0));
+
+            commonJump->multiplyByColumn(tmp.rowBegin(1), tmp.rowBegin(0));
+
+            // copy to the state vector shifting all bits to the right by 31
+            vectorToState(0, (const uint32_t*) tmp.rowBegin(1));
+        }
+
+        if (s_regLenWords > 1 && sequentialJump) {
 
             // perform jump ahead of the s_regLenWords states
             // State_0 = State_0
@@ -159,14 +173,14 @@ class MT19937SIMD
                 const uint8_t* psrc = (uint8_t*)tmp.rowBegin((s + 1) % 2);
                 uint8_t* pdst = (uint8_t*)tmp.rowBegin(s % 2);
 
-                jumpMatrix->multiplyByColumn(pdst, psrc);
+                sequentialJump->multiplyByColumn(pdst, psrc);
 
                 // copy to the state vector shifting all bits to the right by 31
                 vectorToState(s, (const uint32_t *) pdst);
             }
 
         }
-        else {
+        else if constexpr (s_regLenWords > 1) {
             for (size_t w = 0; w < s_N; ++w)
                 for (size_t j = 1; j < s_regLenWords; ++j)
                     pstate[w * s_regLenWords + j] = pstate[w * s_regLenWords];
@@ -191,30 +205,30 @@ public:
         : m_pst_end(m_state+s_N)
     {}
 
-    MT19937SIMD(uint32_t seed, const BinaryMatrix<s_nBits>*jumpMatrix)
-        : m_pst_end(m_state + s_N)
+    MT19937SIMD(uint32_t seed, const BinaryMatrix<s_nBits>* commonJump = nullptr, const BinaryMatrix<s_nBits>* sequentialJump = nullptr)
+        : MT19937SIMD()
     {
-        reinit(seed, jumpMatrix, jumpMatrix);
+        reinit(seed, commonJump, sequentialJump);
     }
 
-    MT19937SIMD(const uint32_t seeds[], uint32_t n_seeds, const BinaryMatrix<s_nBits>* jumpMatrix)
-        : m_pst_end(m_state + s_N)
+    MT19937SIMD(const uint32_t seeds[], uint32_t n_seeds, const BinaryMatrix<s_nBits>* commonJump = nullptr, const BinaryMatrix<s_nBits>* sequentialJump = nullptr)
+        : MT19937SIMD()
     {
-        reinit(seeds, n_seeds, jumpMatrix);
+        reinit(seeds, n_seeds, commonJump, sequentialJump);
     }
 
     // initializes m_state[s_N] with a seed
-    void reinit(uint32_t s, const BinaryMatrix<s_nBits>* jumpMatrix)
+    void reinit(uint32_t s, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
     {
         __reinit(s);
-        fillOtherStates(jumpMatrix);
+        fillOtherStates(commonJump, sequentialJump);
     }
 
     // initialize by an array with array-length
     // init_key is the array for initializing keys
     // key_length is its length
     // slight change for C++, 2004/2/26
-    void reinit(const uint32_t seeds[], uint32_t n_seeds, const BinaryMatrix<s_nBits>* jumpMatrix)
+    void reinit(const uint32_t seeds[], uint32_t n_seeds, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
     {
         __reinit(uint32_t(19650218));
         uint32_t i = 1, j = 0;
@@ -237,28 +251,7 @@ public:
 
         scalarState(0) = uint32_t(0x80000000); // MSB is 1; assuring non-zero initial array
 
-        fillOtherStates(jumpMatrix);
-    }
-
-    void jumpAhead(const BinaryMatrix<s_nBits>& jumpMatrix)
-    {
-        // temporary workspace matrix
-        BinaryMatrix<2, s_nBits> tmp;
-        tmp.resetZero();
-
-        const uint32_t* psrc = tmp.rowBegin(0);
-        uint32_t* pdst = tmp.rowBegin(1);
-
-        for (size_t s = 0; s < s_regLenWords; ++s) {
-
-            // copy state to the first row shifting all bits to the left by 31
-            stateToVector(s, tmp.rowBegin(0));
-
-            jumpMatrix.multiplyByColumn((uint8_t*)pdst, (const uint8_t*) psrc);
-
-            // copy to the state vector shifting all bits to the right by 31
-            vectorToState(s, pdst);
-        }
+        fillOtherStates(commonJump, sequentialJump);
     }
 
     // generates a random number on [0,0xffffffff] interval
