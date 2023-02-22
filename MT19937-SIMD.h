@@ -145,18 +145,7 @@ class MT19937SIMD
                 const uint8_t* psrc = (uint8_t*)tmp.rowBegin((s + 1) % 2);
                 uint8_t* pdst = (uint8_t*)tmp.rowBegin(s % 2);
 
-                const uint8_t* rowptrs[8];
-                size_t r;
-                for (r = 0; r + 8 < s_nBits; r += 8) {
-                    for (size_t h = 0; h < 8; ++h)
-                        rowptrs[h] = jumpMatrix->rowBegin(r + h);
-                    pdst[r / 8] = BinaryVectorMultiplier<s_regLenBits>::template multiply8<8, s_nBits, tmp.s_nBitColsPadded>(psrc, rowptrs);
-                }
-                { // this takes care of the residual rows, because 19937 is not a multiple of 8
-                    for (size_t h = 0; h < s_nBits % 8; ++h)
-                        rowptrs[h] = jumpMatrix->rowBegin(r + h);
-                    pdst[r / 8] = BinaryVectorMultiplier<s_regLenBits>::template multiply8<s_nBits % 8, s_nBits, tmp.s_nBitColsPadded>(psrc, rowptrs);
-                }
+                jumpMatrix->multiplyByColumn(pdst, psrc);
 
                 // copy to the state vector shifting all bits to the left by 31
                 const uint32_t* pw = (const uint32_t*) pdst;
