@@ -111,11 +111,16 @@ class MT19937SIMD
         uint32_t* pstate = (uint32_t*)m_state;
 
         if (s_regLenWords > 1 && jumpMatrix) {
-            // temporary workspace matrix
-            BinaryMatrix<s_regLenWords, s_nBits> tmp;
-            tmp.resetZero();
 
-            // pointers to the rows of the temporary workspace
+            // perform jump ahead of the s_regLenWords states
+            // State_0 = State_0
+            // State_1 = Jump x State_0
+            // State_2 = Jump x State_1
+            // ...
+
+            // temporary workspace matrix
+            BinaryMatrix<2, s_nBits> tmp;
+            tmp.resetZero();
 
             // copy state to the first row shifting all bits to the right by 31 
             {
@@ -128,52 +133,45 @@ class MT19937SIMD
                 }
             }
 
-            // copy state to all other rows
-            for (size_t s = 1; s < s_regLenWords - 1; ++s)
-                memcpy(tmp.rowBegin(s), tmp.rowBegin(0), s_N*4);
-
             // multiply the last M-1 states by F
             // then multiply the last M-2 states by F again
             // ...
             // then multiply the last 1 state by F again
 
-            uint8_t* pres = tmp.rowBegin(s_regLenWords - 1); // use the last row as temporary buffer
-            for (size_t j = 0; j < s_regLenWords - 1; ++j) {
-                for (size_t s = j; s < s_regLenWords - 1; ++s) {
+            for (size_t s = 1; s < s_regLenWords; ++s) {
 
-                    // multiply all rows by state s and store the result in pres
-                   
-                    uint8_t* ps = (uint8_t*)tmp.rowBegin(s);
-                    const uint8_t* rowptrs[8];
-                    size_t r;
-                    for (r = 0; r + 8 < s_nBits; r += 8) {
-                        for (size_t h = 0; h < 8; ++h)
-                            rowptrs[h] = jumpMatrix->rowBegin(r + h);
-                        pres[r / 8] = BinaryVectorMultiplier<s_regLenBits>::template multiply8<8, s_nBits, tmp.s_nBitColsPadded>(ps, rowptrs);
-                    }
-                    { // this takes care of the residual rows, because 19937 is not a multiple of 8
-                        for (size_t h = 0; h < s_nBits % 8; ++h)
-                            rowptrs[h] = jumpMatrix->rowBegin(r + h);
-                        pres[r / 8] = BinaryVectorMultiplier<s_regLenBits>::template multiply8<s_nBits % 8, s_nBits, tmp.s_nBitColsPadded>(ps, rowptrs);
-                    }
+                // multiply all rows by state s and store the result in pres
 
-                    // copy the result to the state s
-                    memcpy(ps, pres, s_N * 4);
+                const uint8_t* psrc = (uint8_t*)tmp.rowBegin((s + 1) % 2);
+                uint8_t* pdst = (uint8_t*)tmp.rowBegin(s % 2);
+
+                const uint8_t* rowptrs[8];
+                size_t r;
+                for (r = 0; r + 8 < s_nBits; r += 8) {
+                    for (size_t h = 0; h < 8; ++h)
+                        rowptrs[h] = jumpMatrix->rowBegin(r + h);
+                    pdst[r / 8] = BinaryVectorMultiplier<s_regLenBits>::template multiply8<8, s_nBits, tmp.s_nBitColsPadded>(psrc, rowptrs);
                 }
-            }
+                { // this takes care of the residual rows, because 19937 is not a multiple of 8
+                    for (size_t h = 0; h < s_nBits % 8; ++h)
+                        rowptrs[h] = jumpMatrix->rowBegin(r + h);
+                    pdst[r / 8] = BinaryVectorMultiplier<s_regLenBits>::template multiply8<s_nBits % 8, s_nBits, tmp.s_nBitColsPadded>(psrc, rowptrs);
+                }
 
-            // copy to the state vector shifting all bits to the left by 31
-            for (size_t s = 0; s < s_regLenWords - 1; ++s) {
-                const uint32_t *pw = (const uint32_t*)tmp.rowBegin(s);
-                pstate[1 + s] = 0;
+                // copy to the state vector shifting all bits to the left by 31
+                const uint32_t* pw = (const uint32_t*) pdst;
+                pstate[s] = 0;
                 size_t w;
                 for (w = 0; w < s_N - 1; ++w) {
                     uint32_t word = pw[w];
-                    pstate[w * s_regLenWords + 1 + s] |= word << 31;
-                    pstate[(w + 1) * s_regLenWords + 1 + s] = word >> 1;
+                    pstate[w * s_regLenWords + s] |= word << 31;
+                    pstate[(w + 1) * s_regLenWords + s] = word >> 1;
                 }
-                pstate[w * s_regLenWords + 1 + s] |= pw[w] << 31;
+                pstate[w * s_regLenWords + s] |= pw[w] << 31;
+
             }
+
+
         }
         else {
             for (size_t w = 0; w < s_N; ++w)
