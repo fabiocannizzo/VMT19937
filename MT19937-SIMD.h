@@ -240,6 +240,27 @@ public:
         fillOtherStates(jumpMatrix);
     }
 
+    void jumpAhead(const BinaryMatrix<s_nBits>& jumpMatrix)
+    {
+        // temporary workspace matrix
+        BinaryMatrix<2, s_nBits> tmp;
+        tmp.resetZero();
+
+        const uint32_t* psrc = tmp.rowBegin(0);
+        uint32_t* pdst = tmp.rowBegin(1);
+
+        for (size_t s = 0; s < s_regLenWords; ++s) {
+
+            // copy state to the first row shifting all bits to the left by 31
+            stateToVector(s, tmp.rowBegin(0));
+
+            jumpMatrix.multiplyByColumn((uint8_t*)pdst, (const uint8_t*) psrc);
+
+            // copy to the state vector shifting all bits to the right by 31
+            vectorToState(s, pdst);
+        }
+    }
+
     // generates a random number on [0,0xffffffff] interval
     uint32_t genrand_uint32()
     {
