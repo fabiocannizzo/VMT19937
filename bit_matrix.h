@@ -303,6 +303,27 @@ public:
     //    return result;
     //}
 
+    // Multiply all rows by 1 column (psrc) and stores the resulting column in (pdst)
+    // It is assumed that:
+    //   psrc and dst have at least size s_nBytesPerPaddedRow
+    //   psrc contains zeros in the padded area
+    //   pdst contains all zeros
+    void multiplyByColumn(uint8_t* pdst, const uint8_t* psrc) const
+    {
+        const uint8_t* rowptrs[8];
+        size_t r;
+        for (r = 0; r + 8 < s_nBitRows; r += 8) {
+            for (size_t h = 0; h < 8; ++h)
+                rowptrs[h] = rowBegin(r + h);
+            pdst[r / 8] = BinaryVectorMultiplier<SIMD_N_BITS>::template multiply8<8, s_nBitCols, s_nBitColsPadded>(psrc, rowptrs);
+        }
+        { // this takes care of the residual rows, because 19937 is not a multiple of 8
+            for (size_t h = 0; h < s_nBitRows % 8; ++h)
+                rowptrs[h] = rowBegin(r + h);
+            pdst[r / 8] = BinaryVectorMultiplier<SIMD_N_BITS>::template multiply8<s_nBitRows % 8, s_nBitCols, s_nBitColsPadded>(psrc, rowptrs);
+        }
+    }
+
     // initialize from a file saved in matlab with the commands:
     //    [I,J,V] = find(sparse(M));
     //    U = [I,J];
