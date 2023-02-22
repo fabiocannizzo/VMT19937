@@ -106,6 +106,33 @@ class MT19937SIMD
         return ((uint32_t*)m_state)[scalarIndex * s_regLenWords];
     }
 
+    // extract one of the interleaved state vectors, shift it left by 31 bits and save it to dst
+    void stateToVector(size_t stateIndex, uint32_t *pdst) const
+    {
+        const uint32_t* pstate = (const uint32_t*)m_state;
+        pdst[0] = pstate[stateIndex] >> 31;
+        for (size_t i = 1; i < s_N; ++i) {
+            uint32_t word = pstate[i * s_regLenWords + stateIndex];
+            pdst[i - 1] |= word << 1;
+            pdst[i] = word >> 31;
+        }
+    }
+
+    // shift vector psr to the right by 31 bit and store into the interleaved elements of the state vector
+    void vectorToState(size_t stateIndex, const uint32_t* psrc)
+    {
+        uint32_t* pstate = (uint32_t*)m_state;
+        const uint32_t* pw = (const uint32_t*)psrc;
+        pstate[stateIndex] = 0;
+        size_t w;
+        for (w = 0; w < s_N - 1; ++w) {
+            uint32_t word = pw[w];
+            pstate[w * s_regLenWords + stateIndex] |= word << 31;
+            pstate[(w + 1) * s_regLenWords + stateIndex] = word >> 1;
+        }
+        pstate[w * s_regLenWords + stateIndex] |= pw[w] << 31;
+    }
+
     void fillOtherStates(const BinaryMatrix<s_nBits>* jumpMatrix)
     {
         uint32_t* pstate = (uint32_t*)m_state;
@@ -122,24 +149,11 @@ class MT19937SIMD
             BinaryMatrix<2, s_nBits> tmp;
             tmp.resetZero();
 
-            // copy state to the first row shifting all bits to the right by 31 
-            {
-                uint32_t* ptmp = (uint32_t*) tmp.rowBegin(0);
-                ptmp[0] = pstate[0] >> 31;
-                for (size_t i = 1; i < s_N; ++i) {
-                    uint32_t word = pstate[i * s_regLenWords];
-                    ptmp[i - 1] |= word << 1;
-                    ptmp[i] = word >> 31;
-                }
-            }
+            // copy state to the first row shifting all bits to the left by 31
+            stateToVector(0, (uint32_t*)tmp.rowBegin(0));
 
-            // multiply the last M-1 states by F
-            // then multiply the last M-2 states by F again
-            // ...
-            // then multiply the last 1 state by F again
 
             for (size_t s = 1; s < s_regLenWords; ++s) {
-
                 // multiply all rows by state s and store the result in pres
 
                 const uint8_t* psrc = (uint8_t*)tmp.rowBegin((s + 1) % 2);
@@ -147,19 +161,9 @@ class MT19937SIMD
 
                 jumpMatrix->multiplyByColumn(pdst, psrc);
 
-                // copy to the state vector shifting all bits to the left by 31
-                const uint32_t* pw = (const uint32_t*) pdst;
-                pstate[s] = 0;
-                size_t w;
-                for (w = 0; w < s_N - 1; ++w) {
-                    uint32_t word = pw[w];
-                    pstate[w * s_regLenWords + s] |= word << 31;
-                    pstate[(w + 1) * s_regLenWords + s] = word >> 1;
-                }
-                pstate[w * s_regLenWords + s] |= pw[w] << 31;
-
+                // copy to the state vector shifting all bits to the right by 31
+                vectorToState(s, (const uint32_t *) pdst);
             }
-
 
         }
         else {
