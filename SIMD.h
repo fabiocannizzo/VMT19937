@@ -25,7 +25,7 @@ struct SimdRegister<32>
 
     FORCE_INLINE XV ifOddValueElseZero(const XV value) const
     {
-#if defined(__GNUC__) && defined(__x86_64__)
+#if 0 && defined(__GNUC__) && defined(__x86_64__)
         // force the use of cmov with gcc
         uint32_t z;
         __asm__(
@@ -37,9 +37,13 @@ struct SimdRegister<32>
             : "cc"
         );
         return z;
-#else
+#elif 0
         const uint32_t lowestBit = m_v & 0x1;
         return lowestBit ? value.m_v : 0;
+#else
+        const uint32_t x[2] = {0, value.m_v};
+        const uint32_t lowestBit = m_v & 0x1;
+        return x[lowestBit];
 #endif
     }
 
