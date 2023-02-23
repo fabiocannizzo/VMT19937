@@ -46,6 +46,7 @@ class MT19937SIMD
     static const inline XV v_temperMask1 = XV(s_temperMask1);
     static const inline XV v_temperMask2 = XV(s_temperMask2);
 
+/*
     template <typename U>
     static FORCE_INLINE U temper(U y, U mask1, U mask2)
     {
@@ -55,26 +56,31 @@ class MT19937SIMD
         y = y ^ (y >> 18);
         return y;
     }
+*/    
 
-    void FORCE_INLINE temperRefill()
+    template <bool Aligned>
+    void FORCE_INLINE temperRefill(XV *dst)
     {
-        if constexpr (s_regLenWords == 1) {
+        if constexpr (s_regLenWords < 4) {
             typedef SimdRegister<128> XV128;
             XV128 mask1(s_temperMask1);
             XV128 mask2(s_temperMask2);
-            XV128* prnd = (XV128*)m_rnd;
+            XV128* prnd = (XV128*)dst;
             const XV128* pst = (XV128*)m_pst;
-            for (size_t i = 0; i < sizeof(m_rnd) / sizeof(mask1); ++i)
-                prnd[i] = temper(*pst++, mask1, mask2);
+            for (size_t i = 0; i < sizeof(m_rnd) / sizeof(mask1); ++i) {
+                XV128 tmp = temper(*pst++, mask1, mask2);
+                tmp.template store<Aligned>((uint32_t*)(prnd + i));
+            }
             m_pst = (const XV *) pst;
         }
         else {
             const XV mask1 = v_temperMask1;
             const XV mask2 = v_temperMask2;
-            for (size_t i = 0; i < sizeof(m_rnd) / sizeof(XV); ++i)
-                m_rnd[i] = temper(*m_pst++, mask1, mask2);
+            for (size_t i = 0; i < sizeof(m_rnd) / sizeof(XV); ++i) {
+                XV tmp = temper(*m_pst++, mask1, mask2);
+                tmp.template store<Aligned>((uint32_t*)(dst + i));
+            }
         }
-        m_prnd = (const uint32_t*)&m_rnd;
     }
 
     static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, XV upperMask, XV lowerMask, XV matrixA)
@@ -208,7 +214,7 @@ class MT19937SIMD
         }
 
         m_pst = m_pst_end;
-        m_prnd = (const uint32_t *)(&m_rnd);
+        m_prnd = (const uint32_t *)(((uint8_t *) m_rnd) + sizeof(m_rnd));
     }
 
     // initializes m_state[s_N] with a seed
@@ -286,10 +292,92 @@ public:
         else
             refill();
 
-        temperRefill();
+        temperRefill<true>(m_rnd);
+        m_prnd = (const uint32_t*)&m_rnd;
 
         return *m_prnd++;
     }
+
+    // generates 64 uniform discrete random numbers in [0,0xffffffff] interval
+    void NO_INLINE genrand_uint32_blk64(uint32_t* dst)
+    {
+        if (m_pst != m_pst_end)
+            /* do nothing*/; // most likely case first
+        else
+            refill();
+        temperRefill<false>((XV*)dst);
+        dst += sizeof(m_rnd) / sizeof(uint32_t);
+    }
+
+#if 0
+    void NO_INLINE genrand_uint32_blkN(uint32_t* dst)
+
+        refill();
+        for (size_t i = 0; i < sizeof(m_state) / sizeof(m_rnd); ++i) {
+            temperRefill<false>((XV*)dst);
+            dst += sizeof(m_rnd) / sizeof(uint32_t);
+        }
+
+        const size_t rndBufSzU8 = sizeof(m_rnd);
+        const size_t rndBufSzU32 = rndBufSzU8 / sizeof(uint32_t);
+
+        {
+            size_t nAvail = m_prnd - (uint32_t *) m_rnd;
+            size_t nUse = std::min(nAvail, n);
+            if (nUse) {
+                const uint32_t* pend = m_prnd + nUse;
+                do {
+                    *dst++ = *m_prnd++;
+                } while (m_prnd != pend);
+                n -= nUse;
+            }
+        }
+
+        {
+            const size_t nTemperRefill = n / rndBufSzU8;
+            const size_t nRefillAvail = (m_pst_end - m_pst) * sizeof(*m_pst) / rndBufSzU8;
+            const size_t nUse = std::min(nRefillAvail, nTemperRefill);
+            for (size_t i = 0; i < nUse; ++i) {
+                temperRefill((XV*)dst);
+                dst += rndBufSzU32;
+            }
+            n -= nUse * rndBufSzU32;
+        }
+
+        {
+            size_t nRefill = n / (sizeof(m_state) / sizeof(uint32_t));
+            for (size_t i = 0; i < nRefill; ++i) {
+                refill();
+                for (size_t i = 0; i < sizeof(m_state) / sizeof(m_rnd); ++i) {
+                    temperRefill((XV*)dst);
+                    dst += sizeof(m_state) / sizeof(m_rnd);
+                }
+            }
+            n -= (sizeof(m_state) / sizeof(uint32_t)) * nRefill;
+        }
+
+        if (n) {
+            refill();
+
+            size_t nFullBuffers = n / (sizeof(m_rnd) / sizeof(uint32_t));
+            for (size_t i = 0; i < nFullBuffers; ++i) {
+                temperRefill((XV*)dst);
+                dst += n / (sizeof(m_rnd) / sizeof(uint32_t));
+            }
+            n -= (sizeof(m_rnd) / sizeof(uint32_t)) * nFullBuffers;
+
+            if (n) {
+                temperRefill(m_rnd);
+                m_prnd = (const uint32_t*)m_rnd;
+                const uint32_t* pend = m_prnd + n;
+                do {
+                    *dst++ = *m_prnd++;
+                } while (m_prnd != pend);
+            }
+        }
+
+    }
+#endif
 
     // generates a random number on [0,0x7fffffff]-interval
     uint32_t genrand_uint31(void)
