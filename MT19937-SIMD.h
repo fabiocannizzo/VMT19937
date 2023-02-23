@@ -46,13 +46,35 @@ class MT19937SIMD
     static const inline XV v_temperMask1 = XV(s_temperMask1);
     static const inline XV v_temperMask2 = XV(s_temperMask2);
 
-    static __declspec(noinline) XV temper(XV y)
+    template <typename U>
+    static FORCE_INLINE U temper(U y, U mask1, U mask2)
     {
         y = y ^ (y >> 11);
-        y = y ^ ((y << 7) & v_temperMask1);
-        y = y ^ ((y << 15) & v_temperMask2);
+        y = y ^ ((y << 7) & mask1);
+        y = y ^ ((y << 15) & mask2);
         y = y ^ (y >> 18);
         return y;
+    }
+
+    void FORCE_INLINE temperRefill()
+    {
+        if constexpr (s_regLenWords == 1) {
+            typedef SimdRegister<128> XV128;
+            XV128 mask1(s_temperMask1);
+            XV128 mask2(s_temperMask2);
+            XV128* prnd = (XV128*)m_rnd;
+            const XV128* pst = (XV128*)m_pst;
+            for (size_t i = 0; i < sizeof(m_rnd) / sizeof(mask1); ++i)
+                prnd[i] = temper(*pst++, mask1, mask2);
+            m_pst = (const XV *) pst;
+        }
+        else {
+            const XV mask1 = v_temperMask1;
+            const XV mask2 = v_temperMask2;
+            for (size_t i = 0; i < sizeof(m_rnd) / sizeof(XV); ++i)
+                m_rnd[i] = temper(*m_pst++, mask1, mask2);
+        }
+        m_prnd = (const uint32_t*)&m_rnd;
     }
 
     static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, XV upperMask, XV lowerMask, XV matrixA)
@@ -66,7 +88,7 @@ class MT19937SIMD
         return r;
     }
 
-    void __declspec(noinline) refill()
+    void FORCE_INLINE refill()
     {
         XV* stCur = m_state;
         XV* stNxt = m_state + 1;
@@ -99,7 +121,6 @@ class MT19937SIMD
 
         m_pst = m_state;
     }
-
 
     uint32_t& scalarState(uint32_t scalarIndex)
     {
@@ -254,15 +275,8 @@ public:
         fillOtherStates(commonJump, sequentialJump);
     }
 
-    void temperRefill()
-    {
-        for (size_t i = 0; i < sizeof(m_rnd) / sizeof(XV); ++i)
-            m_rnd[i] = temper(*m_pst++);
-        m_prnd = (const uint32_t*)&m_rnd;
-    }
-
     // generates a random number on [0,0xffffffff] interval
-    uint32_t __declspec(noinline) genrand_uint32()
+    uint32_t FORCE_INLINE genrand_uint32()
     {
         if ((reinterpret_cast<intptr_t>(m_prnd) % sizeof(m_rnd)) != 0)
             return *m_prnd++;
