@@ -36,9 +36,9 @@ class MT19937SIMD
 
     alignas(64) XV m_state[s_N];  // the array os state vectors
     //XV m_rnd[s_N]; // a cache of uniform discrete random numbers in the range [0,0xffffffff]
-    XV m_rnd;
+    alignas(64) XV m_rnd[64/sizeof(XV)];
     const XV *m_pst, *m_pst_end;    // m_pos==m_pst_end means the state vector has been consumed and need to be regenerated
-    uint32_t m_curGen;
+    const uint32_t* m_prnd;
 
     static const inline XV v_upperMask = XV(s_upperMask);
     static const inline XV v_lowerMask = XV(s_lowerMask);
@@ -46,7 +46,7 @@ class MT19937SIMD
     static const inline XV v_temperMask1 = XV(s_temperMask1);
     static const inline XV v_temperMask2 = XV(s_temperMask2);
 
-    static FORCE_INLINE XV temper(XV y)
+    static __declspec(noinline) XV temper(XV y)
     {
         y = y ^ (y >> 11);
         y = y ^ ((y << 7) & v_temperMask1);
@@ -66,7 +66,7 @@ class MT19937SIMD
         return r;
     }
 
-    void refill()
+    void __declspec(noinline) refill()
     {
         XV* stCur = m_state;
         XV* stNxt = m_state + 1;
@@ -187,7 +187,7 @@ class MT19937SIMD
         }
 
         m_pst = m_pst_end;
-        m_curGen = s_regLenWords;
+        m_prnd = (const uint32_t *)(&m_rnd);
     }
 
     // initializes m_state[s_N] with a seed
@@ -254,24 +254,27 @@ public:
         fillOtherStates(commonJump, sequentialJump);
     }
 
-    // generates a random number on [0,0xffffffff] interval
-    uint32_t genrand_uint32()
+    void temperRefill()
     {
-        if (s_regLenWords > 1 && m_curGen < s_regLenWords)
-            return ((const uint32_t *) (&m_rnd))[m_curGen++];
+        for (size_t i = 0; i < sizeof(m_rnd) / sizeof(XV); ++i)
+            m_rnd[i] = temper(*m_pst++);
+        m_prnd = (const uint32_t*)&m_rnd;
+    }
+
+    // generates a random number on [0,0xffffffff] interval
+    uint32_t __declspec(noinline) genrand_uint32()
+    {
+        if ((reinterpret_cast<intptr_t>(m_prnd) % sizeof(m_rnd)) != 0)
+            return *m_prnd++;
 
         if (m_pst != m_pst_end)
             /* do nothing*/; // most likely case first
         else
             refill();
-        XV rnd = temper(*m_pst++);
-        if constexpr (s_regLenWords > 1) {
-            m_rnd = rnd;
-            m_curGen = 1;
-            return ((const uint32_t*)(&m_rnd))[0];
-        }
-        else
-            return rnd.m_v;
+
+        temperRefill();
+
+        return *m_prnd++;
     }
 
     // generates a random number on [0,0x7fffffff]-interval
