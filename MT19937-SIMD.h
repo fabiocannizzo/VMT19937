@@ -82,7 +82,7 @@ class MT19937SIMD
         }
     }
 
-    static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, XV upperMask, XV lowerMask, XV matrixA)
+    static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, const XV& upperMask, const XV& lowerMask, const XV& matrixA)
     {
         XV y = (s & upperMask) | (sp & lowerMask);
         // y and sp are either both even or both odd,
