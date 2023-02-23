@@ -56,6 +56,29 @@ double testVecPerformance()
     return 0;
 }
 
+template <size_t VecLen>
+double testVecBlkPerformance()
+{
+    const size_t BlkSize = 624 * VecLen / 32;
+
+    std::cout << "Generate " << nRandomPerf << " random numbers with SIMD length " << VecLen << " in blocks of " << BlkSize << " ... ";
+
+    MT19937SIMD<VecLen> mt(seedinit, seedlength, NULL);
+
+    std::vector<uint32_t> dst(BlkSize + 64);
+    uint32_t* aligneddst = (uint32_t *)((intptr_t)dst.data() + (64-((intptr_t)dst.data() % 64)));
+    auto start = std::chrono::system_clock::now();
+    for (size_t i = 0; i < nRandomPerf / BlkSize; ++i)
+        mt.genrand_uint32_stateBlk(aligneddst);
+    auto end = std::chrono::system_clock::now();
+
+    std::chrono::duration<double> elapsed_seconds = end - start;
+
+    std::cout << "done in: " << std::fixed << std::setprecision(2) << elapsed_seconds.count() << "s" << std::endl;
+
+    return 0;
+}
+
 void originalPerformance()
 {
     unsigned long init[seedlength];
@@ -78,13 +101,18 @@ int main()
     originalPerformance();
     testPerformance<32>();
     //testPerformance<64>();
-    //testPerformance<128>();
+    testPerformance<128>();
     testVecPerformance<128>();
+    testVecBlkPerformance<128>();
 #if SIMD_N_BITS >= 256
     testPerformance<256>();
+    testVecPerformance<256>();
+    testVecBlkPerformance<256>();
 #endif
 #if SIMD_N_BITS >= 512
     testPerformance<512>();
+    testVecPerformance<512>();
+    testVecBlkPerformance<512>();
 #endif
 
     return 0;
