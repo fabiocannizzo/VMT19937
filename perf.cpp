@@ -15,61 +15,27 @@ const uint64_t nRandomPerf = uint64_t(624) * 16 * 500000;
 extern "C" unsigned long genrand_int32();
 extern "C" void init_by_array(unsigned long init_key[], int key_length);
 
-template <size_t VecLen>
+template <size_t VecLen, size_t BlkSize = 1>
 double testPerformance()
 {
-    std::cout << "Generate " << nRandomPerf << " random numbers with SIMD length " << VecLen << " ... ";
-
-    MT19937SIMD<VecLen> mt(seedinit, seedlength, NULL);
-
-    auto start = std::chrono::system_clock::now();
-    for (size_t i = 0; i < nRandomPerf; ++i)
-        mt.genrand_uint32();
-    auto end = std::chrono::system_clock::now();
-
-    std::chrono::duration<double> elapsed_seconds = end - start;
-
-    std::cout << "done in: " << std::fixed << std::setprecision(2) << elapsed_seconds.count() << "s" << std::endl;
-
-    return 0;
-}
-
-template <size_t VecLen>
-double testVecPerformance()
-{
-    const size_t BlkSize = 64 / 4;// 624 * VecLen / 32;
-    std::cout << "Generate " << nRandomPerf << " random numbers with SIMD length " << VecLen << " in blocks of " << BlkSize << " ... ";
-
-    MT19937SIMD<VecLen> mt(seedinit, seedlength, NULL);
-
-    //std::vector<uint32_t> dst(BlkSize);
-    alignas(64) uint32_t dst[BlkSize];
-    auto start = std::chrono::system_clock::now();
-    for (size_t i = 0; i < nRandomPerf / BlkSize; ++i)
-        mt.genrand_uint32_blk64(dst);
-    auto end = std::chrono::system_clock::now();
-
-    std::chrono::duration<double> elapsed_seconds = end - start;
-
-    std::cout << "done in: " << std::fixed << std::setprecision(2) << elapsed_seconds.count() << "s" << std::endl;
-
-    return 0;
-}
-
-template <size_t VecLen>
-double testVecBlkPerformance()
-{
-    const size_t BlkSize = 624 * VecLen / 32;
-
-    std::cout << "Generate " << nRandomPerf << " random numbers with SIMD length " << VecLen << " in blocks of " << BlkSize << " ... ";
-
-    MT19937SIMD<VecLen> mt(seedinit, seedlength, NULL);
+    std::cout << "Generate " << nRandomPerf << " random numbers with SIMD length " << VecLen;
+    if (BlkSize > 1)
+        std::cout << " in blocks of " << BlkSize;
+    std::cout << " ... ";
 
     std::vector<uint32_t> dst(BlkSize + 64);
-    uint32_t* aligneddst = (uint32_t *)((intptr_t)dst.data() + (64-((intptr_t)dst.data() % 64)));
+    uint32_t* aligneddst = (uint32_t*)((intptr_t)dst.data() + (64 - ((intptr_t)dst.data() % 64)));
+
+    MT19937SIMD<VecLen> mt(seedinit, seedlength, NULL);
+
     auto start = std::chrono::system_clock::now();
     for (size_t i = 0; i < nRandomPerf / BlkSize; ++i)
-        mt.genrand_uint32_stateBlk(aligneddst);
+        switch (BlkSize) {
+            case 1: aligneddst[0] = mt.genrand_uint32(); break;
+            case 16: mt.genrand_uint32_blk64(aligneddst); break;
+            case (624 * (VecLen / 32)):  mt.genrand_uint32_stateBlk(aligneddst); break;
+            default: throw std::invalid_argument("not implemented");
+        };
     auto end = std::chrono::system_clock::now();
 
     std::chrono::duration<double> elapsed_seconds = end - start;
@@ -78,6 +44,7 @@ double testVecBlkPerformance()
 
     return 0;
 }
+
 
 void originalPerformance()
 {
@@ -102,17 +69,17 @@ int main()
     testPerformance<32>();
     //testPerformance<64>();
     testPerformance<128>();
-    testVecPerformance<128>();
-    testVecBlkPerformance<128>();
+    testPerformance<128, 16>();
+    testPerformance<128, 624 * (128 / 32)>();
 #if SIMD_N_BITS >= 256
     testPerformance<256>();
-    testVecPerformance<256>();
-    testVecBlkPerformance<256>();
+    testPerformance<256,16>();
+    testPerformance<256, 624 * (256 / 32)>();
 #endif
 #if SIMD_N_BITS >= 512
     testPerformance<512>();
-    testVecPerformance<512>();
-    testVecBlkPerformance<512>();
+    testPerformance<512, 16>();
+    testPerformance<512, 624 * (512 / 32)>();
 #endif
 
     return 0;
