@@ -46,7 +46,6 @@ class MT19937SIMD
     static const inline XV v_temperMask1 = XV(s_temperMask1);
     static const inline XV v_temperMask2 = XV(s_temperMask2);
 
-/*
     template <typename U>
     static FORCE_INLINE U temper(U y, U mask1, U mask2)
     {
@@ -56,7 +55,7 @@ class MT19937SIMD
         y = y ^ (y >> 18);
         return y;
     }
-*/    
+
 
     template <bool Aligned>
     void FORCE_INLINE temperRefill(XV *dst)
@@ -307,6 +306,16 @@ public:
             refill();
         temperRefill<false>((XV*)dst);
         dst += sizeof(m_rnd) / sizeof(uint32_t);
+    }
+
+    // generates a block of the same size as the state vector of uniform discrete random numbers in [0,0xffffffff] interval
+    void NO_INLINE genrand_uint32_stateBlk(uint32_t* dst)
+    {
+        refill();
+        for (size_t i = 0; i < sizeof(m_state) / sizeof(m_rnd); ++i) {
+            temperRefill<false>((XV*)dst);
+            dst += sizeof(m_rnd) / sizeof(uint32_t);
+        }
     }
 
 #if 0
