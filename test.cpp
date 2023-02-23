@@ -5,13 +5,13 @@
 const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 
-const uint64_t nRandomTest = 500000;
+const uint64_t nRandomTest = 50ul * 624 * 16;
 
 extern "C" unsigned long genrand_int32();
 extern "C" void init_by_array(unsigned long init_key[], int key_length);
 
 
-std::vector<uint32_t> benchmark(nRandomTest);
+std::vector<uint32_t> benchmark(nRandomTest + 10000);
 
 void printSome(const std::vector<uint32_t>& v)
 {
@@ -123,17 +123,29 @@ void squareTests(std::index_sequence<N...>&&)
     (squareTest<N>(), ...);
 }
 
-template <size_t VecLen>
+template <size_t VecLen, size_t BlkSize = 1>
 void testEquivalence(const BinaryMatrix<19937>* commonJump, const BinaryMatrix<19937>* seqJump, size_t commonJumpSize, size_t sequenceJumpSize)
 {
-    std::cout << "Testing equivalence of generators with SIMD length " << VecLen << " and common jump ahead of " << commonJumpSize << " and sequence jump size of " << sequenceJumpSize << " ... ";
+    std::cout << "Testing equivalence of generators with SIMD length " << VecLen
+        << " and common jump ahead of " << commonJumpSize << " and sequence jump size of " << sequenceJumpSize
+        << " and block size " << BlkSize << " ... ";
 
     const size_t M = VecLen / 32;
 
-    MT19937SIMD<VecLen> mt(seedinit, seedlength, commonJump, seqJump);
+    std::vector<uint32_t> dst(nRandomTest + 64 / sizeof(uint32_t));
+    uint32_t* aligneddst = (uint32_t*)((intptr_t)dst.data() + (64 - ((intptr_t)dst.data() % 64)));
 
-    for (size_t i = 0; i < nRandomTest - commonJumpSize; ++i) {
-        uint32_t r2 = mt.genrand_uint32();
+    MT19937SIMD<VecLen> mt(seedinit, seedlength, commonJump, seqJump);
+    for (size_t i = 0; i < nRandomTest / BlkSize; ++i)
+        switch (BlkSize) {
+            case 1: aligneddst[i] = mt.genrand_uint32(); break;
+            case 16: mt.genrand_uint32_blk64(aligneddst + i * BlkSize); break;
+            case (624 * (VecLen / 32)):  mt.genrand_uint32_stateBlk(aligneddst + i * (624 * (VecLen / 32))); break;
+            default: throw std::invalid_argument("not implemented");
+        };
+
+    for (size_t i = 0; i < nRandomTest; ++i) {
+        uint32_t r2 = aligneddst[i];
         size_t seqIndex = i / M;
         size_t genIndex = i % M;
         if (benchmark[seqIndex + commonJumpSize + sequenceJumpSize * genIndex] != r2) {
@@ -154,7 +166,7 @@ void generateBenchmark()
 
     std::cout << "Generate random numbers with the original C source code ... ";
     init_by_array(init, seedlength);
-    for (size_t i = 0; i < nRandomTest; ++i)
+    for (size_t i = 0, n  = benchmark.size(); i < n; ++i)
         benchmark[i] = (uint32_t)genrand_int32();
     std::cout << "done!\n";
     printSome(benchmark);
@@ -232,16 +244,34 @@ int main()
         testEquivalence<128>(nullptr, nullptr, 0, 0);
         testEquivalence<128>(nullptr, &jumpMatrix1, 0, 1);
         testEquivalence<128>(nullptr, &jumpMatrix1024, 0, 1024);
+        testEquivalence<128, 16>(nullptr, nullptr, 0, 0);
+        testEquivalence<128, 16>(nullptr, &jumpMatrix1, 0, 1);
+        testEquivalence<128, 16>(nullptr, &jumpMatrix1024, 0, 1024);
+        testEquivalence<128, 624 * 4>(nullptr, nullptr, 0, 0);
+        testEquivalence<128, 624 * 4>(nullptr, &jumpMatrix1, 0, 1);
+        testEquivalence<128, 624 * 4>(nullptr, &jumpMatrix1024, 0, 1024);
 
 #if SIMD_N_BITS > 128
         testEquivalence<256>(nullptr, nullptr, 0, 0);
         testEquivalence<256>(nullptr, &jumpMatrix1, 0, 1);
         testEquivalence<256>(nullptr, &jumpMatrix1024, 0, 1024);
+        testEquivalence<256, 16>(nullptr, nullptr, 0, 0);
+        testEquivalence<256, 16>(nullptr, &jumpMatrix1, 0, 1);
+        testEquivalence<256, 16>(nullptr, &jumpMatrix1024, 0, 1024);
+        testEquivalence<256, 624 * 8>(nullptr, nullptr, 0, 0);
+        testEquivalence<256, 624 * 8>(nullptr, &jumpMatrix1, 0, 1);
+        testEquivalence<256, 624 * 8>(nullptr, &jumpMatrix1024, 0, 1024);
 #endif
 #if SIMD_N_BITS > 256
         testEquivalence<512>(nullptr, nullptr, 0, 0);
         testEquivalence<512>(nullptr, &jumpMatrix1, 0, 1);
         testEquivalence<512>(nullptr, &jumpMatrix1024, 0, 1024);
+        testEquivalence<512, 16>(nullptr, nullptr, 0, 0);
+        testEquivalence<512, 16>(nullptr, &jumpMatrix1, 0, 1);
+        testEquivalence<512, 16>(nullptr, &jumpMatrix1024, 0, 1024);
+        testEquivalence<512, 624 * 16>(nullptr, nullptr, 0, 0);
+        testEquivalence<512, 624 * 16>(nullptr, &jumpMatrix1, 0, 1);
+        testEquivalence<512, 624 * 16>(nullptr, &jumpMatrix1024, 0, 1024);
 #endif
     }
     catch (const std::exception& e) {

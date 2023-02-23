@@ -23,7 +23,7 @@ double testPerformance()
         std::cout << " in blocks of " << BlkSize;
     std::cout << " ... ";
 
-    std::vector<uint32_t> dst(BlkSize + 64);
+    std::vector<uint32_t> dst(BlkSize + 64 / sizeof(uint32_t));
     uint32_t* aligneddst = (uint32_t*)((intptr_t)dst.data() + (64 - ((intptr_t)dst.data() % 64)));
 
     MT19937SIMD<VecLen> mt(seedinit, seedlength, NULL);
