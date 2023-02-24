@@ -37,7 +37,7 @@ struct SimdRegister<32>
             : "cc"
         );
         return z;
-#elif 0
+#elif defined(_MSC_VER)
         const uint32_t lowestBit = m_v & 0x1;
         return lowestBit ? value.m_v : 0;
 #else
