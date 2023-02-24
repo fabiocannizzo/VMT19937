@@ -20,12 +20,17 @@ Tested with g++11 and VS2017.
 ```
 
 ## Build
+You must first de-compress the 7z files in the dat directory.
+
 ```
 ** compile with SSE2 code **
-g++ -msse4.1 -O3 demo.cpp
+make NBITS=128
 
 ** compile with AVX code **
-g++ -mavx2 -O3 demo.cpp
+make NBITS=256
+
+** compile with AVX512 code **
+make NBITS=512
 ```
 
 ## Performance Stats
