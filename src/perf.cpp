@@ -1,6 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 
-#include "MT19937-SIMD.h"
+#include "../include/MT19937-SIMD.h"
 
 #include <iostream>
 #include <iomanip>
@@ -16,6 +16,7 @@ const uint64_t nRandomPerf = uint64_t(624) * 16 * 500000;
 
 extern "C" unsigned long genrand_int32();
 extern "C" void init_by_array(unsigned long init_key[], int key_length);
+
 
 struct Result
 {
