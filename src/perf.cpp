@@ -60,7 +60,7 @@ Result testPerformance(size_t runId)
 
     std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s" << std::endl;
 
-    return Result(runId, false, VecLen, BlkSize, nSeconds);
+    return Result(false, VecLen, BlkSize, runId, nSeconds);
 }
 
 
@@ -80,7 +80,7 @@ Result originalPerformance(size_t runId)
     double nSeconds = elapsed_seconds.count();
     std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s\n";
 
-    return Result(runId, true, 32, 1, nSeconds);
+    return Result(true, 32, 1, runId, nSeconds);
 }
 
 void usage()
