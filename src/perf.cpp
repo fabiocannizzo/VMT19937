@@ -2,6 +2,9 @@
 
 #include "../include/MT19937-SIMD.h"
 
+#define HAVE_SSE2
+#include "../SFMT-src-1.5.1/SFMT.h"
+
 #include <iostream>
 #include <iomanip>
 #include <chrono>
@@ -17,18 +20,21 @@ const uint64_t nRandomPerf = uint64_t(624) * 16 * 500000;
 extern "C" unsigned long genrand_int32();
 extern "C" void init_by_array(unsigned long init_key[], int key_length);
 
+enum Mode {orig, sfmt, simd};
+
+const char* modename[] = {"orig", "sfmt", "simd"};
 
 struct Result
 {
-    Result(bool orig, size_t nb, size_t blk, size_t id, double dt)
-        : original(orig), nBits(nb), blkSize(blk), runId(id), time(dt) {}
-    bool original;
+    Result(Mode _mode, size_t _nb, size_t _blk, size_t _id, double _dt)
+        : mode(_mode), nBits(_nb), blkSize(_blk), runId(_id), time(_dt) {}
+    Mode mode;
     size_t nBits;
     size_t blkSize;
     mutable size_t runId;
     mutable double time;
     bool operator<(const Result& rhs) const {
-        return std::tuple(!original, nBits, blkSize) < std::tuple(!rhs.original, rhs.nBits, rhs.blkSize);
+        return std::tuple(mode, nBits, blkSize) < std::tuple(rhs.mode, rhs.nBits, rhs.blkSize);
     }
 };
 
@@ -60,7 +66,7 @@ Result testPerformance(size_t runId)
 
     std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s" << std::endl;
 
-    return Result(false, VecLen, BlkSize, runId, nSeconds);
+    return Result(simd, VecLen, BlkSize, runId, nSeconds);
 }
 
 
@@ -80,7 +86,24 @@ Result originalPerformance(size_t runId)
     double nSeconds = elapsed_seconds.count();
     std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s\n";
 
-    return Result(true, 32, 1, runId, nSeconds);
+    return Result(orig, 32, 1, runId, nSeconds);
+}
+
+Result sfmtPerformance(size_t runId)
+{
+    sfmt_t sfmtgen;
+    sfmt_init_gen_rand(&sfmtgen, 12345);
+
+    std::cout << "Generate " << nRandomPerf << " random numbers with SFMT code ... ";
+    auto start = std::chrono::system_clock::now();
+    for (size_t i = 0; i < nRandomPerf; ++i)
+        sfmt_genrand_uint32(&sfmtgen);
+    auto end = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end - start;
+    double nSeconds = elapsed_seconds.count();
+    std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s\n";
+
+    return Result(sfmt, 128, 1, runId, nSeconds);
 }
 
 void usage()
@@ -113,6 +136,7 @@ int main(int argc, const char** argv)
     for (size_t i = 0; i < nRepeat; ++i) {
 
         res.push_back(originalPerformance(i));
+        res.push_back(sfmtPerformance(i));
         res.push_back(testPerformance<32>(i));
         //testPerformance<64>();
         res.push_back(testPerformance<128>(i));
@@ -146,7 +170,7 @@ int main(int argc, const char** argv)
         << std::setw(8) << std::right << "time"
         << "\n";
     for (auto& r : avgresult) {
-        std::cout << std::setw(8) << std::right << (r.original ? "orig" : "simd")
+        std::cout << std::setw(8) << std::right << modename[r.mode]
             << std::setw(8) << std::right << r.nBits
             << std::setw(8) << std::right << r.blkSize
             << std::setw(8) << std::right << std::fixed << std::setprecision(2) << r.time / nRepeat

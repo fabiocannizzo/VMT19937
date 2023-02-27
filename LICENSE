@@ -1,3 +1,15 @@
+*******************************************************************************
+This repository is released under MIT license, with the exception of the
+following 2 sub-directories:
+- SFMT-src-1.5.1
+- mt19937-original
+These contain source code not owned by Fabio Cannizzo and released under
+different licenses (see each sub-directory).
+Note that the source code contained in these sub-directories is only used for
+performance benchmarking purpose, and is not needed if you want to use
+this random number generator.
+*******************************************************************************
+
 MIT License
 
 Copyright (c) 2023 fabiocannizzo

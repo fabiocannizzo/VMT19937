@@ -15,6 +15,8 @@ BINDIR=bin-$(NBITS)
 
 COMMONFLAGS = -c -O3 $(SIMD) -I$(INCLUDE_DIRS)
 
+SFMT_FLAGS = -DSFMT_MEXP=19937
+
 CFLAGS += $(COMMONFLAGS)
 CPPFLAGS += $(COMMONFLAGS) -O3 $(SIMD)
 
@@ -30,11 +32,14 @@ CPP_OBJ=$(patsubst src/%.cpp,$(BINDIR)/%.cpp.obj,$(CPP_SRC))
 $(info C++ obj: $(CPP_OBJ))
 
 MT_OBJ = $(BINDIR)/mt19937ar.c.obj
+SFMT_OBJ = $(BINDIR)/sfmt.c.obj
 
 TARGETS := $(patsubst src/%.cpp,$(BINDIR)/%.exe,$(CPP_SRC))
 $(info TARGETS: $(TARGETS))
 
 all: $(TARGETS)
+
+$(BINDIR)/perf.cpp.obj : CPPFLAGS += $(SFMT_FLAGS)
 
 $(BINDIR)/%.cpp.obj : src/%.cpp $(HEADERS) Makefile $(BINDIR)
 	g++ $(CPPFLAGS) -o $@ $<
@@ -42,8 +47,11 @@ $(BINDIR)/%.cpp.obj : src/%.cpp $(HEADERS) Makefile $(BINDIR)
 $(MT_OBJ) : mt19937-original/mt19937ar.c $(HEADERS) Makefile $(BINDIR)
 	gcc $(CFLAGS) -o $@ $<
 
-$(BINDIR)/%.exe : $(BINDIR)/%.cpp.obj $(HEADERS) Makefile $(MT_OBJ) $(BINDIR)
-	g++ $(LFLAGS) -o $@ $(MT_OBJ) $<
+$(SFMT_OBJ) : SFMT-src-1.5.1/sfmt.c $(HEADERS) Makefile $(BINDIR)
+	gcc $(CFLAGS) $(SFMT_FLAGS) -o $@ $<
+
+$(BINDIR)/%.exe : $(BINDIR)/%.cpp.obj $(HEADERS) Makefile $(MT_OBJ) $(SFMT_OBJ) $(BINDIR)
+	g++ $(LFLAGS) -o $@ $(MT_OBJ) $(SFMT_OBJ) $<
 
 
 .PHONY: clean
