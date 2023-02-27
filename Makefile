@@ -1,4 +1,4 @@
-INCLUDE_DIR=./
+INCLUDE_DIRS=include
 
 NBITS ?= 128
 $(info NBITS: $(NBITS))
@@ -11,41 +11,45 @@ else ifeq ($(NBITS), 128)
    SIMD=-msse4.2
 endif
 
-COMMONFLAGS = -c -O3 $(SIMD) -I$(INCLUDE_DIR)
+BINDIR=bin-$(NBITS)
+
+COMMONFLAGS = -c -O3 $(SIMD) -I$(INCLUDE_DIRS)
 
 CFLAGS += $(COMMONFLAGS)
-CPPFLAGS += $(COMMONFLAGS) -O3 $(SIMD) -I$(INCLUDE_DIR)
+CPPFLAGS += $(COMMONFLAGS) -O3 $(SIMD)
 
 
-HEADERS := $(shell find $(INCLUDE_DIR) -name "*.h")
+HEADERS := $(shell find . -name "*.h")
 $(info HEADERS: $(HEADERS))
 
 
-C_SRC=$(wildcard *.c)
-CPP_SRC=$(wildcard *.cpp)
-$(info C files: $(C_SRC))
+CPP_SRC=$(wildcard src/*.cpp)
 $(info C++ files: $(CPP_SRC))
 
-C_OBJ=$(patsubst %.c,%.c.obj,$(C_SRC))
-CPP_OBJ=$(patsubst %.cpp,%.cpp.obj,$(CPP_SRC))
-$(info C obj: $(C_OBJ))
+CPP_OBJ=$(patsubst src/%.cpp,$(BINDIR)/%.cpp.obj,$(CPP_SRC))
 $(info C++ obj: $(CPP_OBJ))
 
+MT_OBJ = $(BINDIR)/mt19937ar.c.obj
 
-TARGETS := $(patsubst %.cpp,%.exe,$(CPP_SRC))
+TARGETS := $(patsubst src/%.cpp,$(BINDIR)/%.exe,$(CPP_SRC))
 $(info TARGETS: $(TARGETS))
-
-%.cpp.obj : %.cpp $(HEADERS) Makefile
-	g++ $(CPPFLAGS) -o $@ $<
-
-%.c.obj : %.c $(HEADERS) Makefile
-	gcc $(CFLAGS) -o $@ $<
-
-%.exe : %.cpp.obj $(C_OBJ) $(HEADERS) Makefile
-	g++ $(LFLAGS) -o $@ $(C_OBJ) $<
 
 all: $(TARGETS)
 
+$(BINDIR)/%.cpp.obj : src/%.cpp $(HEADERS) Makefile $(BINDIR)
+	g++ $(CPPFLAGS) -o $@ $<
+
+$(MT_OBJ) : mt19937-original/mt19937ar.c $(HEADERS) Makefile $(BINDIR)
+	gcc $(CFLAGS) -o $@ $<
+
+$(BINDIR)/%.exe : $(BINDIR)/%.cpp.obj $(HEADERS) Makefile $(MT_OBJ) $(BINDIR)
+	g++ $(LFLAGS) -o $@ $(MT_OBJ) $<
+
+
 .PHONY: clean
 clean:
-	rm *.exe *.obj
+	rm -rf bin-*
+
+# use -p for multithreading
+$(BINDIR):
+	mkdir -p $(BINDIR)

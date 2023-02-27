@@ -1,6 +1,6 @@
 #include "jump_matrix.h"
 
-#include "MT19937-SIMD.h"
+#include "../include/MT19937-SIMD.h"
 
 const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
@@ -64,18 +64,18 @@ void testEncoder(const BinaryMatrix<nRows, nCols>& m, EncodeMode enc)
     std::cout << "completed\n";
 }
 
-template <size_t N>
-void testSquare(const BinarySquareMatrix<N>& m)
+template <size_t NBITS>
+void testSquare(const BinarySquareMatrix<NBITS>& m)
 {
-    BinarySquareMatrix<N> m2, m3;
+    BinarySquareMatrix<NBITS> m2, m3;
 
     // slow bit by bit multiplication
     //std::cout << "compute matrix multiplication the classical way\n";
-    for (size_t r = 0; r < N; ++r) {
+    for (size_t r = 0; r < NBITS; ++r) {
         //std::cout << r << "\n";
-        for (size_t c = 0; c < N; ++c) {
+        for (size_t c = 0; c < NBITS; ++c) {
             size_t s = 0;
-            for (size_t k = 0; k < N; ++k) {
+            for (size_t k = 0; k < NBITS; ++k) {
                 s ^= m.getBit(r, k) && m.getBit(k, c);
             }
             if (s)
@@ -85,7 +85,7 @@ void testSquare(const BinarySquareMatrix<N>& m)
 
     const size_t nThreads = 4;
     //std::cout << "compute matrix multiplication vectorially\n";
-    std::vector<typename BinarySquareMatrix<N>::buffer_t> buffers(nThreads);
+    std::vector<typename BinarySquareMatrix<NBITS>::buffer_t> buffers(nThreads);
     m3.square(m, buffers, nullptr);
 
     if (!(m2 == m3))
@@ -106,11 +106,11 @@ void encodingTests()
     testEncoder(m, Hex);
 }
 
-template <size_t N>
+template <size_t NBits>
 void squareTest()
 {
-    std::cout << "testing multiplication with matrices of size: " << N << "\n";
-    BinarySquareMatrix<N> m;
+    std::cout << "testing multiplication with matrices of size: " << NBits << "\n";
+    BinarySquareMatrix<NBits> m;
     for (size_t i = 0; i < 10; ++i) {
         m.resetZero();
         m.initRand();
@@ -118,10 +118,10 @@ void squareTest()
     }
 }
 
-template <size_t...N>
-void squareTests(std::index_sequence<N...>&&)
+template <size_t...NBits>
+void squareTests(std::index_sequence<NBits...>&&)
 {
-    (squareTest<N>(), ...);
+    (squareTest<NBits>(), ...);
 }
 
 template <size_t VecLen, size_t BlkSize = 1>
@@ -131,7 +131,7 @@ void testEquivalence(const BinaryMatrix<19937>* commonJump, const BinaryMatrix<1
         << " and common jump ahead of " << commonJumpSize << " and sequence jump size of " << sequenceJumpSize
         << " and block size " << BlkSize << " ... ";
 
-    const size_t M = VecLen / 32;
+    const static size_t s_M = VecLen / 32;
 
     std::vector<uint32_t> dst(nRandomTest + 64 / sizeof(uint32_t));
     uint32_t* aligneddst = (uint32_t*)((intptr_t)dst.data() + (64 - ((intptr_t)dst.data() % 64)));
@@ -141,14 +141,14 @@ void testEquivalence(const BinaryMatrix<19937>* commonJump, const BinaryMatrix<1
         switch (BlkSize) {
             case 1: aligneddst[i] = mt.genrand_uint32(); break;
             case 16: mt.genrand_uint32_blk64(aligneddst + i * BlkSize); break;
-            case (624 * (VecLen / 32)):  mt.genrand_uint32_stateBlk(aligneddst + i * (624 * (VecLen / 32))); break;
+            case (624 * (VecLen / 32)):  mt.genrand_uint32_stateBlk(aligneddst + i * (624 * s_M)); break;
             default: throw std::invalid_argument("not implemented");
         };
 
     for (size_t i = 0; i < nRandomTest; ++i) {
         uint32_t r2 = aligneddst[i];
-        size_t seqIndex = i / M;
-        size_t genIndex = i % M;
+        size_t seqIndex = i / s_M;
+        size_t genIndex = i % s_M;
         size_t benchmarkindex = seqIndex + commonJumpSize + sequenceJumpSize * genIndex;
         if (benchmark[benchmarkindex] != r2) {
             std::cout << "FAILED!\n"
