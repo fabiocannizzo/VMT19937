@@ -1,16 +1,13 @@
 #!/bin/sh
 
-function test() {
-   make clean
-   make NBITS=$1 -j4
-   echo RESULTS $1 >> $filename
-   ./perf.exe -n 10 >> $filename
-}
-
 filename="results.txt"
 
 rm $filename
 
-test 128
-test 256
-test 512
+make clean
+
+for i in 128 256 512; do
+   make NBITS=$i -j4
+   echo RESULTS $i >> $filename
+   ./bin-$i/perf.exe -n 10 >> $filename
+done
