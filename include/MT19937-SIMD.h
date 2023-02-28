@@ -298,7 +298,7 @@ public:
     }
 
     // generates 64 uniform discrete random numbers in [0,0xffffffff] interval
-    void NO_INLINE genrand_uint32_blk64(uint32_t* dst)
+    void genrand_uint32_blk64(uint32_t* dst)
     {
         if (m_pst != m_pst_end)
             /* do nothing*/; // most likely case first
@@ -309,7 +309,7 @@ public:
     }
 
     // generates a block of the same size as the state vector of uniform discrete random numbers in [0,0xffffffff] interval
-    void NO_INLINE genrand_uint32_stateBlk(uint32_t* dst)
+    void genrand_uint32_stateBlk(uint32_t* dst)
     {
         refill();
         for (size_t i = 0; i < sizeof(m_state) / sizeof(m_rnd); ++i) {
