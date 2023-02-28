@@ -140,7 +140,7 @@ void testEquivalence(const BinaryMatrix<19937>* commonJump, const BinaryMatrix<1
     for (size_t i = 0; i < nRandomTest / BlkSize; ++i)
         switch (BlkSize) {
             case 1: aligneddst[i] = mt.genrand_uint32(); break;
-            case 16: mt.genrand_uint32_blk64(aligneddst + i * BlkSize); break;
+            case 16: mt.genrand_uint32_blk16(aligneddst + i * BlkSize); break;
             case (624 * (VecLen / 32)):  mt.genrand_uint32_stateBlk(aligneddst + i * (624 * s_M)); break;
             default: throw std::invalid_argument("not implemented");
         };

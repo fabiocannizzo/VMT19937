@@ -297,8 +297,8 @@ public:
         return *m_prnd++;
     }
 
-    // generates 64 uniform discrete random numbers in [0,0xffffffff] interval
-    void genrand_uint32_blk64(uint32_t* dst)
+    // generates 16 uniform discrete random numbers in [0,0xffffffff] interval
+    void genrand_uint32_blk16(uint32_t* dst)
     {
         if (m_pst != m_pst_end)
             /* do nothing*/; // most likely case first
