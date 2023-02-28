@@ -55,7 +55,7 @@ Result testPerformance(size_t runId)
     for (size_t i = 0; i < nRandomPerf / BlkSize; ++i)
         switch (BlkSize) {
             case 1: aligneddst[0] = mt.genrand_uint32(); break;
-            case 16: mt.genrand_uint32_blk64(aligneddst); break;
+            case 16: mt.genrand_uint32_blk16(aligneddst); break;
             case (624 * (VecLen / 32)):  mt.genrand_uint32_stateBlk(aligneddst); break;
             default: throw std::invalid_argument("not implemented");
         };
