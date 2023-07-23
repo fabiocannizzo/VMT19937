@@ -251,11 +251,9 @@ struct SimdRegister<512>
 
     FORCE_INLINE XV ifOddValueElseZero(const XV& value) const
     {
-        const __m512i z = zero().m_v;
         const __m512i lowestBit = _mm512_slli_epi32(m_v, 31); // move least significant bit to most significant bit
-        //const __mmask16 isOdd = _mm512_cmpneq_epi32_mask(lowestBit, z);
         const __mmask16 isOdd = _mm512_movepi32_mask(lowestBit);
-        return _mm512_mask_blend_epi32(isOdd, z, value.m_v);
+        return _mm512_maskz_mov_epi32(isOdd, value.m_v);
     }
 
     static FORCE_INLINE XV zero() { return _mm512_setzero_si512(); }
