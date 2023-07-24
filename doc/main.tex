@@ -105,7 +105,7 @@
 
 \begin{abstract}
 Many simulation applications require the generation of long sequences of pseudo-random numbers. Linear recurrences modulo 2 are commonly used as the fundamental building block for constructing pseudo-random number generators with extended periods and excellent statistical properties. These generators consist of a lengthy binary state vector that evolves iteratively through linear transformations. One widely accepted pseudo-random generator in this category is the Mersenne twister 19937 (MT19937), proposed by Matsumoto and Nishimura \cite{mt19937}, which has been implemented in numerous software libraries and numerical packages. The MT19937's popularity stems from its favorable distribution properties and the simplicity and speed of its algorithm. The linear transformation responsible for evolving the binary state vector can be expressed as a concise set of elementary bit manipulations. However, this transformation does not fully utilize the potential for parallelization through SIMD\footnote{Single Instructions Multiple Data} instructions available on modern hardware, limiting further speed enhancements.
-This paper introduces a new SIMD-friendly random number generator, which maintains the same statistical properties and period as the MT19937. It achieves this by combining the random streams of multiple MT19937 instances, each with state vectors de-phased via jump-ahead transformations, and polling each instance in a round-robin fashion. By evolving their vector states simultaneously, the new generator achieves perfect vectorization, fully leveraging SIMD hardware capabilities. Comprehensive test results demonstrate that this technique enables the generator throughput to scale approximately linearly with the width of the SIMD registers used. This approach provides significant speed improvements, especially on modern CPUs equipped with larger SIMD registers, and allows for efficient generation of random numbers for various simulation applications.
+This paper introduces a new SIMD-friendly random number generator, which maintains the same statistical properties and period as the MT19937. It combines the random streams of multiple MT19937 instances, each with state vectors de-phased via jump-ahead transformations, then polls each instance in a round-robin fashion. By evolving their vector states simultaneously, the new generator achieves perfect vectorization, fully leveraging on SIMD hardware capabilities. Comprehensive test results demonstrate that the throughput of the new generator scales approximately linearly with the width of the SIMD registers used. This provides significant speed improvements, especially on modern CPUs equipped with larger SIMD registers, and allows for efficient generation of random numbers for various simulation applications.
 \end{abstract}
 
 \begin{keyword}
@@ -125,7 +125,7 @@ In the domain of finance, one widely accepted pseudo-random generator from this 
 
 In additional to the good quality of its statistical properties, the success of MT19937 can be attributed to the simplicity of its algorithm. The linear transformation responsible for evolving the binary state vector can be efficiently implemented with a small set of elementary bit manipulations, resulting in fast execution. However, this transformation is not amenable to exploiting SIMD operations available on modern hardware for further speed enhancement. To address this limitation, Saito and Matsumoto proposed SFMT19937 \cite{sfmt19937}, a specialized version of MT19937 designed for architectures with 128-bit wide registers, like Intel SSE and ARM NEON. While SFMT19937 provides significant improvements, it is not generically adaptable to architectures with other register lengths, such as 256-bits (Intel AVX), 512-bits (Intel AVX512), or even wider registers found on GPUs.
 
-This paper introduces a technique to re-engineer the MT19937 fully to leverage SIMD hardware and achieve optimal vectorization. The proposed approach is entirely generic, requiring no customization of the algorithm or recalibration of its parameters for different register lengths. Test results demonstrate the effectiveness of the proposed algorithm, whose throughput scales well with the size of available SIMD registers.
+This paper first describes the original MT19937 algorithm and discusses the vectorization challenges. Then it introduces a new SIMD-friendly random number generator, which preserve the same statistical properties and period as the MT19937. It combines the random streams of multiple MT19937 instances, each with state vectors de-phased via jump-ahead transformations, then polls each instance in a round-robin fashion. By evolving the individual vector states simultaneously, the new generator achieves perfect vectorization, fully leveraging on SIMD hardware capabilities. Last it demonstrates with test results the effectiveness of the new generator.
 
 \section{Mersenne twister 19937}
 \label{sec:mt19937}
@@ -229,11 +229,13 @@ x_{k\%n} = x_{(k+m)\% n} \XOR \left[ \left(({x_{k\%n}}~\AND~h) \OR (x_{(k+1)\%n}
 Note that after $n$ steps, i.e. repeating \eqref{eq:stepmod} $n$ times, all elements of the state vector are replaced by new ones. To avoid the use of the modulo-$n$ operator on the array indices, the loop which generates an entirely new state vector can be broken in 3 sub-loops, depending on when the 3 indices $k$, $k+1$ and $k+m$ become larger than $n-1$.
 \begin{equation}
 \label{eq:stepnomod}
-\begin{aligned}
-x_{k} &= x_{k+m} ~\XOR~ \left(x_{k}~\AND~h ~\OR~ x_{k+1}~\AND~l\right) \star A  \quad &&k = 0, \dots, n-m-1\\
-x_{k} &= x_{k+m-n} ~\XOR~ \left(x_{k}~\AND~h ~\OR~ x_{k+1}~\AND~l\right) \star A \quad &&k = n-m, \dots, n-2 \\
-x_{k} &= x_{k+m-n} ~\XOR~ \left(x_{k}~\AND~h ~\OR~ x_{0}~\AND~l\right) \star A  \quad &&k = n-1
-\end{aligned}
+	x_k = \left\{
+		\begin{aligned}
+			x_{k+m}   & ~~\XOR & ( & x_{k} ~\AND~ h & \OR~ & x_{k+1} ~\AND~ l & ) &~\star~ A &\quad &k = 0, \dots, n-m-1\\
+			x_{k+m-n} & ~~\XOR & ( & x_{k} ~\AND~ h & \OR~ & x_{k+1} ~\AND~ l & ) &~\star~ A &\quad &k = n-m, \dots, n-2 \\
+			x_{k+m-n} & ~~\XOR & ( & x_{k} ~\AND~ h & \OR~ & x_{0}   ~\AND~ l & ) &~\star~ A &\quad &k = n-1
+		\end{aligned}
+    \right.
 \end{equation}
 After the state vector has been advanced by $n$ steps, $n$ new pseudo random words can be produced by applying transformation \eqref{eq:tempering} to the new state elements.
 \subsection{Vectorization obstacles}
@@ -251,7 +253,7 @@ A second issue is that the tuples $(x_k, x_{k+1}, x_{k+2}, x_{k+2})$ appearing i
 
 \section{Multi state Mersenne twister 19937 (MS-MT19937)}
 \label{sec:simdgen}
-In this section, we introduce a novel random number generator that utilizes multiple MT19937 generators as building blocks and combines them to produce a new sequence of random numbers. This new generator preserves the same statistical properties and period as the original MT19937, but it is specifically designed to be SIMD friendly. As a result, its throughput scales proportionally to the length of the SIMD registers available on the hardware. We name this new generator \textit{multi state Mersenne twister 19937, or, in abbreviated form, MS-MT19937}.
+In this section, we introduce a novel random number generator that utilizes multiple MT19937 generators as building blocks and combines them to produce a new sequence of random numbers. This new generator preserves the same statistical properties and period as the original MT19937, but it is specifically designed to be SIMD friendly. As a result, its throughput scales proportionally to the length of the SIMD registers available on the hardware. We name this new generator \textit{multi state Mersenne twister 19937}, or, in abbreviated form, \textbf{MS-MT19937}.
 
 Given a certain initial state $X_0$, the MT19937 pseudo-random number generator produces a sequence $\bold{Z}$ of independent and uniformly distributed random numbers $z_k$ with a period of $P=2^{19937}-1$.
 \begin{equation}
