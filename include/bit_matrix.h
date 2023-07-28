@@ -2,6 +2,7 @@
 
 #include "SIMD.h"
 #include "base64.h"
+#include "utils.h"
 
 #include <vector>
 #include <iostream>
@@ -88,12 +89,7 @@ public:
     {
         if (allocateMemory) {
             // allocate memory
-            m_data = new uint8_t[s_nUsedBytes + s_nAlignBytes];
-            // align pointer
-            auto addr = reinterpret_cast<std::uintptr_t>(m_data);
-            uint8_t moveFwdBy = (s_nAlignBytes - (addr % s_nAlignBytes));
-            m_data += moveFwdBy;
-            m_data[-1] = moveFwdBy;
+            m_data = myAlignedNew<uint8_t, s_nAlignBytes>(s_nUsedBytes);
             // initialize to zero
             resetZero();
         }
@@ -101,8 +97,8 @@ public:
 
     ~BinaryMatrix()
     {
-        if (m_data)
-            delete (m_data - m_data[-1]); // restore original unaligned pointer and deallocate
+        myAlignedDelete(m_data);
+        m_data = NULL;
     }
 
     bool operator==(const BinaryMatrix& rhs) const
