@@ -2,7 +2,7 @@
 
 #include "jump_matrix.h"
 
-#include "../include/MT19937-SIMD.h"
+#include "../include/MSMT19937.h"
 
 const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
@@ -138,7 +138,7 @@ void testEquivalence(const BinaryMatrix<19937>* commonJump, const BinaryMatrix<1
     std::vector<uint32_t> dst(nRandomTest + 64 / sizeof(uint32_t));
     uint32_t* aligneddst = (uint32_t*)((intptr_t)dst.data() + (64 - ((intptr_t)dst.data() % 64)));
 
-    MT19937SIMD<VecLen> mt(seedinit, seedlength, commonJump, seqJump);
+    MSMT19937<VecLen> mt(seedinit, seedlength, commonJump, seqJump);
     for (size_t i = 0; i < nRandomTest / BlkSize; ++i)
         switch (BlkSize) {
             case 1: aligneddst[i] = mt.genrand_uint32(); break;

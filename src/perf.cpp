@@ -1,6 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 
-#include "../include/MT19937-SIMD.h"
+#include "../include/MSMT19937.h"
 
 #define HAVE_SSE2
 #include "../SFMT-src-1.5.1/SFMT.h"
@@ -49,7 +49,7 @@ Result testPerformance(size_t runId)
     std::vector<uint32_t> dst(BlkSize + 64 / sizeof(uint32_t));
     uint32_t* aligneddst = (uint32_t*)((intptr_t)dst.data() + (64 - ((intptr_t)dst.data() % 64)));
 
-    MT19937SIMD<VecLen> mt(seedinit, seedlength, NULL);
+    MSMT19937<VecLen> mt(seedinit, seedlength, NULL);
 
     auto start = std::chrono::system_clock::now();
     for (size_t i = 0; i < nRandomPerf / BlkSize; ++i)

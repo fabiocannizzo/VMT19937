@@ -1,6 +1,6 @@
 #include "jump_matrix.h"
 
-#include "../include/MT19937-SIMD.h"
+#include "../include/MSMT19937.h"
 
 /*
     VecLen:
@@ -38,7 +38,7 @@ void demo128()
 
     const uint32_t seedlength = 4;
     const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
-    MT19937SIMD<128> mt(seedinit, seedlength, nullptr, &jumpMatrix);
+    MSMT19937<128> mt(seedinit, seedlength, nullptr, &jumpMatrix);
 
     // create storage vector aligned with cache lines, where we will store results
     uint32_t* buffer = myAlignedNew<uint32_t, 64>(16);
