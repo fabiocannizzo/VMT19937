@@ -1,5 +1,9 @@
 INCLUDE_DIRS=include
 
+ifndef $(NBITS)
+   $(info WARNING: NBITS not defined. Using default value of 128)
+endif
+
 NBITS ?= 128
 $(info NBITS: $(NBITS))
 
