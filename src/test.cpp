@@ -1,3 +1,5 @@
+#define TESTING
+
 #include "jump_matrix.h"
 
 #include "../include/MT19937-SIMD.h"
