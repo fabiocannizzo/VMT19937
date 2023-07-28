@@ -351,7 +351,7 @@ It is worth noting that there exist more efficient \textit{jump-ahead} algorithm
 Furthermore, the main contribution of this paper is the vectorization of the algorithm to advance the state vector. If a more efficient \textit{jump-ahead} method were to be adopted, it would further improve initialization time, but it would not invalidate any of the arguments presented in this paper regarding the algorithm's throughput.
 
 \section{MS-MT19937 Implementation details}
-An implementation of the multi-state generator described in section \ref{sec:simdgen} is available on github\footnote{\label{fn:github} https://github.com/fabiocannizzo/MT19937-SIMD}. It uses a few optimization techniques introduced to speed up SIMD computations.
+An implementation of the multi-state generator described in section \ref{sec:simdgen} is available on github\footnote{\label{fn:github} https://github.com/fabiocannizzo/MS-MT19937}. It uses a few optimization techniques introduced to speed up SIMD computations.
 
 \subsection{Memory alignment}
 The state vector array $\hat{X_k}$ is memory-aligned on a 64-byte boundary, i.e. its starting address is a multiple of 64 bytes. This ensures that the data is aligned with cache lines, minimizing the risk of cache misses\footnote{a cache miss fault is a performance penalty paid when a piece of requested data is not available in cache} or cache split\footnote{a cache split fault is a performance penalty paid when a piece of requested data is located in two different cache lines} faults. As a result, it leads to efficient memory access and improved performance, which is  crucial when performing vectorized operations on the state vector using SIMD instructions.
