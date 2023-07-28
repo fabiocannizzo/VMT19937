@@ -165,7 +165,6 @@ class MT19937SIMD
 
         // temporary workspace matrix
         BinaryMatrix<2, s_nBits> tmp;
-        tmp.resetZero();
 
         if (commonJump) {
             // copy state to the first row shifting all bits to the left by 31
@@ -187,7 +186,6 @@ class MT19937SIMD
 
             // temporary workspace matrix
             BinaryMatrix<2, s_nBits> tmp;
-            tmp.resetZero();
 
             // copy state to the first row shifting all bits to the left by 31
             stateToVector(0, (uint32_t*)tmp.rowBegin(0));
