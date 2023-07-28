@@ -34,11 +34,11 @@ void demo128()
 
     // Optionally, we could pass an additional jump matrix affecting all states
     // This could be useful to create multiple indepdnent streams for parallelization
-    MT19937Matrix *commonJumpMatrix = NULL;
+    MT19937Matrix *commonJumpMatrix = nullptr;
 
     const uint32_t seedlength = 4;
     const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
-    MSMT19937<128> mt(seedinit, seedlength, nullptr, &jumpMatrix);
+    MSMT19937<128> mt(seedinit, seedlength, commonJumpMatrix, &jumpMatrix);
 
     // create storage vector aligned with cache lines, where we will store results
     uint32_t* buffer = myAlignedNew<uint32_t, 64>(16);

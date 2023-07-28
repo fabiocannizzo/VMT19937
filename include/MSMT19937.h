@@ -226,7 +226,9 @@ class MSMT19937
 public:
     // constructors
     MSMT19937()
-        : m_pst_end(m_state+s_N)
+        : m_pst(nullptr)
+        , m_pst_end(m_state+s_N)
+        , m_prnd(nullptr)
     {}
 
     MSMT19937(uint32_t seed, const BinaryMatrix<s_nBits>* commonJump = nullptr, const BinaryMatrix<s_nBits>* sequentialJump = nullptr)
