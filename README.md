@@ -1,4 +1,4 @@
-# MT19937-SIMD
+# MS-MT19937
 
 # A SIMD based implementation of the Mersenne Twister 19937
 
