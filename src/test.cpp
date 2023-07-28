@@ -177,18 +177,6 @@ void generateBenchmark()
     printSome(benchmark);
 }
 
-void getBinaryMatrix(const char* filename, MT19937Matrix& dst)
-{
-    std::ifstream is(filename, std::ios::binary);
-    if (!is.is_open()) {
-        std::cout << "error opening binary file: " << filename << "\n";
-        exit(-1);
-    }
-    dst.fromBin(is);
-    std::cout << "loaded matrix from file: " << filename << "\n";
-    dst.printSparsity();
-}
-
 void recode()
 {
     MT19937Matrix f, g;
@@ -197,9 +185,6 @@ void recode()
 
         std::ostringstream fIn; fIn  << "C:/workspace/repos/MT19937-SIMD/dat/F" << i << ".b64";
         std::ostringstream fOut; fOut << "C:/workspace/repos/MT19937-SIMD/dat/F" << i << ".bits";
-
-        //    const char* fi = "C:/workspace/repos/MT19937/dat/F15700.b64";
-        //const char* fo = "./dat/F15700.bin";
 
         {
             std::ifstream is(fIn.str());
@@ -211,7 +196,7 @@ void recode()
             f.toBin(os);
         }
 
-        getBinaryMatrix(fOut.str().c_str(), g);
+        g.fromBinFile(fOut.str().c_str());
 
         if (!(f == g)) {
             std::cout << "binary round trip error" << "\n";
@@ -235,11 +220,11 @@ int main()
 #endif
         generateBenchmark();
 
-        MT19937Matrix jumpMatrix1, jumpMatrix1024, jumpMatrixPeriod;
+        MT19937Matrix jumpMatrix1, jumpMatrix1024("./dat/F00010.bits"), jumpMatrixPeriod("./dat/F19937.bits");
 
-        initMT19937(jumpMatrix1);
-        getBinaryMatrix("./dat/F00010.bits", jumpMatrix1024);
-        getBinaryMatrix("./dat/F19937.bits", jumpMatrixPeriod);
+//        initMT19937(jumpMatrix1);
+//        getBinaryMatrix("./dat/F00010.bits", jumpMatrix1024);
+//        getBinaryMatrix("./dat/F19937.bits", jumpMatrixPeriod);
 
         testEquivalence<32>(nullptr, nullptr, 0, 0);
         testEquivalence<32>(&jumpMatrix1024, nullptr, 1024, 0);
