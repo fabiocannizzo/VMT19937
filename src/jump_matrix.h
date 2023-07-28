@@ -133,28 +133,56 @@ struct BinarySquareMatrix : BinaryMatrix<N, N>
     }
 };
 
-typedef BinarySquareMatrix<19937>  MT19937Matrix;
-
-// initialize the matrix as per MT19937 32 bit generartor transition matrix
-void initMT19937(MT19937Matrix& m)
+struct MT19937Matrix : BinarySquareMatrix<19937>
 {
-    static_assert(MT19937Matrix::s_nBits == 19937);
-    static const size_t s_nBits = MT19937Matrix::s_nBits;
-    static const size_t s_nWordBits = MT19937Matrix::s_nWordBits;
-    static const uint32_t s_matA = 0x9908B0DF;
-    static const uint32_t s_M = 397;
+    typedef BinarySquareMatrix<19937> base_t;
 
-    // from row 0 to to row nBits - 32, state bits are just shifted left by 32 bits
-    for (uint32_t r = 0; r < s_nBits - s_nWordBits; ++r)
-        m.setBit(r, r + s_nWordBits);
+    // Initialize the matrix as per MT19937 32 bit generator transition matrix
+    // This is equivalent to a jump ahead of 1 random number
+    MT19937Matrix()
+    {
+        init1();
+    }
 
-    // the new state element is composed of element which was in position M
-    for (uint32_t i = 0; i < s_nWordBits; i++)
-        m.setBit(s_nBits - s_nWordBits + i, 1 + (s_M - 1) * s_nWordBits + i);
-    for (uint32_t i = 0; i < s_nWordBits; ++i)
-        if (s_matA & (uint32_t(1) << i))
-            m.setBit(s_nBits - s_nWordBits + i, 1);
-    m.setBit(s_nBits - 2, 0);
-    for (uint32_t i = 0; i < s_nWordBits - 2; ++i)
-        m.setBit(s_nBits - s_nWordBits + i, 2 + i);
-}
+    MT19937Matrix(const char* filename)
+    {
+        fromBinFile(filename);
+    }
+
+    void init1()
+    {
+        static const size_t s_nBits = base_t::s_nBitRows;
+        static const size_t s_nWordBits = base_t::s_nWordBits;
+        static const uint32_t s_matA = 0x9908B0DF;
+        static const uint32_t s_M = 397;
+
+        // from row 0 to to row nBits - 32, state bits are just shifted left by 32 bits
+        for (uint32_t r = 0; r < s_nBits - s_nWordBits; ++r)
+            setBit(r, r + s_nWordBits);
+
+        // the new state element is composed of element which was in position M
+        for (uint32_t i = 0; i < s_nWordBits; i++)
+            setBit(s_nBits - s_nWordBits + i, 1 + (s_M - 1) * s_nWordBits + i);
+        for (uint32_t i = 0; i < s_nWordBits; ++i)
+            if (s_matA & (uint32_t(1) << i))
+                setBit(s_nBits - s_nWordBits + i, 1);
+        setBit(s_nBits - 2, 0);
+        for (uint32_t i = 0; i < s_nWordBits - 2; ++i)
+            setBit(s_nBits - s_nWordBits + i, 2 + i);
+    }
+
+    // initialize from a binary file saved with the toBin method
+    void fromBinFile(const char* filename)
+    {
+        std::ifstream is(filename, std::ios::binary);
+        if (!is.is_open()) {
+            std::cout << "error opening binary file: " << filename << "\n";
+            throw 0;
+        }
+        fromBin(is);
+#ifdef TESTING
+        std::cout << "loaded matrix from file: " << filename << "\n";
+        printSparsity();
+#endif
+    }
+};

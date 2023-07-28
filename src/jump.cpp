@@ -87,7 +87,7 @@ int main(int argc, const char** argv)
 
     if (lastComputed == -1) {
         std::cout << "initializing from base matrix\n";
-        initMT19937(f[0]);
+        f[0].initRand();
         lastComputed = 0;
     }
     else {
