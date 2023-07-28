@@ -18,7 +18,7 @@
 #include <cstddef>
 
 template <size_t RegisterBitLen = SIMD_N_BITS>
-class MT19937SIMD
+class MSMT19937
 {
     const static size_t s_regLenBits = RegisterBitLen;
     const static size_t s_regLenWords = s_regLenBits / 32;
@@ -225,18 +225,18 @@ class MT19937SIMD
 
 public:
     // constructors
-    MT19937SIMD()
+    MSMT19937()
         : m_pst_end(m_state+s_N)
     {}
 
-    MT19937SIMD(uint32_t seed, const BinaryMatrix<s_nBits>* commonJump = nullptr, const BinaryMatrix<s_nBits>* sequentialJump = nullptr)
-        : MT19937SIMD()
+    MSMT19937(uint32_t seed, const BinaryMatrix<s_nBits>* commonJump = nullptr, const BinaryMatrix<s_nBits>* sequentialJump = nullptr)
+        : MSMT19937()
     {
         reinit(seed, commonJump, sequentialJump);
     }
 
-    MT19937SIMD(const uint32_t seeds[], uint32_t n_seeds, const BinaryMatrix<s_nBits>* commonJump = nullptr, const BinaryMatrix<s_nBits>* sequentialJump = nullptr)
-        : MT19937SIMD()
+    MSMT19937(const uint32_t seeds[], uint32_t n_seeds, const BinaryMatrix<s_nBits>* commonJump = nullptr, const BinaryMatrix<s_nBits>* sequentialJump = nullptr)
+        : MSMT19937()
     {
         reinit(seeds, n_seeds, commonJump, sequentialJump);
     }
