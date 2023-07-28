@@ -12,7 +12,7 @@ struct SimdRegister<32>
 
     typedef SimdRegister<32> XV;
 
-    SimdRegister() {}
+    SimdRegister() : m_v(0) {}
     SimdRegister(const void* p) : m_v(*(const uint32_t*)p) {}
     SimdRegister(uint32_t v) : m_v(v) {}
 
@@ -71,7 +71,7 @@ struct SimdRegister<64>
 
     typedef SimdRegister<64> XV;
 
-    SimdRegister() {}
+    SimdRegister() : m_v(0) {}
     SimdRegister(const void* p) : m_v(*(const uint64_t*)p) {}
     SimdRegister(uint32_t v) : m_v(v | (uint64_t(v) << 32)) {}
     SimdRegister(uint64_t v) : m_v(v) {}
@@ -122,7 +122,7 @@ struct SimdRegister<128>
 
     typedef SimdRegister<128> XV;
 
-    SimdRegister() {}
+    SimdRegister() : m_v(_mm_undefined_si128()) {}
     SimdRegister(uint32_t v) : m_v(_mm_set1_epi32(v)){}
     SimdRegister(const void* p) : m_v(_mm_loadu_si128((const __m128i*)p)) {}
     SimdRegister(__m128i v) : m_v(v) {}
@@ -177,7 +177,7 @@ struct SimdRegister<256>
 
     typedef SimdRegister<256> XV;
 
-    SimdRegister() {}
+    SimdRegister() : m_v(_mm256_undefined_si256()) {}
     SimdRegister(const void* p) : m_v(_mm256_load_si256((const __m256i*)p)) {}
     SimdRegister(uint32_t v) : m_v(_mm256_set1_epi32(v)) {}
     SimdRegister(__m256i v) : m_v(v) {}
@@ -233,7 +233,7 @@ struct SimdRegister<512>
 
     typedef SimdRegister<512> XV;
 
-    SimdRegister() {}
+    SimdRegister() : m_v(_mm512_undefined_si512()) {}
     SimdRegister(const void* p) : m_v(_mm512_load_si512((const __m512i*)p)) {}
     SimdRegister(uint32_t v) : m_v(_mm512_set1_epi32(v)) {}
     SimdRegister(__m512i v) : m_v(v) {}
