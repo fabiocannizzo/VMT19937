@@ -59,7 +59,6 @@ class BinaryMatrix
     static const size_t s_nAlignBytes = s_nAlignBits / 8;  // suitable for AVX512
     static_assert(s_nAlignBits == 8 * s_nAlignBytes);
 
-    std::vector<uint8_t> m_storage;
     uint8_t* m_data;
 
 public:
@@ -84,33 +83,43 @@ private:
     }
 
 public:
-
-    BinaryMatrix()
-        : m_storage(s_nUsedBytes + (s_nAlignBytes - 1), 0)
+    BinaryMatrix(bool allocateMemory = true)
+        : m_data(nullptr)
     {
-        // align pointer
-        auto addr = reinterpret_cast<std::uintptr_t>(m_storage.data());
-        auto moveFwdBy = (s_nAlignBytes - (addr % s_nAlignBytes)) % s_nAlignBytes;
-        //if (moveFwdBy >= s_nAlignBytes) {
-        //    std::cout << "something wrong with alignment\n";
-        //    throw -1;
-        //}
-        m_data = (uint8_t*)(addr + moveFwdBy);
+        if (allocateMemory) {
+            // allocate memory
+            m_data = new uint8_t[s_nUsedBytes + s_nAlignBytes];
+            // align pointer
+            auto addr = reinterpret_cast<std::uintptr_t>(m_data);
+            uint8_t moveFwdBy = (s_nAlignBytes - (addr % s_nAlignBytes));
+            m_data += moveFwdBy;
+            m_data[-1] = moveFwdBy;
+            // initialize to zero
+            resetZero();
+        }
+    }
+
+    ~BinaryMatrix()
+    {
+        if (m_data)
+            delete (m_data - m_data[-1]); // restore original unaligned pointer and deallocate
     }
 
     bool operator==(const BinaryMatrix& rhs) const
     {
         if (0 == memcmp(m_data, rhs.m_data, s_nUsedBytes))
             return true;
-        bool eq = true;
-        for (size_t i = 0; i < s_nBitRows && eq; ++i)
-            for (size_t j = 0; j < s_nBitCols && eq; ++j) {
-                eq &= getBit(i, j) == rhs.getBit(i, j);
-                if (!eq) {
+#ifdef TESTING
+        for (size_t i = 0; i < s_nBitRows; ++i) {
+            for (size_t j = 0; j < s_nBitCols; ++j) {
+                if (getBit(i, j) != rhs.getBit(i, j)) {
                     std::cout << "diff at: (" << i << "," << j << "): " << getBit(i, j) << " vs " << rhs.getBit(i, j) << "\n";
+                    break;
                 }
             }
-        return eq;
+        }
+#endif
+        return false;
     }
 
     // set bit at row r and column c
@@ -293,7 +302,7 @@ public:
     const uint8_t* rowBegin(size_t rowIndex) const { return m_data + rowIndex * s_nBytesPerPaddedRow; }
     uint8_t* rowBegin(size_t rowIndex) { return m_data + rowIndex * s_nBytesPerPaddedRow; }
 
-    void resetZero() { std::fill(m_storage.begin(), m_storage.end(), 0); }
+    void resetZero() { std::fill_n(m_data, s_nUsedBytes, 0); }
 
     //bool multiplyRowByCol(size_t r, size_t c) const
     //{
