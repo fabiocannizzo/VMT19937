@@ -82,7 +82,8 @@ $(SFMT_OBJ) : SFMT-src-1.5.1/sfmt.c Makefile | $(BINDIR)
 $(BINDIR)/test.exe : | dat/F00010.bits dat/F19937.bits
 $(BINDIR)/test.exe : $(MT_OBJ) $(SFMT_OBJ)
 $(BINDIR)/perf.exe : $(MT_OBJ) $(SFMT_OBJ)
-$(BINDIR)/testu01.exe : LFLAGS += -L$(TESTU01_DIR)/lib -ltestu01 -lprobdist -lmylib -lm
+$(BINDIR)/testu01.exe : | dat/F19933.bits dat/F19934.bits dat/F19935.bits
+$(BINDIR)/testu01.exe :	LFLAGS += -L$(TESTU01_DIR)/lib -ltestu01 -lprobdist -lmylib -lm
 
 
 $(BINDIR)/%.exe : $(BINDIR)/%.cpp.obj
