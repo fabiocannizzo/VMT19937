@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SIMD.h"
-#include "base64.h"
+#include "codecs.h"
 #include "utils.h"
 
 #include <vector>
