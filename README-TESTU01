@@ -1,0 +1,21 @@
+
+# get and install the package
+
+mkdir TestU01
+cd TestU01
+basedir=`pwd`
+curl -OL http://simul.iro.umontreal.ca/testu01/TestU01.zip
+unzip -q TestU01.zip
+
+# build
+mkdir install
+cd TestU01-1.2.3
+./configure --prefix="$basedir/install" --disable-shared
+make -j 4
+make -j 4 install
+
+echo ""
+echo ""
+echo "to run a program we need to define the PATH"
+echo "in cygwin:"
+echo "   PATH=TestU01/install/bin:${PATH}  programName
