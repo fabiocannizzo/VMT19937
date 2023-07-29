@@ -1,5 +1,3 @@
-INCLUDE_DIRS=include
-
 ifndef $(NBITS)
    $(info WARNING: NBITS not defined. Using default value of 128)
 endif
@@ -17,12 +15,12 @@ endif
 
 BINDIR=bin-$(NBITS)
 
-COMMONFLAGS = -c -O3 $(SIMD) -I$(INCLUDE_DIRS)
+COMMONFLAGS = -c -O3 $(SIMD)
 
 SFMT_FLAGS = -DSFMT_MEXP=19937
 
 CFLAGS += $(COMMONFLAGS)
-CPPFLAGS += $(COMMONFLAGS) -O3 -std=c++17 $(SIMD)
+CPPFLAGS += $(COMMONFLAGS) -O3 -std=c++17 -Iinclude $(SIMD)
 
 HEADERS := $(wildcard include/*.h)
 $(info HEADERS: $(HEADERS))
@@ -42,11 +40,9 @@ $(info TARGETS: $(TARGETS))
 
 all: $(TARGETS)
 
-Makefile :
-	echo "Makefile rule hit"
-
 dat/%.bits : dat/%.7z
-	7za e -odat -y $<
+	7za e -odat -y $< > /dev/null
+	touch $@
 
 dat/%.hmat : dat/%.bits $(BINDIR)/encoder.exe
 	$(BINDIR)/encoder.exe -i $< -o $@
@@ -54,22 +50,22 @@ dat/%.hmat : dat/%.bits $(BINDIR)/encoder.exe
 # extra compilation flags for perf.cpp
 $(BINDIR)/perf.cpp.obj : CPPFLAGS += $(SFMT_FLAGS)
 
-$(BINDIR)/%.cpp.obj : src/%.cpp Makefile $(BINDIR)
+$(BINDIR)/%.cpp.obj : src/%.cpp $(HEADERS) Makefile | $(BINDIR)
 	g++ $(CPPFLAGS) -o $@ $<
 
-$(MT_OBJ) : mt19937-original/mt19937ar.c $(HEADERS) Makefile $(BINDIR)
+$(MT_OBJ) : mt19937-original/mt19937ar.c Makefile | $(BINDIR)
 	gcc $(CFLAGS) -o $@ $<
 
-$(SFMT_OBJ) : SFMT-src-1.5.1/sfmt.c Makefile $(BINDIR)
+$(SFMT_OBJ) : SFMT-src-1.5.1/sfmt.c Makefile | $(BINDIR)
 	gcc $(CFLAGS) $(SFMT_FLAGS) -o $@ $<
 
 # extra dependencies for test.exe
-$(BINDIR)/test.exe : dat/F00010.bits dat/F19937.bits
-$(BINDIR)/test.exe : EXTRA_OBJ += $(MT_OBJ) $(SFMT_OBJ)
-$(BINDIR)/perf.exe : EXTRA_OBJ += $(MT_OBJ) $(SFMT_OBJ)
+$(BINDIR)/test.exe : | dat/F00010.bits dat/F19937.bits
+$(BINDIR)/test.exe : $(MT_OBJ) $(SFMT_OBJ)
+$(BINDIR)/perf.exe : $(MT_OBJ) $(SFMT_OBJ)
 
-$(BINDIR)/%.exe : $(BINDIR)/%.cpp.obj $(HEADERS) Makefile $(EXTRA_OBJ) $(BINDIR)
-	g++ $(LFLAGS) -o $@ $(EXTRA_OBJ) $<
+$(BINDIR)/%.exe : $(BINDIR)/%.cpp.obj
+	g++ $(LFLAGS) -o $@ $^
 
 
 .PHONY: clean
