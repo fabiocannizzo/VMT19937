@@ -12,6 +12,8 @@
 #include <tuple>
 #include <set>
 
+using namespace std;
+
 const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 
