@@ -46,3 +46,10 @@ Vector Length  |     1    |     2    |      4    |
 Time (seconds) |   8.4s   |   4.7s   |    4.07s  |
 --------------------------------------------------
 ```
+
+## TestU01
+
+./configure --prefix=/workspace/repos/testu01/install/ --disable-shared
+make -j4
+make install -j4
+

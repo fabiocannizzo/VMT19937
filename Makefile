@@ -1,9 +1,24 @@
 ifndef $(NBITS)
-   $(info WARNING: NBITS not defined. Using default value of 128)
+   $(info WARNING: NBITS not defined. Using default value: 128)
+   NBITS=128
 endif
 
-NBITS ?= 128
+ifndef $(TESTU01_DIR)
+   $(info WARNING: TESTU01_DIR not defined. Using default value: ../testu01/install)
+   TESTU01_DIR=../testu01/install
+endif
+
+ifneq ("$(wildcard $(TESTU01_DIR)/include/TestU01.h)","")
+    TESTU01_AVAIL = 1
+    $(info TestU01.h header file found)
+else
+    TESTU01_AVAIL = 0
+    $(info TestU01.h header file NOT found)
+endif
+
 $(info NBITS: $(NBITS))
+$(info TESTU01_DIR: $(TESTU01_DIR))
+
 
 ifeq ($(NBITS), 512)
    SIMD=-mavx512f -mavx512dq
@@ -36,6 +51,9 @@ MT_OBJ = $(BINDIR)/mt19937ar.c.obj
 SFMT_OBJ = $(BINDIR)/sfmt.c.obj
 
 TARGETS := $(patsubst src/%.cpp,$(BINDIR)/%.exe,$(CPP_SRC))
+ifeq ($(TESTU01_AVAIL), 0)
+    TARGETS := $(filter-out src/testu01.cpp, $(TARGETS))
+endif
 $(info TARGETS: $(TARGETS))
 
 all: $(TARGETS)
@@ -49,6 +67,7 @@ dat/%.hmat : dat/%.bits $(BINDIR)/encoder.exe
 
 # extra compilation flags for perf.cpp
 $(BINDIR)/perf.cpp.obj : CPPFLAGS += $(SFMT_FLAGS)
+$(BINDIR)/testu01.cpp.obj : CPPFLAGS += -I$(TESTU01_DIR)/include
 
 $(BINDIR)/%.cpp.obj : src/%.cpp $(HEADERS) Makefile | $(BINDIR)
 	g++ $(CPPFLAGS) -o $@ $<
@@ -63,9 +82,11 @@ $(SFMT_OBJ) : SFMT-src-1.5.1/sfmt.c Makefile | $(BINDIR)
 $(BINDIR)/test.exe : | dat/F00010.bits dat/F19937.bits
 $(BINDIR)/test.exe : $(MT_OBJ) $(SFMT_OBJ)
 $(BINDIR)/perf.exe : $(MT_OBJ) $(SFMT_OBJ)
+$(BINDIR)/testu01.exe : LFLAGS += -L$(TESTU01_DIR)/lib -ltestu01 -lprobdist -lmylib -lm
+
 
 $(BINDIR)/%.exe : $(BINDIR)/%.cpp.obj
-	g++ $(LFLAGS) -o $@ $^
+	g++ -o $@ $^ $(LFLAGS)
 
 
 .PHONY: clean
