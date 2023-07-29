@@ -1,4 +1,4 @@
-#include "../include/bit_matrix.h"
+#include "bit_matrix.h"
 
 #include <thread>
 #include <atomic>

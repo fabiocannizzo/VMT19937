@@ -1,6 +1,6 @@
 #include "jump_matrix.h"
 
-#include "../include/MSMT19937.h"
+#include "MSMT19937.h"
 
 /*
     VecLen:
