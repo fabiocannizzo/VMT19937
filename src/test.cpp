@@ -2,7 +2,7 @@
 
 #include "jump_matrix.h"
 
-#include "../include/MSMT19937.h"
+#include "MSMT19937.h"
 
 const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
@@ -172,38 +172,9 @@ void generateBenchmark()
     printSome(benchmark);
 }
 
-void recode()
-{
-    MT19937Matrix f, g;
-
-    for (size_t i = 19931; i <= 19937; ++i) {
-
-        std::ostringstream fIn; fIn  << "C:/workspace/repos/MT19937-SIMD/dat/F" << i << ".b64";
-        std::ostringstream fOut; fOut << "C:/workspace/repos/MT19937-SIMD/dat/F" << i << ".bits";
-
-        {
-            std::ifstream is(fIn.str());
-            f.fromBase64(is);
-            f.printSparsity();
-        }
-        {
-            std::ofstream os(fOut.str(), std::ios::binary);
-            f.toBin(os);
-        }
-
-        g.fromBinFile(fOut.str().c_str());
-
-        if (!(f == g)) {
-            std::cout << "binary round trip error" << "\n";
-            std::exit(-1);
-        }
-    }
-    exit(0);
-}
 
 int main()
 {
-    //recode();
     try {
 #if 1
         encodingTests<19937, 19937>();

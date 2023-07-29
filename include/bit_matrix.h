@@ -295,13 +295,11 @@ public:
     void toArrayChar(OS& os) const
     {
         size_t fst = true;
-        os << "{";
         for (size_t r = 0; r < s_nBitRows; ++r) {
             const char* p = (const char*)rowBegin(r);
             for (size_t c = 0; c < s_nBytesPerRow; ++c)
-                os << p[c] << ',';
+                os << (unsigned) (uint8_t) p[c] << ',';
         }
-        os << "};";
     }
 
     size_t nnz() const

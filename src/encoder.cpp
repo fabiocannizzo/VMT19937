@@ -47,50 +47,16 @@ auto parseFilePath(const std::string& filePath)
     else if (extension == "hex") {
         mode = EncodeMode::Hex;
     }
-    else if (extension == "h") {
+    else if (extension == "hmat") {
         mode = EncodeMode::Header;
     }
     else {
-        THROW("Invalid file extension in filename " << filePath << ". Extension should be one of 'b64', 'bits', 'hex', or 'h'.");
+        THROW("Invalid file extension in filename " << filePath << ". Extension should be one of 'b64', 'bits', 'hex', or 'hmat'.");
     }
 
     return std::make_tuple(folder, filename, extension, mode);
 }
-/*
-template <size_t nRows, size_t nCols>
-void testEncoder(const BinaryMatrix<nRows, nCols>& m, EncodeMode enc)
-{
-    const char* modename = enc == Base64 ? "base64" : "hex";
 
-    BinaryMatrix<nRows, nCols> m2;
-
-    std::cout << "saving matrix to " << modename << " stream\n";
-    std::ostringstream os;
-    if (enc == Base64)
-        m.toBase64(os);
-    else
-        m.toHex(os);
-
-    std::cout << "first 16 characters of the stream\n";
-    std::string s = os.str();
-    for (size_t i = 0; i < 16; ++i)
-        std::cout << s[i];
-    std::cout << "\n";
-
-    std::cout << "reading back the matrix from " << modename << " stream\n";
-    std::istringstream is(os.str());
-    if (enc == Base64)
-        m2.fromBase64(is);
-    else
-        m2.fromHex(is);
-
-    std::cout << "compare with original matrix\n";
-    if (!(m == m2))
-        throw std::invalid_argument("error in roundtrip");
-
-    std::cout << "completed\n";
-}
-*/
 void usage()
 {
     std::cerr
@@ -99,7 +65,7 @@ void usage()
         << "   encoder -i inputfile -o outputfile\n"
         << "Example:\n"
         << "   encoder -i dir1/F19937.bits -o dir2/F19937.b64\n"
-        << "valid file extensins are: b64, hex, bits, h\n";
+        << "valid file extensins are: b64, hex, bits, hmat\n";
     THROW("");
 }
 
@@ -134,17 +100,17 @@ int main(int argc, const char** argv)
         std::ifstream is;
         if (imode == EncodeMode::Hex) {
             is.open(inputfile);
-            MYASSERT(is.is_open(), "error opening binary file: " << inputfile);
+            MYASSERT(is.is_open(), "error opening input file: " << inputfile);
             matrix.fromHex(is);
         }
         if (imode == EncodeMode::Base64) {
             is.open(inputfile);
-            MYASSERT(is.is_open(), "error opening binary file: " << inputfile);
+            MYASSERT(is.is_open(), "error opening input file: " << inputfile);
             matrix.fromBase64(is);
         }
         else if (imode == EncodeMode::Binary) {
             is.open(inputfile, std::ios::binary);
-            MYASSERT(is.is_open(), "error opening binary file: " << inputfile);
+            MYASSERT(is.is_open(), "error opening input binary file: " << inputfile);
             matrix.fromBin(is);
         }
         else {
@@ -154,22 +120,22 @@ int main(int argc, const char** argv)
         std::ofstream os;
         if (omode == EncodeMode::Base64) {
             os.open(outputfile);
-            MYASSERT(os.is_open(), "error opening binary file: " << outputfile);
+            MYASSERT(os.is_open(), "error opening output file: " << outputfile);
             matrix.toBase64(os);
         }
         else if (omode == EncodeMode::Hex) {
             os.open(outputfile);
-            MYASSERT(os.is_open(), "error opening binary file: " << outputfile);
+            MYASSERT(os.is_open(), "error opening output file: " << outputfile);
             matrix.toHex(os);
         }
         else if (omode == EncodeMode::Header) {
             os.open(outputfile);
-            MYASSERT(os.is_open(), "error opening binary file: " << outputfile);
+            MYASSERT(os.is_open(), "error opening output file: " << outputfile);
             matrix.toArrayChar(os);
         }
         else if (omode == EncodeMode::Binary) {
             os.open(outputfile, std::ios::binary);
-            MYASSERT(os.is_open(), "error opening binary file: " << outputfile);
+            MYASSERT(os.is_open(), "error opening output binary file: " << outputfile);
             matrix.toBin(os);
         }
         else {
@@ -180,7 +146,7 @@ int main(int argc, const char** argv)
 
     }
     catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << "\n";
+        std::cerr << e.what() << "\n";
         return -1;
     }
     catch (...) {
