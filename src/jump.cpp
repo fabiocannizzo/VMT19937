@@ -5,6 +5,8 @@
 #include <sstream>
 #include <filesystem>
 
+using namespace std;
+
 void wait()
 {
     std::cout << "press a key...";

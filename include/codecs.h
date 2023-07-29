@@ -8,16 +8,14 @@
 #include <cassert>
 #include <cctype>
 
-using namespace std;
-
 namespace Encoder {
 
-    static const string base64Chars =
+    static const std::string base64Chars =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         "abcdefghijklmnopqrstuvwxyz"
         "0123456789+/";
 
-    static const string hexChars =
+    static const std::string hexChars =
         "0123456789"
         "ABCDEF";
 
@@ -115,7 +113,7 @@ namespace Encoder {
     }
 
 
-    inline void hexToText(string& res, const string& hex)
+    inline void hexToText(std::string& res, const std::string& hex)
     {
         size_t n = hex.size();
         size_t m = n / 2;
@@ -125,7 +123,7 @@ namespace Encoder {
             res[i] = hexPairToDec(&hex[j]);
     }
 
-    inline void textToHex(string& hex, const string& text)
+    inline void textToHex(std::string& hex, const std::string& text)
     {
         size_t n = text.size();
         size_t m = n * 2;
@@ -155,7 +153,7 @@ namespace Encoder {
     }
 
 
-    inline void textToBase64(string& res, const string& txt)
+    inline void textToBase64(std::string& res, const std::string& txt)
     {
         size_t n = txt.size();
         res.resize((n / 3 + ((n % 3) ? 1 : 0)) * 4);
@@ -183,7 +181,7 @@ namespace Encoder {
         };
     }
 
-    inline void base64ToText(string& res, const string& b64)
+    inline void base64ToText(std::string& res, const std::string& b64)
     {
         size_t n = b64.size();
         MYASSERT(((n % 4) == 0 && n > 0), "bad stream size: " << n);
