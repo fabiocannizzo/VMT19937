@@ -107,9 +107,9 @@ namespace Encoder {
         //THROW("not a base 64 character: " << t);
     }
 
-    inline uint8_t hexPairToDec(const char hex[2])
+    inline uint8_t hexPairToDec(const char hi, const char lo)
     {
-        return (hexToDec(hex[0]) << 4) | hexToDec(hex[1]);
+        return (hexToDec(hi) << 4) | hexToDec(lo);
     }
 
 
@@ -120,7 +120,23 @@ namespace Encoder {
         MYASSERT((n & 0x1) == 0, "n must be even, but got " << n);
         res.resize(m);
         for (size_t i = 0, j = 0; i < m; ++i, j += 2)
-            res[i] = hexPairToDec(&hex[j]);
+            res[i] = hexPairToDec(hex[j], hex[j+1]);
+    }
+
+    inline std::ostream& hexToTextStream(std::ostream& res, std::istream& hex)
+    {
+        char chs[2];
+        size_t n = 0;
+        for(;;) {
+            hex.read(chs, 2);
+            n += hex.gcount();
+            if (hex.eof())
+                break;
+            uint8_t txt = hexPairToDec(chs[0], chs[1]);
+            res.put(txt);
+        }
+        MYASSERT(n % 2 == 0, "hex stream length must be even, extracted " << n << " characters");
+        return res;
     }
 
     inline void textToHex(std::string& hex, const std::string& text)
@@ -213,6 +229,37 @@ namespace Encoder {
             }
             break;
         };
+    }
+
+    inline std::ostream& base64ToTextStream(std::ostream& res, std::istream& b64)
+    {
+        char b64Ch[4];
+        char textCh[3];
+        size_t n = 0;
+        for (;;) {
+            b64.read(b64Ch, 4);
+            n += b64.gcount();
+            if (b64.eof())
+                break;
+
+            if (b64Ch[3] != '=') { // there are no '=' characters
+                base64ToDec3((uint8_t*)textCh, (const uint8_t*)b64Ch);
+                res.write((char *) textCh, 3);
+            }
+            else if (b64Ch[2] != '=') { // there is just one '=' character
+                b64Ch[3] = 'A';
+                base64ToDec3((uint8_t*)textCh, (const uint8_t*)b64Ch);
+                res.write(textCh, 2);
+            }
+            else {  // there are two '=' characters
+                b64Ch[2] = b64Ch[3] = 'A';
+                base64ToDec3((uint8_t*)textCh, (const uint8_t*)b64Ch);
+                res.put(textCh[0]);
+            }
+        }
+        
+        MYASSERT(((n % 4) == 0 && n > 0), "base64 stream length must be a multiple of 4, extracted " << n << " characters");
+        return res;
     }
 
 };

@@ -60,6 +60,8 @@ class BinaryMatrix
     static const size_t s_nAlignBytes = s_nAlignBits / 8;  // suitable for AVX512
     static_assert(s_nAlignBits == 8 * s_nAlignBytes);
 
+    typedef BinaryMatrix<_nBitRows, _nBitCols> this_t;
+
     uint8_t* m_data;
 
 public:
@@ -72,6 +74,31 @@ public:
     static const size_t s_nUsedBytes = s_nBitRows * s_nBytesPerPaddedRow;
 
 private:
+
+    struct OMatrixStream : public std::stringbuf
+    {
+        this_t* m;
+        size_t rowIndex;
+        char* ptr;
+        const char* colend;
+        OMatrixStream(this_t* matrix) : m(matrix), rowIndex(size_t(-1)), ptr(nullptr), colend(nullptr) {}
+        virtual std::stringbuf::int_type overflow(std::stringbuf::int_type ch)
+        {
+            if (ptr != colend) {
+                *ptr++ = (char)ch;
+                return 0;
+            }
+            if (++rowIndex < s_nBitRows) {
+                ptr = (char*)m->rowBegin(rowIndex);
+                colend = ptr + s_nBytesPerRow;
+                *ptr++ = (char)ch;
+                return 0;
+            }
+            return std::char_traits<char>::eof();
+        }
+    };
+
+
     uint8_t& getByte(size_t rowIndex, size_t colByteIndex) { return m_data[rowIndex * s_nBytesPerPaddedRow + colByteIndex]; }
     const uint8_t& getByte(size_t rowIndex, size_t colByteIndex) const { return m_data[rowIndex * s_nBytesPerPaddedRow + colByteIndex]; }
 
@@ -216,6 +243,13 @@ public:
             std::copy(p, p + s_nBytesPerRow, (char *) rowBegin(r));
     }
 
+    void txtRowDecoderStream(std::istream& is, std::ostream& (*decoder)(std::ostream&, std::istream&))
+    {
+        OMatrixStream buffer(this);
+        std::ostream os(&buffer);
+        (*decoder)(os, is);
+    }
+
     template <typename OS>
     void toBin(OS& os) const
     {
@@ -237,9 +271,10 @@ public:
     }
 
     template <typename IS>
-    void fromBase64(IS& os)
+    void fromBase64(IS& is)
     {
-        txtRowDecoder(os, &Encoder::base64ToText);
+        //txtRowDecoder(os, &Encoder::base64ToText);
+        txtRowDecoderStream(is, &Encoder::base64ToTextStream);
     }
 
 
@@ -250,9 +285,10 @@ public:
     }
 
     template <typename IS>
-    void fromHex(IS& os)
+    void fromHex(IS& is)
     {
-        txtRowDecoder(os, &Encoder::hexToText);
+        //txtRowDecoder(is, &Encoder::hexToText);
+        txtRowDecoderStream(is, &Encoder::hexToTextStream);
     }
 
     template <typename OS>
