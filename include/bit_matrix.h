@@ -209,10 +209,7 @@ public:
         std::getline(is, encodedStr);
         (*decoder)(binStr, encodedStr);
 
-        if (binStr.length() != s_nBytesPerRow * s_nBitRows) {
-            //std::cout << "row " << r << " has bad length stream, got " << binStr.length() << ", expect " << s_nBytesPerRow << "\n";
-            throw std::invalid_argument("bad stream length");
-        }
+        MYASSERT(binStr.length() == s_nBytesPerRow * s_nBitRows, "bad stream length, expect " << (s_nBytesPerRow * s_nBitRows) << ", got " << binStr.length() << "\n");
 
         const uint8_t* p = (const uint8_t*)&binStr[0];
         for (size_t r = 0; r < s_nBitRows; ++r, p += s_nBytesPerRow)
