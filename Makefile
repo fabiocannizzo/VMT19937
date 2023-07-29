@@ -65,9 +65,11 @@ $(SFMT_OBJ) : SFMT-src-1.5.1/sfmt.c Makefile $(BINDIR)
 
 # extra dependencies for test.exe
 $(BINDIR)/test.exe : dat/F00010.bits dat/F19937.bits
+$(BINDIR)/test.exe : EXTRA_OBJ += $(MT_OBJ) $(SFMT_OBJ)
+$(BINDIR)/perf.exe : EXTRA_OBJ += $(MT_OBJ) $(SFMT_OBJ)
 
-$(BINDIR)/%.exe : $(BINDIR)/%.cpp.obj $(HEADERS) Makefile $(MT_OBJ) $(SFMT_OBJ) $(BINDIR)
-	g++ $(LFLAGS) -o $@ $(MT_OBJ) $(SFMT_OBJ) $<
+$(BINDIR)/%.exe : $(BINDIR)/%.cpp.obj $(HEADERS) Makefile $(EXTRA_OBJ) $(BINDIR)
+	g++ $(LFLAGS) -o $@ $(EXTRA_OBJ) $<
 
 
 .PHONY: clean
