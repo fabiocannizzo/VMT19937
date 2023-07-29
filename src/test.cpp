@@ -46,9 +46,9 @@ void testEncoder(const BinaryMatrix<nRows, nCols>& m, EncodeMode enc)
     else
         m.toHex(os);
 
-    std::cout << "first 16 characters of the stream\n";
+    std::cout << "first 32 characters of the stream\n";
     std::string s = os.str();
-    for (size_t i = 0; i < 16; ++i)
+    for (size_t i = 0; i < 32; ++i)
         std::cout << s[i];
     std::cout << "\n";
 
@@ -60,8 +60,7 @@ void testEncoder(const BinaryMatrix<nRows, nCols>& m, EncodeMode enc)
         m2.fromHex(is);
 
     std::cout << "compare with original matrix\n";
-    if (!(m == m2))
-        throw std::invalid_argument("error in roundtrip");
+    MYASSERT((m == m2), "error in roundtrip");
 
     std::cout << "completed\n";
 }
@@ -90,8 +89,7 @@ void testSquare(const BinarySquareMatrix<NBITS>& m)
     std::vector<typename BinarySquareMatrix<NBITS>::buffer_t> buffers(nThreads);
     m3.square(m, buffers, nullptr);
 
-    if (!(m2 == m3))
-        throw std::invalid_argument("error in square");
+    MYASSERT((m2 == m3), "error in square");
 
     //std::cout << "SUCCESS\n";
 }
@@ -144,7 +142,7 @@ void testEquivalence(const BinaryMatrix<19937>* commonJump, const BinaryMatrix<1
             case 1: aligneddst[i] = mt.genrand_uint32(); break;
             case 16: mt.genrand_uint32_blk16(aligneddst + i * BlkSize); break;
             case (624 * (VecLen / 32)):  mt.genrand_uint32_stateBlk(aligneddst + i * (624 * s_M)); break;
-            default: throw std::invalid_argument("not implemented");
+            default: THROW("not implemented");
         };
 
     for (size_t i = 0; i < nRandomTest; ++i) {
@@ -152,12 +150,9 @@ void testEquivalence(const BinaryMatrix<19937>* commonJump, const BinaryMatrix<1
         size_t seqIndex = i / s_M;
         size_t genIndex = i % s_M;
         size_t benchmarkindex = seqIndex + commonJumpSize + sequenceJumpSize * genIndex;
-        if (benchmark[benchmarkindex] != r2) {
-            std::cout << "FAILED!\n"
+        MYASSERT(benchmark[benchmarkindex] == r2, "FAILED!\n"
                 << "Difference found: out[" << i << "] = " << r2
-                << ", benchmark[" << benchmarkindex  << "] = " << benchmark[benchmarkindex] << "\n";
-            throw;
-        }
+                << ", benchmark[" << benchmarkindex  << "] = " << benchmark[benchmarkindex]);
     }
 
     std::cout << "SUCCESS!\n";

@@ -1,10 +1,12 @@
 #pragma once
+
+#include "macros.h"
+
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <cassert>
 #include <cctype>
-#include <exception>
 
 using namespace std;
 
@@ -39,8 +41,7 @@ namespace Encoder {
         if (hex >= 'A' && hex <= 'F')
             return hex - 'A' + 10;
         char t[2] = { hex, 0 };
-        cout << "not a hex character: " << t << endl;
-        throw std::invalid_argument("not a hex character");
+        THROW("not a hex character " << t);
     }
 
     inline uint8_t b64ToDec(char b64)
@@ -59,8 +60,7 @@ namespace Encoder {
         if (b64 == '/')
             return 63;
         char t[2] = { b64, 0 };
-        cout << "not a base 64 character: " << t << endl;
-        throw std::invalid_argument("not a b64 character");
+        THROW("not a base 64 character: " << t);
     }
 
     inline uint8_t hexPairToDec(const char hex[2])
@@ -73,7 +73,7 @@ namespace Encoder {
     {
         size_t n = hex.size();
         size_t m = n / 2;
-        assert((n & 0x1) == 0);  // n must be even
+        MYASSERT((n & 0x1) == 0, "n must be even, but got " << n);
         res.resize(m);
         for (size_t i = 0, j = 0; i < m; ++i, j += 2)
             res[i] = hexPairToDec(&hex[j]);
@@ -140,11 +140,7 @@ namespace Encoder {
     inline void base64ToText(string& res, const string& b64)
     {
         size_t n = b64.size();
-        if (!((n % 4) == 0 && n > 0)) {
-            std::cout << "bad stream size: " << n << "\n";
-            throw std::invalid_argument("bad stream size");
-        }
-        //assert((n % 4) == 0 && n > 0);
+        MYASSERT(((n % 4) == 0 && n > 0), "bad stream size: " << n);
         size_t nEq = (b64[n - 1] == '=' ? 1 : 0) + (b64[n - 2] == '=' ? 1 : 0);
         size_t n4 = n / 4 - (nEq > 0);
         res.resize(n4 * 3 + ((nEq > 0) ? 3 - nEq : 0));
