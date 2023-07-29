@@ -2,6 +2,13 @@ extern "C" {
 #   include "TestU01.h"
 }
 
+#include "jump_matrix.h"
+#include "MSMT19937.h"
+
+MT19937Matrix j19933("./dat/F19933.bits");
+MT19937Matrix j19934("./dat/F19934.bits");
+MT19937Matrix j19935("./dat/F19935.bits");
+
 // Example PRNG: Xorshift 32
 
 static unsigned int y = 2463534242U;
