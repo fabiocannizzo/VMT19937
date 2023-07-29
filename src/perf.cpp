@@ -1,6 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 
-#include "../include/MSMT19937.h"
+#include "MSMT19937.h"
 
 #define HAVE_SSE2
 #include "../SFMT-src-1.5.1/SFMT.h"
