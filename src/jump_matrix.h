@@ -175,10 +175,7 @@ struct MT19937Matrix : BinarySquareMatrix<19937>
     void fromBinFile(const char* filename)
     {
         std::ifstream is(filename, std::ios::binary);
-        if (!is.is_open()) {
-            std::cout << "error opening binary file: " << filename << "\n";
-            throw 0;
-        }
+        MYASSERT(is.is_open(), "error opening binary file: " << filename);
         fromBin(is);
 #ifdef TESTING
         std::cout << "loaded matrix from file: " << filename << "\n";
