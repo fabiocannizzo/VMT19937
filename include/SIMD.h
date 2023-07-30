@@ -8,7 +8,7 @@ template <size_t NumBits>
 struct SimdRegister;
 
 template <size_t NumBits>
-struct SimdRegisterAsArray;
+struct SimdRegisterEmulator;
 
 template <>
 struct SimdRegister<32>
@@ -72,17 +72,17 @@ struct SimdRegister<32>
 // This class is for debugging and testing only
 // It emulates a regsiter with size Mx32 nbits, in case that is not natively available on the hardware
 template <size_t M>
-struct SimdRegisterAsArray
+struct SimdRegisterEmulator
 {
     struct A { uint32_t a[M]; };
     A m_v;
 
-    typedef SimdRegisterAsArray<M> XV;
+    typedef SimdRegisterEmulator<M> XV;
 
-    SimdRegisterAsArray() {}
-    SimdRegisterAsArray(uint32_t v) { std::fill_n(m_v.a, M, v); }
-    SimdRegisterAsArray(const void* p) { std::copy_n((const uint32_t*) p, M, m_v.a); }
-    SimdRegisterAsArray(const A& v) { std::copy_n(v.a, M, m_v.a); }
+    SimdRegisterEmulator() {}
+    SimdRegisterEmulator(uint32_t v) { std::fill_n(m_v.a, M, v); }
+    SimdRegisterEmulator(const void* p) { std::copy_n((const uint32_t*) p, M, m_v.a); }
+    SimdRegisterEmulator(const A& v) { std::copy_n(v.a, M, m_v.a); }
 
     template <bool A>
     void store(uint32_t* dst) { std::copy_n(m_v.a, M, dst); }
@@ -280,10 +280,10 @@ struct SimdRegister<256>
 };
 #elif defined(SIMD_EMULATION)
 template <>
-struct SimdRegister<256> : public SimdRegisterAsArray<8>
+struct SimdRegister<256> : public SimdRegisterEmulator<8>
 {
-    using SimdRegisterAsArray<8>::SimdRegisterAsArray;
-    SimdRegister<256>(const SimdRegisterAsArray<8>& v) : SimdRegisterAsArray<8>(v) {}
+    using SimdRegisterEmulator<8>::SimdRegisterEmulator;
+    SimdRegister<256>(const SimdRegisterEmulator<8>& v) : SimdRegisterEmulator<8>(v) {}
 };
 #endif
 
@@ -337,10 +337,10 @@ struct SimdRegister<512>
 };
 #elif defined(SIMD_EMULATION)
 template <>
-struct SimdRegister<512> : public SimdRegisterAsArray<16>
+struct SimdRegister<512> : public SimdRegisterEmulator<16>
 {
-    using SimdRegisterAsArray<16>::SimdRegisterAsArray;
-    SimdRegister<512>(const SimdRegisterAsArray<16>& v) : SimdRegisterAsArray<16>(v) {}
+    using SimdRegisterEmulator<16>::SimdRegisterEmulator;
+    SimdRegister<512>(const SimdRegisterEmulator<16>& v) : SimdRegisterEmulator<16>(v) {}
 };
 #endif
 
