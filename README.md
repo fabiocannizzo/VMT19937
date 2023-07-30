@@ -10,21 +10,21 @@ Comprehensive test results demonstrate that the throughput of the new generator 
 A paper describing in detail the implementation is available on [arXiv]{http://www.math.sci.hiroshima-u.ac.jp/m-mat/MT/MT2002/CODES/mt19937ar.c}
 
 ## Requirements
-The library is written in C++17, although with a bit of work it could be downgraded to C++03.
-It is implemented with SIMD instructions available on modern X86-64 processors.
-It is possible to compile it for regsiter if 128, 256 or 512 bits length.
+The library is written in C++17. It uses extenseively Intel SIMD instructions, available on modern X86-64 processors.
+It can be compiled for hardware with register length of 128, 256 or 512 bits.
 
-## Library organization
-The library is header only. The only source code files you need are the ones in the `include` subfolder.
-In will need also the jump matrices. These are available in 7z format in the `dat` subfolder.
-Only one of the matrices is needed, depending on the length of the SIMD register avialble instruction set available.
-In particular, you will need one of the following files:
-- 128-bits: F19935.bits
-- 256-bits: F19934.bits
-- 512-bits: F19933.bits
-You can either uncompress the 7z files manually, or install 7za and use the `make` command.
+## Usage
+The library is header only. You only need to include the header file `include/MSMT19937.h`.
+You will need also the _jump-ahead_ matrices. These are available in _7z_ format in the `dat` subfolder.
+You can either uncompress the _7z_ files manually, or install `7za` and use the `make` command.
+For example, tp extract the matrix `F19935.bits`, on Linux or Cygwin you can type the command `make dat/F19935.bits`.
+Only one of the matrices is needed. Which one depends on the length of the SIMD registers available:
+- 128-bits: `F19935.bits`
+- 256-bits: `F19934.bits`
+- 512-bits: `F19933.bits`
 
-Tested with g++11 and VS2017.
+If you want to define multiple independent generator, for example to work with parallel Monte Carlo, you can use the _jump-ahead_ functionality
+described later. In that case you may need to extract further jump matrices, e.g. `F00100.bits`.
 
 ## Usage example (128 bits)
 The following examples uses a 128-bits architecure is available in the file `src/demo.cpp`
@@ -91,18 +91,30 @@ make NBITS=512
 ## Build TestU01 tests
 
 ## Performance Stats
-
-Performance stats obtained with a 12th Gen Intel I9-12900H CPU.
-The table below shows the time in seconds to generate 3,000,000 of uniform discrete 32bit random numbers in [0,2^32-1).
-
+The table below shows the time in seconds to generate 5 billions of uniform discrete 32-bit random numbers in the range $[0,2^{32}-1]$.
+`NBITS` and `QUERY` are the template parameters of the generator. Peformance is compared against the original MT19937 generator and the SFMT19937 variation.
 ```
---------------------------------------------------
-SIMD Set       |  NO SIMD |   SSE4   |    AVX2   |
---------------------------------------------------
-Vector Length  |     1    |     2    |      4    |
-Time (seconds) |   8.4s   |   4.7s   |    4.07s  |
---------------------------------------------------
+----------------------------------------------------------------
+| GENERATOR   | NBITS | QUERY | TARGET | CPU-1 | CPU-2 | CPU-3 |
+----------------------------------------------------------------
+| MT19937     | n.a.  | 1    | SSE2    | 31.56 | 20.07 | 16.90 | 
+| SFMT19937   | n.a.  | 1    | SSE2    | 21.67 | 6.99  | 9.97  |
+| MS-MT19937  | 32    | 1    | SSE2    | 20.83 | 11.10 | 13.54 |
+| MS-MT19937  | 128   | 1    | SSE2    | 13.28 | 6.19  | 7.14  |
+| MS-MT19937  | 128   | 16   | SSE2    | 7.77  | 3.59  | 4.19  |
+| MS-MT19937  | 128   | 2496 | SSE2    | 7.42  | 3.37  | 4.59  |
+| MS-MT19937  | 256   | 1    | AVX     | n.a.  |5.43   | 6.42  |
+| MS-MT19937  | 256   | 16   | AVX     | n.a.  |2.15   | 2.15  |
+| MS-MT19937  | 256   | 4992 | AVX     | n.a.  |2.10   | 2.06  |
+| MS-MT19937  | 512   | 1    | AVX512  | n.a.  | n.a.  | 5.66  |
+| MS-MT19937  | 512   | 16   | AVX512  | n.a.  | n.a.  | 1.45  |
+| MS-MT19937  | 512   | 9984 | AVX512  | n.a.  | n.a.  | 1.14  |
+----------------------------------------------------------------
 ```
+Performance stats obtained with the following CPUs:
+- CPU-1: Intel(R) Celeron(R) J4125, cache 4Mb, frequency 2.0 GHz, burst frequency 2.7 GHz, SIMD support for SSE4.2. This is a low end CPU.
+- CPU-2: Intel® Core™ i9-12900H, cache 24Mb cache, base frequency 3.8GHz, turbo frequency 5.0 GHz, SIMD support for AVX2. This is a high performance modern laptop CPU.
+- CPU-3: Intel® Xeon® Gold 6234, cache 24.75Mb, base frequency 3.3GHz, turbo frequency 4.0 GHz, SIMD support for AVX512. This is a high performance modern desktop CPU.
 
 ## TestU01
 
