@@ -278,7 +278,7 @@ struct SimdRegister<256>
         __m128i m_u128[2];
     };
 };
-#else
+#elif defined(SIMD_EMULATION)
 template <>
 struct SimdRegister<256> : public SimdRegisterAsArray<8>
 {
@@ -335,7 +335,7 @@ struct SimdRegister<512>
         __m256i m_u256[2];
     };
 };
-#else
+#elif defined(SIMD_EMULATION)
 template <>
 struct SimdRegister<512> : public SimdRegisterAsArray<16>
 {

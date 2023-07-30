@@ -65,9 +65,10 @@ dat/%.bits : dat/%.7z
 dat/%.hmat : dat/%.bits $(BINDIR)/encoder.exe
 	$(BINDIR)/encoder.exe -i $< -o $@
 
-# extra compilation flags for perf.cpp
+# extra compilation flags specific files
 $(BINDIR)/perf.cpp.obj : CPPFLAGS += $(SFMT_FLAGS)
-$(BINDIR)/testu01.cpp.obj : CPPFLAGS += -I$(TESTU01_DIR)/include
+$(BINDIR)/test.cpp.obj : CPPFLAGS += -DSIMD_EMULATION
+$(BINDIR)/testu01.cpp.obj : CPPFLAGS += -DSIMD_EMULATION -I$(TESTU01_DIR)/include
 
 $(BINDIR)/%.cpp.obj : src/%.cpp $(HEADERS) Makefile | $(BINDIR)
 	g++ $(CPPFLAGS) -o $@ $<
@@ -78,10 +79,8 @@ $(MT_OBJ) : mt19937-original/mt19937ar.c Makefile | $(BINDIR)
 $(SFMT_OBJ) : SFMT-src-1.5.1/sfmt.c Makefile | $(BINDIR)
 	gcc $(CFLAGS) $(SFMT_FLAGS) -o $@ $<
 
-# extra dependencies for test.exe
-$(BINDIR)/test.exe : | dat/F00010.bits dat/F19937.bits
-$(BINDIR)/test.exe : $(MT_OBJ) $(SFMT_OBJ)
-$(BINDIR)/perf.exe : $(MT_OBJ) $(SFMT_OBJ)
+# extra dependencies and flags for specific executable
+$(BINDIR)/test.exe $(BINDIR)/perf.exe : $(MT_OBJ) $(SFMT_OBJ) | dat/F00010.bits dat/F19937.bits
 $(BINDIR)/testu01.exe : | dat/F19933.bits dat/F19934.bits dat/F19935.bits
 $(BINDIR)/testu01.exe :	LFLAGS += -L$(TESTU01_DIR)/lib -ltestu01 -lprobdist -lmylib -lm
 
