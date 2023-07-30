@@ -125,7 +125,7 @@ void squareTests(std::index_sequence<NBits...>&&)
 }
 
 template <size_t VecLen, size_t BlkSize = 1>
-void testEquivalence(const BinaryMatrix<19937>* commonJump, const BinaryMatrix<19937>* seqJump, size_t commonJumpSize, size_t sequenceJumpSize)
+void testEquivalence(const MT19937Matrix* commonJump, const MT19937Matrix* seqJump, size_t commonJumpSize, size_t sequenceJumpSize)
 {
     std::cout << "Testing equivalence of generators with SIMD length " << VecLen
         << " and common jump ahead of " << commonJumpSize << " and sequence jump size of " << sequenceJumpSize
@@ -176,21 +176,18 @@ void generateBenchmark()
 int main()
 {
     try {
-#if 1
         encodingTests<19937, 19937>();
         encodingTests<19937, 1007>();
         encodingTests<1007, 19937>();
         encodingTests<1007, 1007>();
 
         squareTests(std::index_sequence<1, 5, 8, 13, 16, 20, 28, 32, 36, 60, 64, 68, 85, 126, 128, 150>{});
-#endif
+
         generateBenchmark();
 
-        MT19937Matrix jumpMatrix1, jumpMatrix1024("./dat/F00010.bits"), jumpMatrixPeriod("./dat/F19937.bits");
-
-//        initMT19937(jumpMatrix1);
-//        getBinaryMatrix("./dat/F00010.bits", jumpMatrix1024);
-//        getBinaryMatrix("./dat/F19937.bits", jumpMatrixPeriod);
+        MT19937Matrix jumpMatrix1;
+        MT19937Matrix jumpMatrix1024("./dat/F00010.bits");
+        MT19937Matrix jumpMatrixPeriod("./dat/F19937.bits");
 
         testEquivalence<32>(nullptr, nullptr, 0, 0);
         testEquivalence<32>(&jumpMatrix1024, nullptr, 1024, 0);
@@ -207,7 +204,6 @@ int main()
         testEquivalence<128, 624 * 4>(nullptr, &jumpMatrix1, 0, 1);
         testEquivalence<128, 624 * 4>(nullptr, &jumpMatrix1024, 0, 1024);
 
-#if SIMD_N_BITS > 128
         testEquivalence<256>(nullptr, nullptr, 0, 0);
         testEquivalence<256>(nullptr, &jumpMatrix1, 0, 1);
         testEquivalence<256>(nullptr, &jumpMatrix1024, 0, 1024);
@@ -217,8 +213,7 @@ int main()
         testEquivalence<256, 624 * 8>(nullptr, nullptr, 0, 0);
         testEquivalence<256, 624 * 8>(nullptr, &jumpMatrix1, 0, 1);
         testEquivalence<256, 624 * 8>(nullptr, &jumpMatrix1024, 0, 1024);
-#endif
-#if SIMD_N_BITS > 256
+
         testEquivalence<512>(nullptr, nullptr, 0, 0);
         testEquivalence<512>(nullptr, &jumpMatrix1, 0, 1);
         testEquivalence<512>(nullptr, &jumpMatrix1024, 0, 1024);
@@ -228,7 +223,6 @@ int main()
         testEquivalence<512, 624 * 16>(nullptr, nullptr, 0, 0);
         testEquivalence<512, 624 * 16>(nullptr, &jumpMatrix1, 0, 1);
         testEquivalence<512, 624 * 16>(nullptr, &jumpMatrix1024, 0, 1024);
-#endif
     }
     catch (const std::exception& e) {
         std::cout << e.what() << "\n";
