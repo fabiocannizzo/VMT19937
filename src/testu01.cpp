@@ -29,7 +29,7 @@ enum Modes { SmallCrush = 0, Crush = 1, BigCrush = 2 };
 template <size_t NBITS>
 struct TestRunner
 {
-    typedef MSMT19937<NBITS> gen_t;
+    typedef MSMT19937<NBITS, QM_Scalar> gen_t;
 
     static const size_t M = NBITS / 32;
     static const size_t ArrayIndex = M == 1 ? 0 : std::log2(M) - 1;

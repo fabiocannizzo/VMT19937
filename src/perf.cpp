@@ -40,9 +40,13 @@ struct Result
     }
 };
 
-template <size_t VecLen, size_t BlkSize = 1>
+template <size_t VecLen, MSMT19937QueryMode BlkMode>
 Result testPerformance(size_t runId)
 {
+    typedef MSMT19937<VecLen, BlkMode> gen_t;
+
+    static const size_t BlkSize = gen_t::s_qryBlkSize;
+
     std::cout << "Generate " << nRandomPerf << " random numbers with SIMD length " << VecLen;
     if (BlkSize > 1)
         std::cout << " in blocks of " << BlkSize;
@@ -51,17 +55,19 @@ Result testPerformance(size_t runId)
     std::vector<uint32_t> dst(BlkSize + 64 / sizeof(uint32_t));
     uint32_t* aligneddst = (uint32_t*)((intptr_t)dst.data() + (64 - ((intptr_t)dst.data() % 64)));
 
-    MSMT19937<VecLen> mt(seedinit, seedlength, NULL);
+    gen_t mt(seedinit, seedlength, NULL);
 
     auto start = std::chrono::system_clock::now();
     for (size_t i = 0; i < nRandomPerf / BlkSize; ++i)
-        switch (BlkSize) {
-            case 1: aligneddst[0] = mt.genrand_uint32(); break;
-            case 16: mt.genrand_uint32_blk16(aligneddst); break;
-            case (624 * (VecLen / 32)):  mt.genrand_uint32_stateBlk(aligneddst); break;
-            default: THROW("not implemented");
-        };
-    auto end = std::chrono::system_clock::now();
+        if constexpr (BlkMode == QM_Scalar)
+            aligneddst[0] = mt.genrand_uint32();
+        else if constexpr (BlkMode == QM_Block16)
+            mt.genrand_uint32_blk16(aligneddst);
+        else if constexpr (BlkMode == QM_StateSize)
+            mt.genrand_uint32_stateBlk(aligneddst);
+        else
+            NOT_IMPLEMENTED;
+        auto end = std::chrono::system_clock::now();
 
     std::chrono::duration<double> elapsed_seconds = end - start;
     double nSeconds = elapsed_seconds.count();
@@ -139,20 +145,20 @@ int main(int argc, const char** argv)
 
         res.push_back(originalPerformance(i));
         res.push_back(sfmtPerformance(i));
-        res.push_back(testPerformance<32>(i));
+        res.push_back(testPerformance<32, QM_Scalar>(i));
         //testPerformance<64>();
-        res.push_back(testPerformance<128>(i));
-        res.push_back(testPerformance<128, 16>(i));
-        res.push_back(testPerformance<128, 624 * (128 / 32)>(i));
+        res.push_back(testPerformance<128, QM_Scalar>(i));
+        res.push_back(testPerformance<128, QM_Block16>(i));
+        res.push_back(testPerformance<128, QM_StateSize>(i));
 #if SIMD_N_BITS >= 256
-        res.push_back(testPerformance<256>(i));
-        res.push_back(testPerformance<256, 16>(i));
-        res.push_back(testPerformance<256, 624 * (256 / 32)>(i));
+        res.push_back(testPerformance<256, QM_Scalar>(i));
+        res.push_back(testPerformance<256, QM_Block16>(i));
+        res.push_back(testPerformance<256, QM_StateSize>(i));
 #endif
 #if SIMD_N_BITS >= 512
-        res.push_back(testPerformance<512>(i));
-        res.push_back(testPerformance<512, 16>(i));
-        res.push_back(testPerformance<512, 624 * (512 / 32)>(i));
+        res.push_back(testPerformance<512, QM_Scalar>(i));
+        res.push_back(testPerformance<512, QM_Block16>(i));
+        res.push_back(testPerformance<512, QM_StateSize>(i));
 #endif
     }
 
