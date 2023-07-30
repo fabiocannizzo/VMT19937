@@ -2,8 +2,13 @@
 
 #include "simd_config.h"
 
+#include <algorithm>
+
 template <size_t NumBits>
 struct SimdRegister;
+
+template <size_t NumBits>
+struct SimdRegisterAsArray;
 
 template <>
 struct SimdRegister<32>
@@ -61,6 +66,56 @@ struct SimdRegister<32>
             return popcnt(m_simd) % 2;
         }
         uint32_t m_simd;
+    };
+};
+
+// This class is for debugging and testing only
+// It emulates a regsiter with size Mx32 nbits, in case that is not natively available on the hardware
+template <size_t M>
+struct SimdRegisterAsArray
+{
+    struct A { uint32_t a[M]; };
+    A m_v;
+
+    typedef SimdRegisterAsArray<M> XV;
+
+    SimdRegisterAsArray() {}
+    SimdRegisterAsArray(uint32_t v) { std::fill_n(m_v.a, M, v); }
+    SimdRegisterAsArray(const void* p) { std::copy_n((const uint32_t*) p, M, m_v.a); }
+    SimdRegisterAsArray(const A& v) { std::copy_n(v.a, M, m_v.a); }
+
+    template <bool A>
+    void store(uint32_t* dst) { std::copy_n(m_v.a, M, dst); }
+
+    friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = a.m_v.a[i] & b.m_v.a[i]; return r; }
+    friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = a.m_v.a[i] ^ b.m_v.a[i]; return r; }
+    friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = a.m_v.a[i] | b.m_v.a[i]; return r; }
+    friend FORCE_INLINE XV operator<<(const XV& a, const int n) { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = a.m_v.a[i] << n; return r; }
+    friend FORCE_INLINE XV operator>>(const XV& a, const int n) { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = a.m_v.a[i] >> n; return r; }
+
+    static FORCE_INLINE XV zero() { return XV(uint32_t(0)); }
+
+    FORCE_INLINE XV ifOddValueElseZero(const XV& value) const { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = (m_v.a[i] % 2) ? value.m_v.a[i] : 0; return r; }
+
+    union Konst
+    {
+        Konst() : m_simd(uint32_t(0)) {}
+
+        void operator^=(const XV& value)
+        {
+            for (size_t i = 0; i < M; ++i)
+                m_simd.a[i] ^= value.m_v.a[i];
+        }
+
+        uint8_t parity() const
+        {
+            size_t n = 0;
+            for (size_t i = 0; i < M; ++i)
+                n += popcnt(m_simd.a[i]);
+            return n % 2;
+        }
+
+        A m_simd;
     };
 };
 
@@ -223,6 +278,13 @@ struct SimdRegister<256>
         __m128i m_u128[2];
     };
 };
+#else
+template <>
+struct SimdRegister<256> : public SimdRegisterAsArray<8>
+{
+    using SimdRegisterAsArray<8>::SimdRegisterAsArray;
+    SimdRegister<256>(const SimdRegisterAsArray<8>& v) : SimdRegisterAsArray<8>(v) {}
+};
 #endif
 
 #if SIMD_N_BITS>=512
@@ -272,6 +334,13 @@ struct SimdRegister<512>
         __m512i m_simd;
         __m256i m_u256[2];
     };
+};
+#else
+template <>
+struct SimdRegister<512> : public SimdRegisterAsArray<16>
+{
+    using SimdRegisterAsArray<16>::SimdRegisterAsArray;
+    SimdRegister<512>(const SimdRegisterAsArray<16>& v) : SimdRegisterAsArray<16>(v) {}
 };
 #endif
 
