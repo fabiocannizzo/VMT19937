@@ -9,6 +9,7 @@ extern "C" {
 #include <functional>
 #include <string>
 #include <iostream>
+#include <cmath>
 
 using namespace std;
 //using namespace std::placeholders;
@@ -17,15 +18,59 @@ MT19937Matrix j19933("./dat/F19933.bits");
 MT19937Matrix j19934("./dat/F19934.bits");
 MT19937Matrix j19935("./dat/F19935.bits");
 
+MT19937Matrix* pjump[4] = { nullptr, &j19935, &j19934, &j19933 };
+char genNames[4][64] = { "MS-MT1937 (M=1)", "MS-MT1937 (M=4)", "MS-MT1937 (M=8)", "MS-MT1937 (M=16)"};
+
 const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 
-std::function<uint32_t(void)> s_getrnd;
+enum Modes { SmallCrush = 0, Crush = 1, BigCrush = 2 };
 
-uint32_t getrnd()
+template <size_t NBITS>
+struct TestRunner
 {
-    return s_getrnd();
-}
+    typedef MSMT19937<NBITS> gen_t;
+
+    static const size_t M = NBITS / 32;
+    static const size_t ArrayIndex = M == 1 ? 0 : std::log2(M) - 1;
+
+    static gen_t* s_genptr;
+
+    static uint32_t getRnd()
+    {
+        return s_genptr->genrand_uint32();
+    }
+
+    static void run(size_t mode)
+    {
+        gen_t g(seedinit, seedlength, nullptr, pjump[ArrayIndex]);
+        s_genptr = &g;
+
+        // create TestU01 generator wrapper
+        unif01_Gen* gen = unif01_CreateExternGenBits(genNames[ArrayIndex], getRnd);
+
+        // Run the tests.
+        switch (mode) {
+            case SmallCrush:
+                bbattery_SmallCrush(gen);
+                break;
+            case Crush:
+                bbattery_Crush(gen);
+                break;
+            case BigCrush:
+                bbattery_BigCrush(gen);
+                break;
+            default:
+                MYASSERT(false, "Invalid mode " << mode);
+        }
+
+        // Clean up.
+        unif01_DeleteExternGenBits(gen);
+    }
+};
+
+template <size_t NBITS>
+typename TestRunner<NBITS>::gen_t* TestRunner<NBITS>::s_genptr = nullptr;
 
 void usage()
 {
@@ -58,51 +103,25 @@ int main(int argc, const char** argv)
         }
     }
 
-
-    char name[64];
-    std::unique_ptr<MSMT19937<32>> p32;
-    std::unique_ptr<MSMT19937<128>> p128;
-
     try {
-
         switch (nBits) {
             case 32:
-            {
-                p32.reset(new MSMT19937<32>(seedinit, seedlength, nullptr, nullptr));
-                strcpy(name, "MS-1-MT1937");
-                s_getrnd = bind(&MSMT19937<32>::genrand_uint32, p32.get());
+                TestRunner<32>::run(mode);
                 break;
-            }
             case 128:
-            {
-                p128.reset(new MSMT19937<128>(seedinit, seedlength, nullptr, &j19935));
-                strcpy(name, "MS-4-MT1937");
-                s_getrnd = bind(&MSMT19937<128>::genrand_uint32, p128.get());
+                TestRunner<128>::run(mode);
                 break;
-            }
+            case 256:
+                NOT_IMPLEMENTED;
+                //TestRunner<256>::run(mode);
+                break;
+            case 512:
+                NOT_IMPLEMENTED;
+                //TestRunner<512>::run(mode);
+                break;
             default:
                 MYASSERT(false, "Invalid number of bits " << nBits);
-        };
-
-        unif01_Gen* gen = unif01_CreateExternGenBits(name, getrnd);
-
-        // Run the tests.
-        switch (mode) {
-            case 0:
-                bbattery_SmallCrush(gen);
-                break;
-            case 1:
-                bbattery_Crush(gen);
-                break;
-            case 2:
-                bbattery_BigCrush(gen);
-                break;
-            default:
-                MYASSERT(false, "Invalid mode " << mode);
         }
-
-        // Clean up.
-        unif01_DeleteExternGenBits(gen);
     }
     catch (const std::exception& e) {
         std::cerr << e.what() << "\n";
