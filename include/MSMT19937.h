@@ -328,36 +328,36 @@ public:
     }
 
     // generates a random number on [0,0x7fffffff]-interval
-    uint32_t genrand_uint31(void)
+    static uint32_t convert_uint31(uint32_t rnd)
     {
-        return (long)(genrand_uint32() >> 1);
+        return (uint32_t)(rnd >> 1);
     }
 
     // generates a random number on [0,1]-real-interval
-    double genrand_real1(void)
+    static double convert_real1(uint32_t rnd)
     {
-        return genrand_uint32() * (1.0 / 4294967295.0);
+        return rnd * (1.0 / 4294967295.0);
         // divided by 2^32-1 
     }
 
     // generates a random number on [0,1)-real interval 
-    double genrand_real2(void)
+    static double convert_real2(uint32_t rnd)
     {
-        return genrand_uint32() * (1.0 / 4294967296.0);
+        return rnd * (1.0 / 4294967296.0);
         // divided by 2^32 
     }
 
     // generates a random number on (0,1)-real-interval
-    double genrand_real3(void)
+    static double convert_real3(uint32_t rnd)
     {
-        return (((double)genrand_uint32()) + 0.5) * (1.0 / 4294967296.0);
+        return (((double)rnd) + 0.5) * (1.0 / 4294967296.0);
         // divided by 2^32 
     }
 
     // generates a random number on [0,1) with 53-bit resolution
-    double genrand_res53(void)
+    static double convert_res53(uint32_t rnd1, uint32_t rnd2)
     {
-        uint32_t a = genrand_uint32() >> 5, b = genrand_uint32() >> 6;
+        uint32_t a = rnd1 >> 5, b = rnd2 >> 6;
         return(a * 67108864.0 + b) * (1.0 / 9007199254740992.0);
     }
 };

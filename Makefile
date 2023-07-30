@@ -68,8 +68,7 @@ dat/%.hmat : dat/%.bits $(BINDIR)/encoder.exe
 
 # extra compilation flags specific files
 $(BINDIR)/perf.cpp.obj : CPPFLAGS += $(SFMT_FLAGS)
-$(BINDIR)/test.cpp.obj : CPPFLAGS += -DSIMD_EMULATION
-$(BINDIR)/testu01.cpp.obj : CPPFLAGS += -DSIMD_EMULATION -I$(TESTU01_DIR)/include
+$(BINDIR)/testu01.cpp.obj : CPPFLAGS += -I$(TESTU01_DIR)/include
 
 $(BINDIR)/%.cpp.obj : src/%.cpp $(HEADERS) Makefile | $(BINDIR)
 	g++ $(CPPFLAGS) -o $@ $<
