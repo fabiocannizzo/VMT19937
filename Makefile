@@ -29,6 +29,7 @@ else ifeq ($(NBITS), 128)
 endif
 
 BINDIR=bin-$(NBITS)
+LOGDIR=testu01-logs
 
 COMMONFLAGS = -c -O3 $(SIMD)
 
@@ -88,6 +89,20 @@ $(BINDIR)/testu01.exe :	LFLAGS += -L$(TESTU01_DIR)/lib -ltestu01 -lprobdist -lmy
 $(BINDIR)/%.exe : $(BINDIR)/%.cpp.obj
 	g++ -o $@ $^ $(LFLAGS)
 
+BITS=32 128 256 512
+TESTLOGS=$(patsubst %,$(LOGDIR)/SmallCrush-%.log,$(BITS)) $(patsubst %,$(LOGDIR)/Crush-%.log,$(BITS)) $(patsubst %,$(LOGDIR)/BigCrush-%.log,$(BITS))
+$(info TESTLOGS: $(TESTLOGS))
+
+testu01logs: $(TESTLOGS)
+
+$(LOGDIR)/SmallCrush-%.log : | $(BINDIR)/testu01.exe
+	$(BINDIR)/testu01.exe -b $* -m 0 > $@
+
+$(LOGDIR)/Crush-%.log : | $(BINDIR)/testu01.exe
+	$(BINDIR)/testu01.exe -b $* -m 1 > $@
+
+$(LOGDIR)/BigCrush-%.log : | $(BINDIR)/testu01.exe
+	$(BINDIR)/testu01.exe -b $* -m 2 > $@
 
 .PHONY: clean
 clean:
