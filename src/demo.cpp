@@ -23,8 +23,8 @@ void demo128()
     std::cout << "example of how to use the generator with M=4 and SSE2 instructions\n";
 
     // With 128 bits we use M=128/32=4 state vectors
-    // We use a jump ahead matrix of 2^1993X values, where X=log2(M), i.e. 2
-    // This is the jump ahead matrix 2^19935 values
+    // We use a jump ahead matrix of 2^1993X values, where X=log2(M)
+    // With M=4 we have X=5, i.e. we use the matrix for jump ahead of 2^19935 values
     // When initializing with this matrix:
     // - the 1st state is the same as the original MT19937
     // - the 2nd state is shifted forward by 1*2^19935 values
