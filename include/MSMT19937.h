@@ -17,7 +17,10 @@
 #include <cstdint>
 #include <cstddef>
 
-template <size_t RegisterBitLen = SIMD_N_BITS>
+enum MSMT19937QueryMode { QM_Scalar, QM_Block16, QM_StateSize };
+
+
+template <size_t RegisterBitLen = SIMD_N_BITS, MSMT19937QueryMode QueryMode = QM_Scalar>
 class MSMT19937
 {
     const static size_t s_regLenBits = RegisterBitLen;
@@ -34,8 +37,7 @@ class MSMT19937
     static const uint32_t s_temperMask1 = 0x9d2c5680UL;
     static const uint32_t s_temperMask2 = 0xefc60000UL;
 
-    alignas(64) XV m_state[s_N];  // the array os state vectors
-    //XV m_rnd[s_N]; // a cache of uniform discrete random numbers in the range [0,0xffffffff]
+    alignas(64) XV m_state[s_N];  // the array of state vectors
     alignas(64) XV m_rnd[64/sizeof(XV)];
     const XV *m_pst, *m_pst_end;    // m_pos==m_pst_end means the state vector has been consumed and need to be regenerated
     const uint32_t* m_prnd;
@@ -55,7 +57,6 @@ class MSMT19937
         y = y ^ (y >> 18);
         return y;
     }
-
 
     template <bool Aligned>
     void FORCE_INLINE temperRefill(XV *dst)
@@ -224,6 +225,9 @@ class MSMT19937
     }
 
 public:
+
+    const static size_t s_qryBlkSize = (QueryMode == QM_Scalar) ? 1 : (QueryMode == QM_Block16) ? 16 : s_N * s_regLenWords;
+
     // constructors
     MSMT19937()
         : m_pst(nullptr)
@@ -253,7 +257,6 @@ public:
     // initialize by an array with array-length
     // init_key is the array for initializing keys
     // key_length is its length
-    // slight change for C++, 2004/2/26
     void reinit(const uint32_t seeds[], uint32_t n_seeds, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
     {
         __reinit(uint32_t(19650218));
@@ -283,6 +286,8 @@ public:
     // generates a random number on [0,0xffffffff] interval
     uint32_t FORCE_INLINE genrand_uint32()
     {
+        static_assert(QueryMode == QM_Scalar);
+
         if ((reinterpret_cast<intptr_t>(m_prnd) % sizeof(m_rnd)) != 0)
             return *m_prnd++;
 
@@ -300,6 +305,8 @@ public:
     // generates 16 uniform discrete random numbers in [0,0xffffffff] interval
     void genrand_uint32_blk16(uint32_t* dst)
     {
+        static_assert(QueryMode == QM_Block16);
+
         if (m_pst != m_pst_end)
             /* do nothing*/; // most likely case first
         else
@@ -311,6 +318,8 @@ public:
     // generates a block of the same size as the state vector of uniform discrete random numbers in [0,0xffffffff] interval
     void genrand_uint32_stateBlk(uint32_t* dst)
     {
+        static_assert(QueryMode == QM_StateSize);
+
         refill();
         for (size_t i = 0; i < sizeof(m_state) / sizeof(m_rnd); ++i) {
             temperRefill<false>((XV*)dst);
@@ -351,6 +360,5 @@ public:
         uint32_t a = genrand_uint32() >> 5, b = genrand_uint32() >> 6;
         return(a * 67108864.0 + b) * (1.0 / 9007199254740992.0);
     }
-    // These real versions are due to Isaku Wada, 2002/01/09 added
 };
 
