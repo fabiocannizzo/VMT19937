@@ -112,12 +112,12 @@ int main(int argc, const char** argv)
                 TestRunner<128>::run(mode);
                 break;
             case 256:
-                NOT_IMPLEMENTED;
-                //TestRunner<256>::run(mode);
+                //NOT_IMPLEMENTED;
+                TestRunner<256>::run(mode);
                 break;
             case 512:
-                NOT_IMPLEMENTED;
-                //TestRunner<512>::run(mode);
+                //NOT_IMPLEMENTED;
+                TestRunner<512>::run(mode);
                 break;
             default:
                 MYASSERT(false, "Invalid number of bits " << nBits);
