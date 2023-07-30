@@ -1,4 +1,5 @@
 #define TESTING
+#define SIMD_EMULATION
 
 #include "jump_matrix.h"
 
