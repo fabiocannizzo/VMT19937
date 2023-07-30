@@ -131,7 +131,7 @@ This paper first describes the original MT19937 algorithm and discusses the vect
 \label{sec:mt19937}
 \subsection{Algorithm description}
 The MT19937 is a pseudo random number generator due to Matsumoto and Nishimura \cite{mt19937}.
-Given an initial state $X$ made of $n$ words of $w$ bits each $X=(x_0, x_1, \dots x_{n-1})$, it generates a sequence $\bold{Z}$ of pseudo random words $z_{0}, z_{1}, \dots, z_{n+P-1}$, with uniform distribution in the range $[0, 2^w-1]$, where $P$ is the period of the generator, after which the sequence of numbers repeats itself. \\
+Given an initial state $X$ made of $n$ words of $w$ bits each $X=(x_0, x_1, \dots x_{n-1})$, it generates a sequence $\boldsymbol{Z}$ of pseudo random words $z_{0}, z_{1}, \dots, z_{n+P-1}$, with uniform distribution in the range $[0, 2^w-1]$, where $P$ is the period of the generator, after which the sequence of numbers repeats itself. \\
 
 Pseudo random words $z_k$ ($k=0, \dots, P-1$) are generated sequentially via the following algorithm:
 \begin{equation}
@@ -143,7 +143,7 @@ Pseudo random words $z_k$ ($k=0, \dots, P-1$) are generated sequentially via the
 \quad k=0\dots P-1
 \end{equation}
 
-To describe the transformations $f(\cdot)$ and $g(\cdot)$ used in \eqref{eq:formula}, we first introduce some notation. Let $a$ and $b$ be words of $w$ bits and $\alpha$ be an integer in the range $0\le \alpha \le w$ and $A$ be a binary matrix of size $w \times w$:
+\noindent To describe the transformations $f(\cdot)$ and $g(\cdot)$ used in \eqref{eq:formula}, we first introduce some notation. Let $a$ and $b$ be words of $w$ bits and $\alpha$ be an integer in the range $0\le \alpha \le w$ and $A$ be a binary matrix of size $w \times w$:
 \begin{itemize}
 %    \item a bold lowercase variable $\textbf{a}$ refers to a $w$-bits word
 %    \item $(a^0, a^1, \dots, a^{w-1})$ are the individual bits of the word $\textbf{a}$, where $a^0$ is the lease significant bit
@@ -157,7 +157,7 @@ To describe the transformations $f(\cdot)$ and $g(\cdot)$ used in \eqref{eq:form
 \end{itemize}
 Noting that $\&$ has higher priority than $\mid$ and $\star$ has higher priority than $\oplus$, will allow to avoid unnecessary parenthesis and simplify notation.
 
-The recurrence $f(\cdot)$ used in \eqref{eq:formula} to obtain the new element of the state vector is
+\noindent The recurrence $f(\cdot)$ used in \eqref{eq:formula} to obtain the new element of the state vector is
 \begin{equation}
 \label{eq:step}
     x_{k+n} = f(x_{k},x_{k+1}, \dots, x_{k+n-1}) = x_{k+m} ~\XOR ~\underbrace{\left({x_k}~\AND~h ~\OR~ x_{k+1}~\AND~l\right) }_u \star A 
@@ -176,7 +176,7 @@ A = \left[ \begin{matrix} 0 & I_{w - 1} \\ a_{w-1} & (a_{w - 2}, \ldots , a_0) \
 \end{equation}
 Note that although the stored state vector has size $nw$ bits, the lower $r$ bits of $x_k$ are not used in transformation \eqref{eq:step} and after the transformation is complete they are discarded, so the effective dimension of the state vector is only $nw-r$ bits. \\ % This determines the period of the generator $P=2^{nw-r}-1$.
 
-The transformation $g(\cdot)$, called tempering, is also chosen to be quickly computable. For some chosen value of the $w$-bits constant words $d$, $b$, $c$, and some chosen values of the constants $\alpha$, $\beta$, $\gamma$ and $\delta$ in the range $[0,32]$, $z=g(x)$ is obtained via the sequence of transformations
+\noindent The transformation $g(\cdot)$, called tempering, is also chosen to be quickly computable. For some chosen value of the $w$-bits constant words $d$, $b$, $c$, and some chosen values of the constants $\alpha$, $\beta$, $\gamma$ and $\delta$ in the range $[0,32]$, $z=g(x)$ is obtained via the sequence of transformations
 \begin{equation}
 \label{eq:tempering}
 \begin{aligned}
@@ -187,7 +187,7 @@ z &= y \oplus (y\gg \delta)
 \end{aligned}
 \end{equation}
 
-The chosen value for all the above parameters are:
+\noindent The chosen value for all the above parameters are:
 \begin{equation}
 \label{eq:params}
 \begin{aligned}
@@ -202,7 +202,7 @@ a &= \textrm{9908B0DF}\\
 where the words $a$, $d$, $b$ and $c$ are expressed in hexadecimal format. These choice of parameters yield a huge generator period $P=2^{nw-r}-1=2^{19937}-1$ and good K-distribution properties of the generator.
 
 \subsection{Implementation}
-For each new random word generated in \eqref{eq:formula} the state vector is transformed by \eqref{eq:step} removing the least significant word $x_{k}$ on its left side and adding a new word $x_{k+n}$ on its right side. Starting with an initial state vector $X_0=(x_0, x_1, \dots, x_{n-1})$, the state vector evolves as
+\noindent For each new random word generated in \eqref{eq:formula} the state vector is transformed by \eqref{eq:step} removing the least significant word $x_{k}$ on its left side and adding a new word $x_{k+n}$ on its right side. Starting with an initial state vector $X_0=(x_0, x_1, \dots, x_{n-1})$, the state vector evolves as
 $$
 \begin{matrix}
 X_0 &=& x_0 & x_1 & \dots & x_{n-1} &\\
@@ -239,7 +239,7 @@ Note that after $n$ steps, i.e. repeating \eqref{eq:stepmod} $n$ times, all elem
 \end{equation}
 After the state vector has been advanced by $n$ steps, $n$ new pseudo random words can be produced by applying transformation \eqref{eq:tempering} to the new state elements.
 \subsection{Vectorization obstacles}
-The specific parameters \eqref{eq:params} chosen for the MT19937 are $w=32$, $n=624$, $r=31$ and $m=397$, so in order to generate an entirely new state vector the first instruction in \eqref{eq:stepnomod} needs to be executed 227 times, the second one 396 times and the last one just once. Vectorization consists in packing operations carried out in loops \eqref{eq:stepnomod} so that multiple iterations can be done simultaneously using SIMD instructions. For instance, SSE2 registers are 128 bits wide and allow to pack 4x32-bit words operations into a single operation. The first instruction in \eqref{eq:stepnomod} could be implemented in vectorial format as:
+\noindent The specific parameters \eqref{eq:params} chosen for the MT19937 are $w=32$, $n=624$, $r=31$ and $m=397$, so in order to generate an entirely new state vector the first instruction in \eqref{eq:stepnomod} needs to be executed 227 times, the second one 396 times and the last one just once. Vectorization consists in packing operations carried out in loops \eqref{eq:stepnomod} so that multiple iterations can be done simultaneously using SIMD instructions. For instance, SSE2 registers are 128 bits wide and allow to pack 4x32-bit words operations into a single operation. The first instruction in \eqref{eq:stepnomod} could be implemented in vectorial format as:
 \begin{align}
 \label{eq:stepsse2}
 \begin{pmatrix}x_{k} \\ x_{k+1} \\ x_{k+2} \\ x_{k+3} \end{pmatrix}
@@ -253,31 +253,32 @@ A second issue is that the tuples $(x_k, x_{k+1}, x_{k+2}, x_{k+2})$ appearing i
 
 \section{Multi state Mersenne twister 19937 (MS-MT19937)}
 \label{sec:simdgen}
-In this section, we introduce a novel random number generator that utilizes multiple MT19937 generators as building blocks and combines them to produce a new sequence of random numbers. This new generator preserves the same statistical properties and period as the original MT19937, but it is specifically designed to be SIMD friendly. As a result, its throughput scales proportionally to the length of the SIMD registers available on the hardware. We name this new generator \textit{multi state Mersenne twister 19937}, or, in abbreviated form, \textbf{MS-MT19937}.
-
-Given a certain initial state $X_0$, the MT19937 pseudo-random number generator produces a sequence $\bold{Z}$ of independent and uniformly distributed random numbers $z_k$ with a period of $P=2^{19937}-1$.
+\noindent In this section, we introduce a novel random number generator that utilizes multiple MT19937 generators as building blocks and combines their random number streams to produce a new sequence of random numbers. This new generator preserves the same statistical properties and period as the original MT19937, but it is specifically designed to be SIMD friendly. As a result, its throughput scales proportionally to the length of the SIMD registers available on the hardware. We name this new generator \textit{multi state Mersenne twister 19937}, or, in abbreviated form, \textbf{MS-MT19937}.
+Given a certain initial state $X_0$, the MT19937 pseudo-random number generator produces a sequence $\boldsymbol{Z}$ of pseudo random numbers $z_k$
 \begin{equation}
 \label{eq:mainseq}
-   \bold{Z} = z_0, z_1, \dots, z_{P-1} 
+   \boldsymbol{Z} = z_0, z_1, \dots, z_{P-1} 
 \end{equation}
-Let's consider $M$ sub-sequences $\bold{Z_t}$ ($t=0\dots M-1$) of equal size $J$ obtained by partitioning the first $M\cdot J$ numbers of sequence $\bold{Z}$ in groups of equal length $J$
+These numbers are independent and identically distributed, or at least, they emulate such statistical properties. They have uniform discrete distribution in $[0, 2^{32}-1]$, and the sequence has a period of $P=2^{19937}-1$.
+
+\noindent Let's consider $M$ sub-sequences $\boldsymbol{Z_t}$ ($t=0\dots M-1$) of equal size $J$ obtained by partitioning the first $M\cdot J$ numbers of sequence $\boldsymbol{Z}$ in groups of equal length $J$
 \begin{equation}
 \label{eq:subseq}
-   \underbrace{z_0, z_1, \dots, z_{J-1}}_{\bold{Z_0}},\, \underbrace{z_J, z_{J+1}, \dots, z_{2J-1}}_{\bold{Z_1}}, \dots,\, \underbrace{z_{(M-1)J}, z_{(M-1)J+1}, \dots, z_{MJ-1}}_{\bold{Z_{M-1}}}
+   \underbrace{z_0, z_1, \dots, z_{J-1}}_{\boldsymbol{Z_0}},\, \underbrace{z_J, z_{J+1}, \dots, z_{2J-1}}_{\boldsymbol{Z_1}}, \dots,\, \underbrace{z_{(M-1)J}, z_{(M-1)J+1}, \dots, z_{MJ-1}}_{\boldsymbol{Z_{M-1}}}
 \end{equation}
-Let's construct a new sequence $\bold{S}$ which interleaves the sequences $\bold{Z_t}$
+Let's construct a new sequence $\boldsymbol{S}$ which interleaves the sequences $\boldsymbol{Z_t}$
 \begin{equation}
 \label{eq:combseq}
-   \bold{S}=\underbrace{z_0, z_J, z_{2J}, \dots, z_{(M-1)J,}}_{\text{1-st number from each sub-sequence}} \,\underbrace{z_1, z_{J+1}, z_{2J+1}, \dots, z_{(M-1)J+1},}_{\text{2-nd number from each sub-sequence}}\, \dots, \underbrace{z_{J-1}, z_{2J-1}, z_{3J-1}, \dots, z_{MJ-1}}_{\text{$J$-th number from each sub-sequence}}
+   \boldsymbol{S}=\underbrace{z_0, z_J, z_{2J}, \dots, z_{(M-1)J,}}_{\text{1-st number from each sub-sequence}} \,\underbrace{z_1, z_{J+1}, z_{2J+1}, \dots, z_{(M-1)J+1},}_{\text{2-nd number from each sub-sequence}}\, \dots, \underbrace{z_{J-1}, z_{2J-1}, z_{3J-1}, \dots, z_{MJ-1}}_{\text{$J$-th number from each sub-sequence}}
 \end{equation}
-Note that, because the numbers in the original sequence $\bold{Z}$ are independent, the numbers in the new sequence $\bold{S}$ obtained by interleaving the sub-sequences $\bold{Z_t}$ are also independent.
+Note that, because the numbers in the original sequence $\boldsymbol{Z}$ are independent and identically distributed, the numbers in the new sequence $\boldsymbol{S}$ obtained by interleaving the sub-sequences $\boldsymbol{Z_t}$ are also independent and identically distributed. The period of the new sequence is $MJ$, so if $J$ is chosen as $P/M$, then the new sequence has the same period as the original one.
 
-Given a CPU architecture with SIMD register size of width $L$ expressed in number of bits, we can choose $M$ as the number of 32-bit words which fits in the SIMD registers, i.e. $M=L/32$. We divide the total periods in sub-sequences of length $$J=\frac{P+1}{M}=2^{19937-\log_2M}$$
-For example, working with AVX512 instructions where $L=512$, we have $M=16$, $J=2^{19933}$. Note that, because the total period is $P$ and not $P+1$, we choose the last sequence $S_{M-1}$ to be shorter than the others and have length $J-1$ instead of $J$.
+\noindent Given a CPU architecture with SIMD register size of width $L$ expressed in number of bits, we can choose $M$ as the number of 32-bit words which fits in the SIMD registers, i.e. $M=L/32$. We divide the total periods in sub-sequences of length $$J=\frac{P+1}{M}=2^{19937-\log_2M}$$
+For example, working with AVX512 instructions where $L=512$, we have $M=16$, $J=2^{19933}$. Note that we used as a numerator $P+1$, instead of $P$. This is because the period $P$ is not a perfect power of 2, whereas $P+1$ is. As a result, the last sequence $S_{M-1}$ is a bit shorter than the others and has length $J-1$ instead of $J$.
 
-A pseudo-random number generator which produces the sequence $\bold{S}$ can be obtained by duplicating $M$ times the original MT19937 generator with initial state $X_0$, thus obtaining an array of $M$ MT19937 generators $G_t$ ($t=0,\dots, M-1$) with identical state vector $X_0$. Then we advance the state vector of each generator $G_t$ by $(t\cdot J)$ steps, so that it will produce the sequence $\bold{S_t}$. Last we combine the array of generators $G_t$ ($t=0,\dots, M-1$) into a single new generator, which produces a sequence by polling each of the $G_t$ generators in round robin mode, i.e. it produces the desired sequence $\bold{S}$.
+\noindent A pseudo-random number generator which produces the sequence $\boldsymbol{S}$ can be obtained by duplicating $M$ times the original MT19937 generator with initial state $X_0$, thus obtaining an array of $M$ MT19937 generators $G_t$ ($t=0,\dots, M-1$) with identical state vector $X_0$. Then we advance the state vector of each generator $G_t$ by $(t\cdot J)$ steps, so that it will produce the sequence $\boldsymbol{S_t}$. Last we combine the array of generators $G_t$ ($t=0,\dots, M-1$) into a single new generator, which produces a sequence by polling each of the $G_t$ generators in round robin mode, i.e. it produces the desired sequence $\boldsymbol{S}$.
 
-Let's add a second index $t$ to the state vector, so that $X_{k,t}$ is the state $k$-th for the $t$-th generator, i.e. $X_{0,t}=X_{tJ}$, the multi-generator described below has initial state
+\noindent Let's add a second index $t$ to the state vector, so that $X_{k,t}$ is the state $k$-th for the $t$-th generator, i.e. $X_{0,t}=X_{tJ}$, the multi-generator described below has initial state
 $$
 \begin{pmatrix}
     X_{0,0} \\ X_{0,1} \\ \vdots \\ X_{0,M-1}
@@ -390,11 +391,16 @@ However, tempering the numbers one at a time does not allow us to use vectorized
 \end{verbatim}
 \subsection{Avoiding code branches when querying for random numbers}
 \label{seq:blocks}
-Checking if all elements of the tempered numbers buffer have been used comes with some inherent cost. When the operations \textit{regenerateStateVector} and \textit{temper} are relatively slow compared to this check, the cost of the check is negligible. However, as these operations get vectorized and become very fast, the relative cost of this check increases significantly and becomes material. To address this concern, we have introduced the ability to query the generator in blocks of numbers. There are two options for querying: using blocks of the same size as the buffer of tempered numbers or using blocks of the same size as the entire state vector. Both these query modes allow us to optimize the query process and efficiently utilize the generator's performance.
+\noindent Checking if all elements of the tempered numbers buffer have been used comes with some inherent cost. When the operations \textit{regenerateStateVector} and \textit{temper} are relatively slow compared to this check, the cost of the check is negligible. However, as these operations get vectorized and become very fast, the relative cost of this check increases significantly and becomes material. To address this concern, we have introduced the ability to query the generator in blocks of numbers. There are two options for querying: using blocks of the same size as the buffer of tempered numbers or using blocks of the same size as the entire state vector. Both these query modes allow us to optimize the query process and efficiently utilize the generator's performance.
 
 \section{Test results}
+
+\subsection{Statistical tests}
+\noindent As discussed in section \ref{sec:simdgen} the MS-MT19937 generator produces a sequence of independent and identically distributed pseudo random numbers. Since it uses the MT19937 generator as a building block, we expect the probabilistic quality of the sequence of numbers it generates to be the same. This is confirmed by empirically testing the generator via the excellent \textit{TestU01} test suite proposed by Simar and L'Ecuyer in \cite{testu01}. We observe that almost all tests pass, which is the same results obtained with the MT19937.
+
+\subsection{Performance tests}
 \label{sec:tests}
-Table \ref{tab:results} illustrates the computation time required to generate 5 billion uniform discrete 32-bit random numbers on different CPUs with various implementations of the generator and configurations.
+\noindent Table \ref{tab:results} illustrates the computation time required to generate 5 billion uniform discrete 32-bit random numbers on different CPUs with various implementations of the generator and configurations.
 In row 1, \textbf{MT19937} refers to the original Mersenne twister 19937 implementation, as downloaded from Matsumoto's web site\footnote{\label{fn:orig}http://www.math.sci.hiroshima-u.ac.jp/m-mat/MT/MT2002/CODES/mt19937ar.c}. Its state is composed by 624 words of 32-bits each.
 In row 2, \textbf{SFMT19937} refers to the original SFMT 19937 implementation, also downloaded from Matsumoto's web site\footnote{http://www.math.sci.hiroshima-u.ac.jp/m-mat/MT/SFMT/SFMT-src-1.5.1.zip}. Its state is composed by 156 words of 128-bits each\footnote{the number of words is computed a $(19937 / 128 + 1)=156$}.
 In the remaining rows, \textbf{MS-MT19937} refers to the new implementation proposed in section \ref{sec:simdgen}, where the prefix $X$ stands for \textit{multi-state}, and is parameterized by the number of states $M$.
@@ -454,44 +460,27 @@ Test have been run on different CPUs. Note that results for some CPUs are not av
 \caption{\label{tab:results} Time in seconds to generate 5 billions uniform discrete 32-bit random numbers.}
 \end{table}
 
-\subsection{Observations}
-However, we observe that even without the use of multiple states, the implementation of MS-MT19937 is generally faster than the original MT19937 code, and on some architectures, the difference is materially significant. This improvement in speed is mainly due to inlining, as MT19937 is written as a C file and every invocation results in a function call, while MS-MT19937 is written as a header file and allows the compiler to produce more optimized code. To ensure a fair comparison that measures solely the improvement associated with the new algorithm, we will use row 3 (MS-MT19937 with M=1) as the baseline for comparison.
+\subsubsection{Observations}
+\noindent Although the MS-MT19937 with $M=1$ is identical to the original MT19937 from an algorithm point of view, we observe that the implementation of MS-MT19937 is generally faster. This improvement in speed is mainly due to inlining, as MT19937 is written as a C file and every invocation results in a function call, while MS-MT19937 is written as a header file and allows the compiler to produce more optimized code. To ensure a fair comparison that measures solely the improvement associated with the new algorithm, we will use row 3 (MS-MT19937 with M=1) as the baseline for comparison.
 
-In rows 4, 5, and 6, we observe the computation time of MS-MT19937 with M=4 when querying random numbers individually, in blocks of 16 (the size of a cache line), and in blocks of 2496 (the size of the entire state vector). We notice a significant performance improvement as the query block size increases from 1 to 16, and only a marginal additional improvement when the query block size grows from 16 to 2496. The reason for this improvement is explained in section \ref{seq:blocks}. Similar patterns are observed in rows 7 to 9 and rows 10 to 12 for generators MS-MT19937 with M=8 and M=16, respectively. The performance gains associated with larger query block sizes are consistent across multiple configurations of the generator and become relatively more important as the size of the SIMD register increases and the operations of updating the state become faster.
+\noindent In rows 4, 5, and 6, we observe the computation time of MS-MT19937 with M=4 when querying random numbers individually, in blocks of 16 (the size of a cache line), and in blocks of 2496 (the size of the entire state vector). We notice a significant performance improvement as the query block size increases from 1 to 16, and only a marginal additional improvement when the query block size grows from 16 to 2496. The reason for this improvement is explained in section \ref{seq:blocks}. Similar patterns are observed in rows 7 to 9 and rows 10 to 12 for generators MS-MT19937 with M=8 and M=16, respectively. The performance gains associated with larger query block sizes are consistent across multiple configurations of the generator and become relatively more important as the size of the SIMD register increases and the operations of updating the state become faster.
 
-In rows 3, 4, 7, and 10, we observe that the computation time of the MS-MT19937 generator reduces with $M$, i.e., the length of the SIMD registers. However, the throughput increase is not proportional to $M$ because, as explained in section \ref{seq:blocks}, the cost of checking if we have exhausted the state vector and need to regenerate it starts to dominate over the cost of regenerating the state. The situation improves significantly for rows 5, 8, and 11, where we query random numbers in blocks of 16, and therefore we dilute the cost of checking if we have exhausted the state vector by a factor of 16.
+\noindent In rows 3, 4, 7, and 10, we observe that the computation time of the MS-MT19937 generator reduces with $M$, i.e., the length of the SIMD registers. However, the throughput increase is not proportional to $M$ because, as explained in section \ref{seq:blocks}, the cost of checking if we have exhausted the state vector and need to regenerate it starts to dominate over the cost of regenerating the state. The situation improves significantly for rows 5, 8, and 11, where we query random numbers in blocks of 16, and therefore we dilute the cost of checking if we have exhausted the state vector by a factor of 16.
 
-In rows 6, 9, and 12, we observe that when the block query size changes from 16 to the size of the full state vector, the throughput increases even more. For example, for CPU-3, which is the most modern CPU, in rows 6 and 9, we observe that when $M$ grows by a factor of 2 (from 4 to 8), the computation time decreases from 4.59s to 2.06s, approximately a factor of 2. Similarly, in rows 9 and 12, we observe that when $M$ grows by a further factor of 2 (from 8 to 16), the computation time decreases from 2.06s to 1.14s, i.e., approximately a factor of 2 again.
+\noindent In rows 6, 9, and 12, we observe that when the block query size changes from 16 to the size of the full state vector, the throughput increases even more. For example, for CPU-3, which is the most modern CPU, in rows 6 and 9, we observe that when $M$ grows by a factor of 2 (from 4 to 8), the computation time decreases from 4.59s to 2.06s, approximately a factor of 2. Similarly, in rows 9 and 12, we observe that when $M$ grows by a further factor of 2 (from 8 to 16), the computation time decreases from 2.06s to 1.14s, i.e., approximately a factor of 2 again.
 
-These comprehensive results demonstrate that the throughput of the MS-MT19937 increases with the size of the SIMD registers $M$. When we amortize the cost of checking if we have exhausted the state vector over multiple random number requests by querying random numbers in blocks, we observe that the throughput increase is approximately linear with respect to the size of the SIMD registers $M$.
+\noindent These comprehensive results demonstrate that the throughput of the MS-MT19937 increases with the size of the SIMD registers $M$. When we amortize the cost of checking if we have exhausted the state vector over multiple random number requests by querying random numbers in blocks, we observe that the throughput increase is approximately linear with respect to the size of the SIMD registers $M$.
 
 \section{Conclusion}
-In this paper, we introduced the new random number generator MS-MT19937, which utilizes multiple independent random streams generated by the traditional MT19937. These streams are combined with de-phased state vectors through a jump ahead initialization technique. The comprehensive test results demonstrated that perfect vectorization is achieved, resulting in a throughput that scales approximately linearly with the length of the available SIMD registers when random numbers are queried in blocks. This allows for faster generation of random numbers on modern CPUs with larger SIMD registers compared to the original MT19937 algorithm.
+\noindent In this paper, we introduced the new random number generator MS-MT19937, which utilizes multiple independent random streams generated by the traditional MT19937. These streams are combined with de-phased state vectors through a jump ahead initialization technique. The comprehensive test results demonstrated that perfect vectorization is achieved, resulting in a throughput that scales approximately linearly with the length of the available SIMD registers when random numbers are queried in blocks. This allows for faster generation of random numbers on modern CPUs with larger SIMD registers compared to the original MT19937 algorithm.
 
-One key advantage of MS-MT19937 is that it does not require re-calibration of the parameters of the underlying MT19937 generator. Additionally, the technique has the potential to be applied to other linear congruential generators, as long as an effective jump ahead methodology exists.
+\noindent One key advantage of MS-MT19937 is that it does not require re-calibration of the parameters of the underlying MT19937 generator. Additionally, the technique has the potential to be applied to other linear congruential generators, as long as an effective jump ahead methodology exists.
 
-Furthermore, while we illustrated the implementation with SIMD instructions, the generality of this technique suggests its applicability to other vectorial processing systems, such as GPUs or FPGAs. This versatility opens up possibilities for optimizing random number generation across various hardware platforms, which is particularly valuable in simulation applications that require long sequences of pseudo-random numbers.
+\noindent Furthermore, while we illustrated the implementation with SIMD instructions, the generality of this technique suggests its applicability to other vectorial processing systems, such as GPUs or FPGAs. This versatility opens up possibilities for optimizing random number generation across various hardware platforms, which is particularly valuable in simulation applications that require long sequences of pseudo-random numbers.
 
-Overall, MS-MT19937 offers an efficient and flexible solution for generating random numbers with SIMD-friendly characteristics, making it a valuable addition to the repertoire of pseudo-random number generators.
+\noindent Overall, MS-MT19937 offers an efficient and flexible solution for generating random numbers with SIMD-friendly characteristics, making it a valuable addition to the repertoire of pseudo-random number generators.
 
 %------------------------------BIBLIOGRAPHY-----------------
-\begin{comment}
-\begin{thebibliography}{9}
-\bibitem{TGSFR}  1992, M. Matsumoto, Y. Kurita, "Twisted GFSR generators". ACM Transactions on Modeling and Computer Simulation. 2 (3): 179–194. doi:10.1145/146382.146383. S2CID 15246234.
-\bibitem{mt19937} 1998, M. Matsumoto, T. Nishimura, "Mersenne Twister: A 623-dimensionally equidistributed uniform pseudorandom number generator", ACM Trans. on Modeling and Computer 
-\bibitem{knuth} 1998, D. E. Kunth, "The Art of Computer Programming", Seminumerical Algorithms, 3rd ed., Vol. 2. Addison-Wesley, Reading, MA.
-\bibitem{ecuyer} 2002, P. L’Ecuyer, R. Simard, E. J. Chen, W. D. Kelton, "An object-oriented random-number package with many long streams
-and substreams." Oper. Res. 50 1073–1075.
-Simulation Vol. 8, No. 1, January pp.3-30 (1998), DOI:10.1145/272991.272995
-\bibitem{xorshift} 2003, G. Marsaglia. "Xorshift RNGs". Journal of Statistical Software. 8 (14). DOI: 10.18637/jss.v008.i14
-\bibitem{well} 2006, F. Panneton; P. L'Ecuyer; M. Matsumoto. "Improved long-period generators based on linear recurrences modulo 2". ACM Transactions on Mathematical Software. 32 (1): 1–16. DOI: 10.1145/1132973.1132974.
-\bibitem{jump1}2008, H. Haramoto, M. Matsumoto, P. L’Ecuyer, "A Fast Jump Ahead Algorithm for Linear Recurrences in a Polynomial Space", Sequences and Their Applications - SETA 2008, 290--298, DOI:10.1007/978-3-540-85912-3\_26
-\bibitem{jump2} 2008, H. Haramoto, M. Matsumoto, T. Nishimura, F. Panneton, P. L’Ecuyer, "Efficient Jump Ahead for F2-Linear Random Number Generators", Informs Journal On Computing, Vol. 20, No. 3, Summer 2008, pp. 385-390
-\bibitem{sfmt19937} 2008, M. Saito and M. Matsumoto, "SIMD-oriented Fast Mersenne Twister: a 128-bit Pseudorandom Number Generator", Monte Carlo and Quasi-Monte Carlo Methods 2006, Springer, 2008, pp. 607 -- 622. DOI:10.1007/978-3-540-74496-2\_36
-\bibitem{moneta} 2020, S. Y. Jun, P. Canal, J. Apostolakis, A. Gheata, L. Moneta. "Vectorization of random number generation and reproducibility of concurrent particle transport simulation", Journal of Physics: Conference Series, IOP Publishing, DOI: 10.1088/1742-6596/1525/1/012054
-\bibitem{intel} 2023, "Intel® 64 and IA-32 Architectures, Optimization Reference Manual"
-\end{thebibliography}
-\end{comment}
 \begin{thebibliography}{9}
 
 \bibitem{TGSFR} 1992, M. Matsumoto, Y. Kurita, ``Twisted GFSR generators''. ACM Transactions on Modeling and Computer Simulation. 2 (3): 179--194. DOI: 10.1145/146382.146383.
@@ -506,6 +495,8 @@ Simulation Vol. 8, No. 1, January pp.3-30 (1998), DOI:10.1145/272991.272995
 
 \bibitem{well} 2006, F. Panneton; P. L'Ecuyer; M. Matsumoto. ``Improved long-period generators based on linear recurrences modulo 2''. ACM Transactions on Mathematical Software. 32 (1): 1--16. DOI: 10.1145/1132973.1132974.
 
+\bibitem{testu01} 2007, P. L'Ecuyer and R. Simard, ``TestU01: A C Library for Empirical Testing of Random Number Generators''. ACM Transactions on Mathematical Software, Vol. 33, article 22.
+
 \bibitem{jump1} 2008, H. Haramoto, M. Matsumoto, P. L’Ecuyer, ``A Fast Jump Ahead Algorithm for Linear Recurrences in a Polynomial Space'', Sequences and Their Applications - SETA 2008, 290--298, DOI: 10.1007/978-3-540-85912-3\_26
 
 \bibitem{jump2} 2008, H. Haramoto, M. Matsumoto, T. Nishimura, F. Panneton, P. L’Ecuyer, ``Efficient Jump Ahead for F2-Linear Random Number Generators'', Informs Journal On Computing, Vol. 20, No. 3, Summer 2008, pp. 385-390
@@ -517,4 +508,3 @@ Simulation Vol. 8, No. 1, January pp.3-30 (1998), DOI:10.1145/272991.272995
 \end{thebibliography}
 
 \end{document}
-
