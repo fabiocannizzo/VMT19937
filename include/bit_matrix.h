@@ -264,6 +264,14 @@ public:
             is.read((char*) rowBegin(r), s_nBytesPerRow);
     }
 
+
+    void fromArrayChar(const char *pchar, size_t len)
+    {
+        MYASSERT(len == s_nBitRows * s_nBytesPerRow, "array length must be same length" << s_nBitRows * s_nBytesPerRow);
+        for (size_t r = 0; r < s_nBitRows; ++r)
+            std::copy_n(pchar + s_nBytesPerRow * r, s_nBitRows * s_nBytesPerRow, (char*)rowBegin(r));
+    }
+
     template <typename OS>
     void toBase64(OS& os) const
     {
