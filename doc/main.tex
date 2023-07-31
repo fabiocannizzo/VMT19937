@@ -18,10 +18,10 @@
 %\usepackage[english]{babel}
 %\usepackage[margin=0.8in]{geometry}
 \usepackage[hidelinks]{hyperref}
-\usepackage{pgfplots}
+%\usepackage{pgfplots}
 \usepackage{enumitem}
 \usepackage{titlesec}
-\usetikzlibrary{patterns}
+%\usetikzlibrary{patterns}
 
 \titleclass{\subsubsubsection}{straight}[\subsection]
 
@@ -55,20 +55,20 @@
 \setcounter{tocdepth}{4}
 
 
-\pgfplotsset{compat=1.9}
+%\pgfplotsset{compat=1.9}
 
-\pgfplotsset{
-    /pgfplots/ybar legend/.style={
-    /pgfplots/legend image code/.code={%
-       \draw[##1,/tikz/.cd,yshift=-0.25em]
-        (0cm,0cm) rectangle (3pt,0.8em);},
-   },
-}
+%\pgfplotsset{
+%    /pgfplots/ybar legend/.style={
+%    /pgfplots/legend image code/.code={%
+%       \draw[##1,/tikz/.cd,yshift=-0.25em]
+%        (0cm,0cm) rectangle (3pt,0.8em);},
+%   },
+%5}
 
-\pgfplotsset{every axis/.append style={
-		font=\footnotesize,
-		line width=0.6pt,
-		}}
+%\pgfplotsset{every axis/.append style={
+%		font=\footnotesize,
+%		line width=0.6pt,
+%		}}
 
 %\definecolor{electriccyan}{rgb}{0.0, 1.0, 1.0}
 %\definecolor{electricgreen}{rgb}{0.0, 1.0, 0.0}
@@ -88,8 +88,8 @@
     \setlength{\parsep}{0pt}     }
 { \end{itemize}                  }
 
-\newcommand {\inred}[1] {\textcolor{red}{#1}}
-\newcommand {\curle}[1]{ \left \{      #1 \right \}      }
+%\newcommand {\inred}[1] {\textcolor{red}{#1}}
+%\newcommand {\curle}[1]{ \left \{      #1 \right \}      }
 %\newcommand\XOR{\mathbin{\char`\^}}
 \newcommand\XOR{\mathbin{\oplus}}
 \newcommand\OR{\mid}
