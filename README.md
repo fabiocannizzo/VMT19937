@@ -19,13 +19,12 @@ class MSMT19937;
 
 `RegisterBitLen` is the length of the registers used in bits.
 It can be any of 32, 128, 256, 512. It reflects the capability of target architecture we target (e.g. if the target hardware only has support for SSE2 instructions, we can only use 32 and 128).
-Performance improves with the register length. The set of available generators is determined automatically from compilation settings. For example, if we compile with the GCC compilation option `-mavx2`, then only 32, 128 and 256 are available. The compilation settings detection code is in the file `include/simd_config.h`.
+Performance improves with the register length. The set of available generators is determined automatically from compilation settings. For example, if we compile with the GCC compilation option _-mavx2_, then only 32, 128 and 256 are available. The compilation settings detection code is in the file [include/simd_config.h](include/simd_config.h).
 
-`GenMode` determines the way in which the generator will be used. It can be any of the `enum` values:
+`GenMode` determines the way in which the generator will be used. There are 3 modes to generate random numbers: one at a time, in blocks of 16 or in blocks with the same statesize as the generator. These modes correpond to the enum values below:
 ```c++
 enum MSMT19937GenMode { QM_Scalar, QM_Block16, QM_StateSize };
 ```
-We can generate random numbers one at a time, in blocks of 16 or in blocks with the same statesize as the generator.
 Performance improves with the length of the blocks. Usually `QM_Block16` is a good choice, as it represents a good compromize between performance and storage space.
 The associated query functions are:
 ```c++
@@ -43,24 +42,24 @@ The associated query functions are:
 
 ## Performance Stats
 The table below shows the time in seconds to generate 5 billions of uniform discrete 32-bit random numbers in the range $[0,2^{32}-1]$.
-`NBITS` and `QUERY` are the template parameters of the generator. Peformance is compared against the original MT19937 generator and the vectorized SFMT19937 variation [^2].
+`NBITS` and `GENMODE` are the template parameters of the generator. Peformance is compared against the original MT19937 generator and the vectorized SFMT19937 variation [^2].
 ```
-----------------------------------------------------------------
-| GENERATOR   | NBITS | QUERY | TARGET | CPU-1 | CPU-2 | CPU-3 |
-----------------------------------------------------------------
-| MT19937     | n.a.  | 1    | SSE2    | 31.56 | 20.07 | 16.90 | 
-| SFMT19937   | n.a.  | 1    | SSE2    | 21.67 | 6.99  | 9.97  |
-| MS-MT19937  | 32    | 1    | SSE2    | 20.83 | 11.10 | 13.54 |
-| MS-MT19937  | 128   | 1    | SSE2    | 13.28 | 6.19  | 7.14  |
-| MS-MT19937  | 128   | 16   | SSE2    | 7.77  | 3.59  | 4.19  |
-| MS-MT19937  | 128   | 2496 | SSE2    | 7.42  | 3.37  | 4.59  |
-| MS-MT19937  | 256   | 1    | AVX     | n.a.  | 5.43  | 6.42  |
-| MS-MT19937  | 256   | 16   | AVX     | n.a.  | 2.15  | 2.15  |
-| MS-MT19937  | 256   | 4992 | AVX     | n.a.  | 2.10  | 2.06  |
-| MS-MT19937  | 512   | 1    | AVX512  | n.a.  | n.a.  | 5.66  |
-| MS-MT19937  | 512   | 16   | AVX512  | n.a.  | n.a.  | 1.45  |
-| MS-MT19937  | 512   | 9984 | AVX512  | n.a.  | n.a.  | 1.14  |
-----------------------------------------------------------------
+---------------------------------------------------------------------
+| GENERATOR   | NBITS | GENMODE   | TARGET  | CPU-1 | CPU-2 | CPU-3 |
+---------------------------------------------------------------------
+| MT19937     | n.a.  | n.a.      | SSE2    | 31.56 | 20.07 | 16.90 | 
+| SFMT19937   | n.a.  | n.a.      | SSE2    | 21.67 | 6.99  | 9.97  |
+| MS-MT19937  | 32    | Scalar    | SSE2    | 20.83 | 11.10 | 13.54 |
+| MS-MT19937  | 128   | Scalar    | SSE2    | 13.28 | 6.19  | 7.14  |
+| MS-MT19937  | 128   | Block16   | SSE2    | 7.77  | 3.59  | 4.19  |
+| MS-MT19937  | 128   | StateSize | SSE2    | 7.42  | 3.37  | 4.59  |
+| MS-MT19937  | 256   | Scalar    | AVX     | n.a.  | 5.43  | 6.42  |
+| MS-MT19937  | 256   | Block16   | AVX     | n.a.  | 2.15  | 2.15  |
+| MS-MT19937  | 256   | StateSize | AVX     | n.a.  | 2.10  | 2.06  |
+| MS-MT19937  | 512   | Scalar    | AVX512  | n.a.  | n.a.  | 5.66  |
+| MS-MT19937  | 512   | Block16   | AVX512  | n.a.  | n.a.  | 1.45  |
+| MS-MT19937  | 512   | StateSize | AVX512  | n.a.  | n.a.  | 1.14  |
+---------------------------------------------------------------------
 ```
 Performance stats obtained with the following CPUs:
 - CPU-1: Intel(R) Celeron(R) J4125, cache 4Mb, frequency 2.0 GHz, burst frequency 2.7 GHz, SIMD support for SSE4.2 (a low end CPU).
@@ -68,21 +67,21 @@ Performance stats obtained with the following CPUs:
 - CPU-3: Intel® Xeon® Gold 6234, cache 24.75Mb, base frequency 3.3GHz, turbo frequency 4.0 GHz, SIMD support for AVX512 (a high performance desktop CPU).
 
 ## Empirical random tests
-The empirical quality of the pseudo random sequences generated via MSMT19937 is tested with the TestU01 suite [^3]. The results are in the subfolder `testu01-logs`.
+The empirical quality of the pseudo random sequences generated via MSMT19937 is tested with the _TestU01_ suite [^3]. The results are in the subfolder [testu01-logs](testu01-logs).
 Results are comparable with the original MT19937 generator.
 
 ## Usage
-The library is header only. You only need to include the header file `include/MSMT19937.h`.
+The library is header only. You only need to include the header file [include/MSMT19937.h](include/MSMT19937.h).
 
-Depending on your compilation settings, you have avaialble up to 12 generators, depending on the compbination of the template parameters `RegisterBitLen` and `GenMode`.
+Depending on your compilation settings, you have avaialble up to 12 generators, depending on the compination of the template parameters `RegisterBitLen` and `GenMode`.
 
-You will need also some of the _jump-ahead_ matrices. These are available in _7z_ format in the `dat` subfolder.
-You can either uncompress the _7z_ files manually, or install `7za` and then use the `make` command.
-For example, to extract the matrix `F19935.bits`, on Linux or Cygwin you can type the command `make dat/F19935.bits`.
+You will need also some of the _jump-ahead_ matrices. These are available in _7z_ format in the [dat](dat) subfolder.
+You can either uncompress the _7z_ files manually, or install _7za_ and then use the _make_ command.
+For example, to extract the matrix _F19935.bits_, on Linux or Cygwin you can type the command `make dat/F19935.bits`.
 Only one of the matrices is needed. Which one depends on the length of the SIMD registers available:
-- 128-bits: `F19935.bits`
-- 256-bits: `F19934.bits`
-- 512-bits: `F19933.bits`
+- 128-bits: _F19935.bits_
+- 256-bits: _F19934.bits_
+- 512-bits: _F19933.bits_
 
 To initialize the generator, first we get the relevant matrix, then we initialize the generator.
 For example, to instantiate a genrator with 128 bits regsiters and 
@@ -118,42 +117,48 @@ Then we can generater random numbers in blocks of 16
     // release memory
     myAlignedDelete(buffer);
 ```
+The full source code for this example is in the file [src/demo.cpp](src/demo.cpp).
 
 ## Multiple independent generators
 If you want to define multiple independent generator, for example to work with parallel Monte Carlo, you can use the _jump-ahead_ functionality
-described later. In that case you may need to extract further jump matrices, e.g. `F00100.bits`.
-
-## Build tests
-You must first de-compress the 7z files in the dat directory.
-
-```
-** compile with SSE2 code **
-make NBITS=128
-
-** compile with AVX code **
-make NBITS=256
-
-** compile with AVX512 code **
-make NBITS=512
-```
+described later. In that case you may need to extract further jump matrices, e.g. _F00100.bits_.
 
 ## Requirements
 The library is written in C++17. It uses extenseively Intel SIMD instructions, available on modern X86-64 processors.
 It can be compiled for hardware with register length of 128, 256 or 512 bits.
 
-A Makefile is provided for Linux or Cygwin. You need to define the `NBITS` environment variable. For example, to compile for 256 bits, you can type
+## Build tests
+Test and demo files are located in the [src](src) folder.
+A [Makefile](Makefile) is provided for Linux or Cygwin. You need to define the `NBITS` environment variable. For example:
 ```
-NBITS=256 make 
+# compile with SSE2 code
+make NBITS=128
+
+# compile with AVX code
+make NBITS=256
+
+# compile with AVX512 code
+make NBITS=512
 ```
 
-## Build TestU01 tests
+## License
+This is available with MIT [license](LICENSE). Note that the library includes also the [MT19937](mt19937-original) and [SFMT19937](SFMT-src-1.5.1) original source codeE
+These are distributed only for testing purpose and they have their own licenses.
 
 ## TestU01
+To rerun the _TestU01_ tests, you need to download the _TestU01_ [package](http://simul.iro.umontreal.ca/testu01/tu01.html).
+To build it, create an installation directory, e.g. _/workspace/repos/testu01/install_, then run the following commands:
 ```
 ./configure --prefix=/workspace/repos/testu01/install/ --disable-shared
 make -j4
 make install -j4
 ```
+Then you need to build the MSMT19937 test for _TESTU01_ and run the tests.
+```
+make -j4 NBITS=512 TESTU01_DIR=/workspace/repos/testu01/install/
+PATH=/workspace/repos/testu01/install/bin:${PATH} make testu01logs
+```
+
 ## References
 [^1]: 1998, M. Matsumoto, T. Nishimura, _Mersenne Twister: A 623-dimensionally equidistributed uniform pseudorandom number generator_, ACM Trans. on Modeling and Computer Simulation, 8(1), 3-30. DOI: 10.1145/272991.272995.
 [^2]: 2008, M. Saito and M. Matsumoto, _SIMD-oriented Fast Mersenne Twister: a 128-bit Pseudorandom Number Generator_, Monte Carlo and Quasi-Monte Carlo Methods 2006, Springer, 2008, pp. 607-622. DOI: 10.1007/978-3-540-74496-2\_36
