@@ -151,13 +151,13 @@ struct MT19937Matrix : BinarySquareMatrix<19937>
         fromBinaryFile(binaryfilename);
     }
 
-    MT19937Matrix(const char* pchar, size_t len)
+    MT19937Matrix(const uint8_t* pchar, size_t len)
     {
         fromArrayChar(pchar, len);
     }
 
     template <size_t N>
-    MT19937Matrix(char(&pchar)[N])
+    MT19937Matrix(const uint8_t(&pchar)[N])
     {
         fromArrayChar(pchar, N);
     }
@@ -197,7 +197,7 @@ struct MT19937Matrix : BinarySquareMatrix<19937>
     }
 
     // initialize from a binary file saved with the toBin method
-    void fromArrayChar(const char* pchar, size_t len)
+    void fromArrayChar(const uint8_t* pchar, size_t len)
     {
         base_t::fromArrayChar(pchar, len);
     }
