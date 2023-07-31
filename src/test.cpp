@@ -1,8 +1,6 @@
 #define TESTING
 #define SIMD_EMULATION
 
-#include "jump_matrix.h"
-
 #include "MSMT19937.h"
 
 const uint32_t seedlength = 4;
