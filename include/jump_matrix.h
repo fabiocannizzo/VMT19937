@@ -1,3 +1,5 @@
+#pragma once
+
 #include "bit_matrix.h"
 
 #include <thread>
@@ -144,9 +146,20 @@ struct MT19937Matrix : BinarySquareMatrix<19937>
         init1();
     }
 
-    MT19937Matrix(const char* filename)
+    MT19937Matrix(const std::string& binaryfilename)
     {
-        fromBinFile(filename);
+        fromBinaryFile(binaryfilename);
+    }
+
+    MT19937Matrix(const char* pchar, size_t len)
+    {
+        fromArrayChar(pchar, len);
+    }
+
+    template <size_t N>
+    MT19937Matrix(char(&pchar)[N])
+    {
+        fromArrayChar(pchar, N);
     }
 
     void init1()
@@ -172,14 +185,20 @@ struct MT19937Matrix : BinarySquareMatrix<19937>
     }
 
     // initialize from a binary file saved with the toBin method
-    void fromBinFile(const char* filename)
+    void fromBinaryFile(const std::string& filename)
     {
         std::ifstream is(filename, std::ios::binary);
         MYASSERT(is.is_open(), "error opening binary file: " << filename);
-        fromBin(is);
+        base_t::fromBin(is);
 #ifdef TESTING
         std::cout << "loaded matrix from file: " << filename << "\n";
         printSparsity();
 #endif
+    }
+
+    // initialize from a binary file saved with the toBin method
+    void fromArrayChar(const char* pchar, size_t len)
+    {
+        base_t::fromArrayChar(pchar, len);
     }
 };

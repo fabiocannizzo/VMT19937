@@ -192,8 +192,8 @@ int main()
         generateBenchmark();
 
         MT19937Matrix jumpMatrix1;
-        MT19937Matrix jumpMatrix1024("./dat/F00010.bits");
-        MT19937Matrix jumpMatrixPeriod("./dat/F19937.bits");
+        MT19937Matrix jumpMatrix1024(std::string("./dat/F00010.bits"));
+        MT19937Matrix jumpMatrixPeriod(std::string("./dat/F19937.bits"));
 
         testEquivalence<32, QM_Scalar>(nullptr, nullptr, 0, 0);
         testEquivalence<32, QM_Scalar>(&jumpMatrix1024, nullptr, 1024, 0);
