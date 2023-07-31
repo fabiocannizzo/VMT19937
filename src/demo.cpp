@@ -34,10 +34,10 @@ void demo128()
     // - the 2nd state is shifted forward by 1*2^19935 values
     // - the 3rd state is shifted forward by 2*2^19935 values
     // - the 4th state is shifted forward by 3*2^19935 values
-    MT19937Matrix *jumpMatrix = new MT19937Matrix("./dat/F19935.bits");
+    MT19937Matrix *jumpMatrix = new MT19937Matrix(std::string("./dat/F19935.bits"));
 
     // Optionally, we could pass an additional jump matrix affecting all states
-    // This could be useful to create multiple indepdnent streams for parallelization
+    // This could be useful to create multiple independent streams for parallelization
     // In this example we do not pass any matrix.
     MT19937Matrix *commonJumpMatrix = nullptr;
 
