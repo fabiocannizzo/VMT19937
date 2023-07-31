@@ -119,7 +119,7 @@ Then we can generater random numbers in blocks of 16
 ```
 The full source code for this example is in the file [src/demo.cpp](src/demo.cpp) in the routine `demo128`.
 
-## Multiple independent generators
+### Multiple independent generators
 If you want to define multiple independent generator, for example to work with parallel Monte Carlo, you can use the common jump parameters of the constructor.
 In that case you may need to extract further jump matrices, e.g. _F00100.bits_, which will generate independent streams with period of $2^{100}$.
 ```c++
