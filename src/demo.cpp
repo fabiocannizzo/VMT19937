@@ -44,7 +44,7 @@ void demo128()
     const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 
     // Create the generator
-    MSMT19937<VecLen, QM_Block16> mt(seedinit, seedlength, commonJumpMatrix, jumpMatrix);
+    MSMT19937<VecLen, QM_Block16> mt(seedinit, seedlength, 0, commonJumpMatrix, jumpMatrix);
 
     // The jump matrix is no longer needed and can be released here.
     delete jumpMatrix;

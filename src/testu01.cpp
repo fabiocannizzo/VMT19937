@@ -44,7 +44,7 @@ struct TestRunner
 
     static void run(size_t mode)
     {
-        gen_t g(seedinit, seedlength, nullptr, pjump[ArrayIndex]);
+        gen_t g(seedinit, seedlength, 0, nullptr, pjump[ArrayIndex]);
         s_genptr = &g;
 
         // create TestU01 generator wrapper

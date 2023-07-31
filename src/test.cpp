@@ -138,7 +138,7 @@ void testEquivalence(const MT19937Matrix* commonJump, const MT19937Matrix* seqJu
     std::vector<uint32_t> dst(nRandomTest + 64 / sizeof(uint32_t));
     uint32_t* aligneddst = (uint32_t*)((intptr_t)dst.data() + (64 - ((intptr_t)dst.data() % 64)));
 
-    gen_t mt(seedinit, seedlength, commonJump, seqJump);
+    gen_t mt(seedinit, seedlength, commonJump ? 1 : 0, commonJump, seqJump);
     for (size_t i = 0; i < nRandomTest / BlkSize; ++i)
         if constexpr (BlkMode == QM_Scalar)
             aligneddst[i] = mt.genrand_uint32();
