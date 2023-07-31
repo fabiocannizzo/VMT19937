@@ -8,7 +8,7 @@
 */
 
 #include "SIMD.h"
-#include "bit_matrix.h"
+#include "jump_matrix.h"
 
 #ifndef SIMD_N_BITS
 #   define SIMD_N_BITS 64
@@ -133,6 +133,11 @@ class MSMT19937
         return ((uint32_t*)m_state)[scalarIndex * s_regLenWords];
     }
 
+    uint32_t scalarState(uint32_t scalarIndex) const
+    {
+        return ((uint32_t*)m_state)[scalarIndex * s_regLenWords];
+    }
+
     // extract one of the interleaved state vectors, shift it left by 31 bits and save it to dst
     void stateToVector(size_t stateIndex, uint32_t *pdst) const
     {
@@ -224,6 +229,13 @@ class MSMT19937
             prev = scalarState(i) = (mask * (prev ^ (prev >> 30)) + i);
     }
 
+    // initializes m_state[s_N] with a seed
+    void __reinit(const MSMT19937& basegen)
+    {
+        for (uint32_t i = 0; i < s_N; i++)
+            scalarState(i) = basegen.scalarState(i);
+    }
+
 public:
 
     const static size_t s_qryBlkSize = (QueryMode == QM_Scalar) ? 1 : (QueryMode == QM_Block16) ? 16 : s_N * s_regLenWords;
@@ -245,6 +257,12 @@ public:
         : MSMT19937()
     {
         reinit(seeds, n_seeds, commonJump, sequentialJump);
+    }
+
+    MSMT19937(const MSMT19937& basegen, const BinaryMatrix<s_nBits>* commonJump = nullptr, const BinaryMatrix<s_nBits>* sequentialJump = nullptr)
+        : MSMT19937()
+    {
+        reinit(basegen, commonJump, sequentialJump);
     }
 
     // initializes m_state[s_N] with a seed
@@ -280,6 +298,13 @@ public:
 
         scalarState(0) = uint32_t(0x80000000); // MSB is 1; assuring non-zero initial array
 
+        fillOtherStates(commonJump, sequentialJump);
+    }
+
+    // initializes m_state[s_N] from a base generator
+    void reinit(const MSMT19937& basegen, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
+    {
+        __reinit(basegen);
         fillOtherStates(commonJump, sequentialJump);
     }
 
