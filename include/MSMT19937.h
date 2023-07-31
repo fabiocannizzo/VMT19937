@@ -247,19 +247,19 @@ public:
         , m_prnd(nullptr)
     {}
 
-    MSMT19937(uint32_t seed, const BinaryMatrix<s_nBits>* commonJump = nullptr, const BinaryMatrix<s_nBits>* sequentialJump = nullptr)
+    MSMT19937(uint32_t seed, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
         : MSMT19937()
     {
         reinit(seed, commonJump, sequentialJump);
     }
 
-    MSMT19937(const uint32_t seeds[], uint32_t n_seeds, const BinaryMatrix<s_nBits>* commonJump = nullptr, const BinaryMatrix<s_nBits>* sequentialJump = nullptr)
+    MSMT19937(const uint32_t seeds[], uint32_t n_seeds, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
         : MSMT19937()
     {
         reinit(seeds, n_seeds, commonJump, sequentialJump);
     }
 
-    MSMT19937(const MSMT19937& basegen, const BinaryMatrix<s_nBits>* commonJump = nullptr, const BinaryMatrix<s_nBits>* sequentialJump = nullptr)
+    MSMT19937(const MSMT19937& basegen, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
         : MSMT19937()
     {
         reinit(basegen, commonJump, sequentialJump);

@@ -55,7 +55,7 @@ Result testPerformance(size_t runId)
     std::vector<uint32_t> dst(BlkSize + 64 / sizeof(uint32_t));
     uint32_t* aligneddst = (uint32_t*)((intptr_t)dst.data() + (64 - ((intptr_t)dst.data() % 64)));
 
-    gen_t mt(seedinit, seedlength, NULL);
+    gen_t mt(seedinit, seedlength, nullptr, nullptr);
 
     auto start = std::chrono::system_clock::now();
     for (size_t i = 0; i < nRandomPerf / BlkSize; ++i)
