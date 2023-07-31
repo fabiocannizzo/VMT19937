@@ -72,6 +72,7 @@ public:
     static const size_t s_nBytesPerRow = s_nBitCols / 8+ (s_nBitCols % 8 != 0);
     static const size_t s_nBytesPerPaddedRow = s_nBitColsPadded / 8;  // inclusive of padding
     static const size_t s_nUsedBytes = s_nBitRows * s_nBytesPerPaddedRow;
+    static const size_t s_binStreamSize = s_nBitRows * s_nBytesPerRow;
 
 private:
 
@@ -265,11 +266,11 @@ public:
     }
 
 
-    void fromArrayChar(const char *pchar, size_t len)
+    void fromArrayChar(const uint8_t*pchar, size_t len)
     {
         MYASSERT(len == s_nBitRows * s_nBytesPerRow, "array length must be same length" << s_nBitRows * s_nBytesPerRow);
         for (size_t r = 0; r < s_nBitRows; ++r)
-            std::copy_n(pchar + s_nBytesPerRow * r, s_nBitRows * s_nBytesPerRow, (char*)rowBegin(r));
+            std::copy_n(pchar + s_nBytesPerRow * r, s_nBitRows * s_nBytesPerRow, (uint8_t*)rowBegin(r));
     }
 
     template <typename OS>
