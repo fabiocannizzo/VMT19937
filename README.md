@@ -117,7 +117,7 @@ Then we can generater random numbers in blocks of 16
     // release memory
     myAlignedDelete(buffer);
 ```
-The full source code for this example is in the file [src/demo.cpp](src/demo.cpp).
+The full source code for this example is in the file [src/demo.cpp](src/demo.cpp) in the routine `demo128`.
 
 ## Multiple independent generators
 If you want to define multiple independent generator, for example to work with parallel Monte Carlo, you can use the common jump parameters of the constructor.
@@ -140,14 +140,16 @@ In that case you may need to extract further jump matrices, e.g. _F00100.bits_, 
     // up to a period of 2^100
     std::array<std::unique_ptr<MSMT19937<128, QM_Block16>>, 10> parallelGenerators;
 
-    // Create the generator setting QueryMode as Block16
+    // Create 10 multiple parallel generators with VecLen=128 and QueryMode=Block16
     for (size_t i = 0; i < 10; ++i)
-        MSMT19937<128, QM_Block16> mt(seedinit, seedlength, i, commonJumpMatrix, jumpMatrix);
+        parallelGenerators[i].reset(new MSMT19937<128, QM_Block16>(seedinit, seedlength, i, commonJumpMatrix, jumpMatrix));
 
     // The jump matrices are no longer needed and can be released here.
     delete jumpMatrix;
     delete commonJumpMatrix;
 ```
+
+The full source code for this example is in the file [src/demo.cpp](src/demo.cpp) in the routine `demoParallel`.
 
 ## Requirements
 The library is written in C++17. It uses extenseively Intel SIMD instructions, available on modern X86-64 processors.
@@ -168,7 +170,7 @@ make NBITS=512
 ```
 
 ## License
-This is available with MIT [license](LICENSE). Note that the library includes also the [MT19937](mt19937-original) and [SFMT19937](SFMT-src-1.5.1) original source codeE
+This is available with MIT [license](LICENSE). Note that the library includes also the [MT19937](mt19937-original) and [SFMT19937](SFMT-src-1.5.1) original source code.
 These are distributed only for testing purpose and they have their own licenses.
 
 ## TestU01
