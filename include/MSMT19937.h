@@ -165,55 +165,55 @@ class MSMT19937
         pstate[w * s_regLenWords + stateIndex] |= pw[w] << 31;
     }
 
-    void fillOtherStates(const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
+    void fillOtherStates(size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
     {
         uint32_t* pstate = (uint32_t*)m_state;
 
         // temporary workspace matrix
         BinaryMatrix<2, s_nBits> tmp;
 
-        if (commonJump) {
+        if (commonJumpRepeat) {
+            MYASSERT(commonJump, "commonJump is required when commnJumpRepeat>0");
+
             // copy state to the first row shifting all bits to the left by 31
             stateToVector(0, (uint32_t*)tmp.rowBegin(0));
 
-            commonJump->multiplyByColumn(tmp.rowBegin(1), tmp.rowBegin(0));
+            for (size_t i = 0; i < commonJumpRepeat; ++i)
+                commonJump->multiplyByColumn(tmp.rowBegin((i+1) % 2), tmp.rowBegin(i % 2));
 
             // copy to the state vector shifting all bits to the right by 31
-            vectorToState(0, (const uint32_t*) tmp.rowBegin(1));
+            vectorToState(0, (const uint32_t*) tmp.rowBegin(commonJumpRepeat % 2));
         }
 
-        if (s_regLenWords > 1 && sequentialJump) {
+        if (s_regLenWords > 1) {
+            if (sequentialJump) {
 
-            // perform jump ahead of the s_regLenWords states
-            // State_0 = State_0
-            // State_1 = Jump x State_0
-            // State_2 = Jump x State_1
-            // ...
+                // perform jump ahead of the s_regLenWords states
+                // State_0 = State_0
+                // State_1 = Jump x State_0
+                // State_2 = Jump x State_1
+                // ...
 
-            // temporary workspace matrix
-            BinaryMatrix<2, s_nBits> tmp;
+                // copy state to the first row shifting all bits to the left by 31
+                stateToVector(0, (uint32_t*)tmp.rowBegin(0));
 
-            // copy state to the first row shifting all bits to the left by 31
-            stateToVector(0, (uint32_t*)tmp.rowBegin(0));
+                for (size_t s = 1; s < s_regLenWords; ++s) {
+                    // multiply all rows by state s and store the result in pres
 
+                    const uint8_t* psrc = (uint8_t*)tmp.rowBegin((s + 1) % 2);
+                    uint8_t* pdst = (uint8_t*)tmp.rowBegin(s % 2);
 
-            for (size_t s = 1; s < s_regLenWords; ++s) {
-                // multiply all rows by state s and store the result in pres
+                    sequentialJump->multiplyByColumn(pdst, psrc);
 
-                const uint8_t* psrc = (uint8_t*)tmp.rowBegin((s + 1) % 2);
-                uint8_t* pdst = (uint8_t*)tmp.rowBegin(s % 2);
-
-                sequentialJump->multiplyByColumn(pdst, psrc);
-
-                // copy to the state vector shifting all bits to the right by 31
-                vectorToState(s, (const uint32_t *) pdst);
+                    // copy to the state vector shifting all bits to the right by 31
+                    vectorToState(s, (const uint32_t*)pdst);
+                }
             }
-
-        }
-        else if constexpr (s_regLenWords > 1) {
-            for (size_t w = 0; w < s_N; ++w)
-                for (size_t j = 1; j < s_regLenWords; ++j)
-                    pstate[w * s_regLenWords + j] = pstate[w * s_regLenWords];
+            else {
+                for (size_t w = 0; w < s_N; ++w)
+                    for (size_t j = 1; j < s_regLenWords; ++j)
+                        pstate[w * s_regLenWords + j] = pstate[w * s_regLenWords];
+            }
         }
 
         m_pst = m_pst_end;
@@ -229,13 +229,6 @@ class MSMT19937
             prev = scalarState(i) = (mask * (prev ^ (prev >> 30)) + i);
     }
 
-    // initializes the first state from another generator
-    void __reinit(const MSMT19937& basegen)
-    {
-        for (uint32_t i = 0; i < s_N; i++)
-            scalarState(i) = basegen.scalarState(i);
-    }
-
 public:
 
     const static size_t s_qryBlkSize = (QueryMode == QM_Scalar) ? 1 : (QueryMode == QM_Block16) ? 16 : s_N * s_regLenWords;
@@ -247,35 +240,29 @@ public:
         , m_prnd(nullptr)
     {}
 
-    MSMT19937(uint32_t seed, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
+    MSMT19937(uint32_t seed, size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
         : MSMT19937()
     {
-        reinit(seed, commonJump, sequentialJump);
+        reinit(seed, commonJumpRepeat, commonJump, sequentialJump);
     }
 
-    MSMT19937(const uint32_t seeds[], uint32_t n_seeds, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
+    MSMT19937(const uint32_t seeds[], uint32_t n_seeds, size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
         : MSMT19937()
     {
-        reinit(seeds, n_seeds, commonJump, sequentialJump);
-    }
-
-    MSMT19937(const MSMT19937& basegen, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
-        : MSMT19937()
-    {
-        reinit(basegen, commonJump, sequentialJump);
+        reinit(seeds, n_seeds, commonJumpRepeat, commonJump, sequentialJump);
     }
 
     // initializes m_state[s_N] with a seed
-    void reinit(uint32_t s, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
+    void reinit(uint32_t s, size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
     {
         __reinit(s);
-        fillOtherStates(commonJump, sequentialJump);
+        fillOtherStates(commonJumpRepeat, commonJump, sequentialJump);
     }
 
     // initialize by an array with array-length
     // init_key is the array for initializing keys
     // key_length is its length
-    void reinit(const uint32_t seeds[], uint32_t n_seeds, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
+    void reinit(const uint32_t seeds[], uint32_t n_seeds, size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
     {
         __reinit(uint32_t(19650218));
         uint32_t i = 1, j = 0;
@@ -298,15 +285,9 @@ public:
 
         scalarState(0) = uint32_t(0x80000000); // MSB is 1; assuring non-zero initial array
 
-        fillOtherStates(commonJump, sequentialJump);
+        fillOtherStates(commonJumpRepeat, commonJump, sequentialJump);
     }
 
-    // initializes m_state[s_N] from a base generator
-    void reinit(const MSMT19937& basegen, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
-    {
-        __reinit(basegen);
-        fillOtherStates(commonJump, sequentialJump);
-    }
 
     // generates a random number on [0,0xffffffff] interval
     uint32_t FORCE_INLINE genrand_uint32()
@@ -388,4 +369,3 @@ public:
         return(a * 67108864.0 + b) * (1.0 / 9007199254740992.0);
     }
 };
-
