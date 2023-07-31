@@ -81,6 +81,7 @@ $(SFMT_OBJ) : SFMT-src-1.5.1/sfmt.c Makefile | $(BINDIR)
 
 # extra dependencies and flags for specific executable
 $(BINDIR)/test.exe $(BINDIR)/perf.exe : $(MT_OBJ) $(SFMT_OBJ) | dat/F00009.bits dat/F00010.bits dat/F19937.bits
+$(BINDIR)/demo.exe : | dat/F19935.bits dat/F00100.bits
 $(BINDIR)/testu01.exe : | dat/F19933.bits dat/F19934.bits dat/F19935.bits
 $(BINDIR)/testu01.exe :	LFLAGS += -L$(TESTU01_DIR)/lib -ltestu01 -lprobdist -lmylib -lm
 
