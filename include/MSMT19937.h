@@ -220,7 +220,7 @@ class MSMT19937
         m_prnd = (const uint32_t *)(((uint8_t *) m_rnd) + sizeof(m_rnd));
     }
 
-    // initializes m_state[s_N] with a seed
+    // initializes the first state with a seed
     void __reinit(uint32_t s)
     {
         const uint32_t mask = uint32_t(1812433253UL);
@@ -229,7 +229,7 @@ class MSMT19937
             prev = scalarState(i) = (mask * (prev ^ (prev >> 30)) + i);
     }
 
-    // initializes m_state[s_N] with a seed
+    // initializes the first state from another generator
     void __reinit(const MSMT19937& basegen)
     {
         for (uint32_t i = 0; i < s_N; i++)
@@ -328,6 +328,7 @@ public:
     }
 
     // generates 16 uniform discrete random numbers in [0,0xffffffff] interval
+    // note the vector dst mus be aligned on a 64 byte boundary
     void genrand_uint32_blk16(uint32_t* dst)
     {
         static_assert(QueryMode == QM_Block16);
@@ -341,6 +342,7 @@ public:
     }
 
     // generates a block of the same size as the state vector of uniform discrete random numbers in [0,0xffffffff] interval
+    // note the vector dst mus be aligned on a 64 byte boundary
     void genrand_uint32_stateBlk(uint32_t* dst)
     {
         static_assert(QueryMode == QM_StateSize);
