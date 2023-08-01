@@ -1,6 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 
-#include "MSMT19937.h"
+#include "VMT19937.h"
 
 #define HAVE_SSE2
 #include "../SFMT-src-1.5.1/SFMT.h"
@@ -40,10 +40,10 @@ struct Result
     }
 };
 
-template <size_t VecLen, MSMT19937QueryMode BlkMode>
+template <size_t VecLen, VMT19937QueryMode BlkMode>
 Result testPerformance(size_t runId)
 {
-    typedef MSMT19937<VecLen, BlkMode> gen_t;
+    typedef VMT19937<VecLen, BlkMode> gen_t;
 
     static const size_t BlkSize = gen_t::s_qryBlkSize;
 

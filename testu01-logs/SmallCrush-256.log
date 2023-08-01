@@ -7,7 +7,7 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smarsa_BirthdaySpacings test:
@@ -39,7 +39,7 @@ Test sknuth_Collision calling smultin_Multinomial
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smultin_Multinomial test:
@@ -83,7 +83,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sknuth_Gap test:
@@ -107,7 +107,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sknuth_SimpPoker test:
@@ -131,7 +131,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sknuth_CouponCollector test:
@@ -155,7 +155,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sknuth_MaxOft test:
@@ -188,7 +188,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 svaria_WeightDistrib test:
@@ -212,7 +212,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smarsa_MatrixRank test:
@@ -236,7 +236,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sstring_HammingIndep test:
@@ -262,7 +262,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 swalk_RandomWalk1 test:
@@ -323,7 +323,7 @@ Generator state:
 ========= Summary results of SmallCrush =========
 
  Version:          TestU01 1.2.3
- Generator:        MS-MT1937 (M=8)
+ Generator:        VMT1937 (M=8)
  Number of statistics:  15
  Total CPU time:   00:00:12.18
 

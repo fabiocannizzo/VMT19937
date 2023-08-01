@@ -1,7 +1,7 @@
 #define TESTING
 #define SIMD_EMULATION
 
-#include "MSMT19937.h"
+#include "VMT19937.h"
 
 const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
@@ -123,10 +123,10 @@ void squareTests(std::index_sequence<NBits...>&&)
     (squareTest<NBits>(), ...);
 }
 
-template <size_t VecLen, MSMT19937QueryMode BlkMode>
+template <size_t VecLen, VMT19937QueryMode BlkMode>
 void testEquivalence(size_t mCommonJumpRepeat, const MT19937Matrix* commonJump, const MT19937Matrix* seqJump, size_t commonJumpSize, size_t sequenceJumpSize)
 {
-    typedef MSMT19937<VecLen, BlkMode> gen_t;
+    typedef VMT19937<VecLen, BlkMode> gen_t;
     static const size_t BlkSize = gen_t::s_qryBlkSize;
 
     std::cout << "Testing equivalence of generators with SIMD length " << VecLen
