@@ -32,13 +32,15 @@ struct BinaryVectorMultiplier
         const size_t nSimdStep = nBitCols / nSimdBits + ((nBitCols % nSimdBits) != 0);
         static_assert(nSimdStep * nSimdBits <= nBitColsPadded);
 
-        typename simd_t::Konst accumulator[nRows];
+        simd_t accumulator[nRows];
+        for (auto& a : accumulator)
+            a = simd_t::zero();
         for (size_t i = 0; i < nSimdStep; ++i) {
             simd_t a(_pr + i * nSimdBytes);
             for (size_t c = 0; c < nRows; ++c) {
                 simd_t b(_pc[c] + i * nSimdBytes);
                 simd_t p = a & b;
-                accumulator[c] ^= p;
+                accumulator[c] = accumulator[c] ^ p;
             }
         }
 
@@ -315,7 +317,7 @@ public:
     {
         size_t n = 0;
         static_assert(s_nUsedBytes % sizeof(uint64_t) == 0);
-        for (const int64_t *p = (const int64_t*)m_data, * const pend = p + (s_nUsedBytes / sizeof(*p)); p != pend; ++p)
+        for (const uint64_t *p = (const uint64_t*)m_data, * const pend = p + (s_nUsedBytes / sizeof(*p)); p != pend; ++p)
             n += popcnt(*p);
         return n;
     }

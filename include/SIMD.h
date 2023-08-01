@@ -1,6 +1,7 @@
 #pragma once
 
 #include "simd_config.h"
+#include "portable.h"
 
 #include <algorithm>
 
@@ -54,19 +55,7 @@ struct SimdRegister<32>
 
     static FORCE_INLINE XV zero() { return uint32_t(0); }
 
-    struct Konst
-    {
-        Konst() : m_simd(0) {}
-        Konst(uint32_t v) : m_simd(v) {}
-
-        void operator^=(XV v) { m_simd ^= v.m_v; }
-
-        uint8_t parity() const
-        {
-            return popcnt(m_simd) % 2;
-        }
-        uint32_t m_simd;
-    };
+    uint8_t parity() const { return popcnt(m_v) % 2; }
 };
 
 // This class is for debugging and testing only
@@ -97,26 +86,13 @@ struct SimdRegisterEmulator
 
     FORCE_INLINE XV ifOddValueElseZero(const XV& value) const { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = (m_v.a[i] % 2) ? value.m_v.a[i] : 0; return r; }
 
-    union Konst
+    uint8_t parity() const
     {
-        Konst() : m_simd(uint32_t(0)) {}
-
-        void operator^=(const XV& value)
-        {
-            for (size_t i = 0; i < M; ++i)
-                m_simd.a[i] ^= value.m_v.a[i];
-        }
-
-        uint8_t parity() const
-        {
-            size_t n = 0;
-            for (size_t i = 0; i < M; ++i)
-                n += popcnt(m_simd.a[i]);
-            return n % 2;
-        }
-
-        A m_simd;
-    };
+        size_t n;
+        for (auto v : m_v.a)
+            n += v;
+        return popcnt(n) % 2;
+    }
 };
 
 template <>
@@ -154,19 +130,7 @@ struct SimdRegister<64>
 
     static FORCE_INLINE XV zero() { return uint64_t(0); }
 
-    struct Konst
-    {
-        Konst() : m_simd(0) {}
-        Konst(uint64_t v) : m_simd(v) {}
-
-        void operator^=(XV v) { m_simd ^= v.m_v; }
-
-        uint8_t parity() const
-        {
-            return popcnt(m_simd) % 2;
-        }
-        uint64_t m_simd;
-    };
+    uint8_t parity() const { return popcnt(m_v) % 2; }
 };
 
 #if SIMD_N_BITS>=128
@@ -208,19 +172,13 @@ struct SimdRegister<128>
 #endif
     }
 
-    union Konst
+    uint8_t parity() const
     {
-        Konst() : m_simd(zero().m_v) {}
-        Konst(__m128i v) : m_simd(v) {}
-
-        void operator^=(XV v) { m_simd = (XV(m_simd) ^ v).m_v; }
-        uint8_t parity() const
-        {
-            return popcnt(m_u64[0] ^ m_u64[1]) & 0x1;
-        }
-        __m128i m_simd;
-        uint64_t m_u64[2];
-    };
+        __m128i hi(_mm_shuffle_epi32(m_v, 2 | (3 << 2)));
+        __m128i mix = _mm_xor_si128(hi, m_v);
+        double d = _mm_cvtsd_f64(_mm_castsi128_pd(mix));
+        return popcnt(*(uint64_t*)(&d)) & 1;
+    }
 };
 #endif
 
@@ -262,21 +220,12 @@ struct SimdRegister<256>
 #endif
     }
 
-    union Konst
+    uint8_t parity() const
     {
-        Konst() : m_simd(zero().m_v) {}
-        Konst(__m256i v) : m_simd(v) {}
-
-        void operator^=(XV v) { m_simd = (XV(m_simd) ^ v).m_v; }
-
-        uint8_t parity() const
-        {
-            typedef SimdRegister<128> v128_t;
-            return v128_t::Konst(v128_t(_mm_xor_si128(m_u128[0], m_u128[1])).m_v).parity();
-        }
-        __m256i m_simd;
-        __m128i m_u128[2];
-    };
+        __m128i hi(_mm256_extracti128_si256(m_v, 1));
+        __m128i lo(_mm256_castsi256_si128(m_v));
+        return SimdRegister<128>(_mm_xor_si128(lo, hi)).parity();
+    }
 };
 #elif defined(SIMD_EMULATION)
 template <>
@@ -320,20 +269,12 @@ struct SimdRegister<512>
 
     static FORCE_INLINE XV zero() { return _mm512_setzero_si512(); }
 
-    union Konst
+    uint8_t parity() const
     {
-        Konst() : m_simd(zero().m_v) {}
-
-        void operator^=(XV v) { m_simd = (XV(m_simd) ^ v).m_v; }
-
-        uint8_t parity() const
-        {
-            typedef SimdRegister<256> v256_t;
-            return v256_t::Konst(v256_t(_mm256_xor_si256(m_u256[0], m_u256[1])).m_v).parity();
-        }
-        __m512i m_simd;
-        __m256i m_u256[2];
-    };
+        __m256i hi(_mm512_extracti64x4_epi64(m_v, 1));
+        __m256i lo(_mm512_castsi512_si256(m_v));
+        return SimdRegister<256>(_mm256_xor_si256(lo, hi)).parity();
+    }
 };
 #elif defined(SIMD_EMULATION)
 template <>
