@@ -4,7 +4,7 @@ extern "C" {
 
 #define SIMD_EMULATION
 
-#include "MSMT19937.h"
+#include "VMT19937.h"
 
 #include <cstdint>
 #include <functional>
@@ -20,7 +20,7 @@ MT19937Matrix j19934(std::string("./dat/F19934.bits"));
 MT19937Matrix j19935(std::string("./dat/F19935.bits"));
 
 MT19937Matrix* pjump[4] = { nullptr, &j19935, &j19934, &j19933 };
-char genNames[4][64] = { "MS-MT1937 (M=1)", "MS-MT1937 (M=4)", "MS-MT1937 (M=8)", "MS-MT1937 (M=16)"};
+char genNames[4][64] = { "VMT1937 (M=1)", "VMT1937 (M=4)", "VMT1937 (M=8)", "VMT1937 (M=16)"};
 
 const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
@@ -30,7 +30,7 @@ enum Modes { SmallCrush = 0, Crush = 1, BigCrush = 2 };
 template <size_t NBITS>
 struct TestRunner
 {
-    typedef MSMT19937<NBITS, QM_Scalar> gen_t;
+    typedef VMT19937<NBITS, QM_Scalar> gen_t;
 
     static const size_t M = NBITS / 32;
     static const size_t ArrayIndex = M == 1 ? 0 : std::log2(M) - 1;

@@ -1,4 +1,4 @@
-# MS-MT19937
+# VMT19937
 
 # A SIMD friendly pseudo random number generator, combining multiple Mersenne twister 19937 generators
 
@@ -11,10 +11,10 @@ Comprehensive test results demonstrate that the throughput of the new generator 
 A paper describing in detail the implementation is available on [arXiv]{http://www.math.sci.hiroshima-u.ac.jp/m-mat/MT/MT2002/CODES/mt19937ar.c}
 
 ## Description
-The MSMT19937 generator is parametrized on 2 template parameters
+The VMT19937 generator is parametrized on 2 template parameters
 ```c++
-template <size_t RegisterBitLen, MSMT19937GenMode GenMode>
-class MSMT19937;
+template <size_t RegisterBitLen, VMT19937GenMode GenMode>
+class VMT19937;
 ```
 
 `RegisterBitLen` is the length of the registers used in bits.
@@ -23,7 +23,7 @@ Performance improves with the register length. The set of available generators i
 
 `GenMode` determines the way in which the generator will be used. There are 3 modes to generate random numbers: one at a time, in blocks of 16 or in blocks with the same statesize as the generator. These modes correpond to the enum values below:
 ```c++
-enum MSMT19937GenMode { QM_Scalar, QM_Block16, QM_StateSize };
+enum VMT19937GenMode { QM_Scalar, QM_Block16, QM_StateSize };
 ```
 Performance improves with the length of the blocks. Usually `QM_Block16` is a good choice, as it represents a good compromize between performance and storage space.
 The associated query functions are:
@@ -49,16 +49,16 @@ The table below shows the time in seconds to generate 5 billions of uniform disc
 ---------------------------------------------------------------------
 | MT19937     | n.a.  | n.a.      | SSE2    | 31.56 | 20.07 | 16.90 | 
 | SFMT19937   | n.a.  | n.a.      | SSE2    | 21.67 | 6.99  | 9.97  |
-| MS-MT19937  | 32    | Scalar    | SSE2    | 20.83 | 11.10 | 13.54 |
-| MS-MT19937  | 128   | Scalar    | SSE2    | 13.28 | 6.19  | 7.14  |
-| MS-MT19937  | 128   | Block16   | SSE2    | 7.77  | 3.59  | 4.19  |
-| MS-MT19937  | 128   | StateSize | SSE2    | 7.42  | 3.37  | 4.59  |
-| MS-MT19937  | 256   | Scalar    | AVX     | n.a.  | 5.43  | 6.42  |
-| MS-MT19937  | 256   | Block16   | AVX     | n.a.  | 2.15  | 2.15  |
-| MS-MT19937  | 256   | StateSize | AVX     | n.a.  | 2.10  | 2.06  |
-| MS-MT19937  | 512   | Scalar    | AVX512  | n.a.  | n.a.  | 5.66  |
-| MS-MT19937  | 512   | Block16   | AVX512  | n.a.  | n.a.  | 1.45  |
-| MS-MT19937  | 512   | StateSize | AVX512  | n.a.  | n.a.  | 1.14  |
+| VMT19937  | 32    | Scalar    | SSE2    | 20.83 | 11.10 | 13.54 |
+| VMT19937  | 128   | Scalar    | SSE2    | 13.28 | 6.19  | 7.14  |
+| VMT19937  | 128   | Block16   | SSE2    | 7.77  | 3.59  | 4.19  |
+| VMT19937  | 128   | StateSize | SSE2    | 7.42  | 3.37  | 4.59  |
+| VMT19937  | 256   | Scalar    | AVX     | n.a.  | 5.43  | 6.42  |
+| VMT19937  | 256   | Block16   | AVX     | n.a.  | 2.15  | 2.15  |
+| VMT19937  | 256   | StateSize | AVX     | n.a.  | 2.10  | 2.06  |
+| VMT19937  | 512   | Scalar    | AVX512  | n.a.  | n.a.  | 5.66  |
+| VMT19937  | 512   | Block16   | AVX512  | n.a.  | n.a.  | 1.45  |
+| VMT19937  | 512   | StateSize | AVX512  | n.a.  | n.a.  | 1.14  |
 ---------------------------------------------------------------------
 ```
 Performance stats obtained with the following CPUs:
@@ -67,11 +67,11 @@ Performance stats obtained with the following CPUs:
 - CPU-3: Intel® Xeon® Gold 6234, cache 24.75Mb, base frequency 3.3GHz, turbo frequency 4.0 GHz, SIMD support for AVX512 (a high performance desktop CPU).
 
 ## Empirical random tests
-The empirical quality of the pseudo random sequences generated via MSMT19937 is tested with the _TestU01_ suite [^3]. The results are in the subfolder [testu01-logs](testu01-logs).
+The empirical quality of the pseudo random sequences generated via VMT19937 is tested with the _TestU01_ suite [^3]. The results are in the subfolder [testu01-logs](testu01-logs).
 Results are comparable with the original MT19937 generator.
 
 ## Usage
-The library is header only. You only need to include the header file [include/MSMT19937.h](include/MSMT19937.h).
+The library is header only. You only need to include the header file [include/VMT19937.h](include/VMT19937.h).
 
 Depending on your compilation settings, you have avaialble up to 12 generators, depending on the compination of the template parameters `RegisterBitLen` and `GenMode`.
 
@@ -94,7 +94,7 @@ For example, to instantiate a genrator with 128 bits regsiters and
     const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
     
     // Create the generator setting QueryMode as Block16
-    MSMT19937<128, QM_Block16> mt(seedinit, seedlength, 0, nullptr, jumpMatrix);
+    VMT19937<128, QM_Block16> mt(seedinit, seedlength, 0, nullptr, jumpMatrix);
 
     // The jump matrix is no longer needed and can be released here.
     delete jumpMatrix;
@@ -138,11 +138,11 @@ In that case you may need to extract further jump matrices, e.g. _F00100.bits_, 
     
     // an array of parallel independent generators, which are guaraneteed not to be overlapping
     // up to a period of 2^100
-    std::array<std::unique_ptr<MSMT19937<128, QM_Block16>>, 10> parallelGenerators;
+    std::array<std::unique_ptr<VMT19937<128, QM_Block16>>, 10> parallelGenerators;
 
     // Create 10 multiple parallel generators with VecLen=128 and QueryMode=Block16
     for (size_t i = 0; i < 10; ++i)
-        parallelGenerators[i].reset(new MSMT19937<128, QM_Block16>(seedinit, seedlength, i, commonJumpMatrix, jumpMatrix));
+        parallelGenerators[i].reset(new VMT19937<128, QM_Block16>(seedinit, seedlength, i, commonJumpMatrix, jumpMatrix));
 
     // The jump matrices are no longer needed and can be released here.
     delete jumpMatrix;
@@ -181,7 +181,7 @@ To build it, create an installation directory, e.g. _/workspace/repos/testu01/in
 make -j4
 make install -j4
 ```
-Then you need to build the MSMT19937 test for _TESTU01_ and run the tests.
+Then you need to build the VMT19937 test for _TESTU01_ and run the tests.
 ```
 make -j4 NBITS=512 TESTU01_DIR=/workspace/repos/testu01/install/
 PATH=/workspace/repos/testu01/install/bin:${PATH} make testu01logs

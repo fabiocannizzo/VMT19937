@@ -1,4 +1,4 @@
-#include "MSMT19937.h"
+#include "VMT19937.h"
 
 #include <array>
 #include <memory>
@@ -50,7 +50,7 @@ void demo128()
         The second argument defines the generation mode. We will always query the generators
         in blocks of 16 random numbers
     */
-    MSMT19937<128, QM_Block16> mt(seedinit, seedlength, 0, commonJumpMatrix, jumpMatrix);
+    VMT19937<128, QM_Block16> mt(seedinit, seedlength, 0, commonJumpMatrix, jumpMatrix);
 
     // The jump matrix is no longer needed and can be released here.
     delete jumpMatrix;
@@ -86,11 +86,11 @@ void demoParallel()
 
     // an array of parallel independent generators, which are guaraneteed not to be overlapping
     // up to a period of 2^100
-    std::array<std::unique_ptr<MSMT19937<128, QM_Block16>>, 10> parallelGenerators;
+    std::array<std::unique_ptr<VMT19937<128, QM_Block16>>, 10> parallelGenerators;
 
     // Create 10 multiple parallel generators with VecLen=128 and QueryMode=Block16
     for (size_t i = 0; i < 10; ++i)
-        parallelGenerators[i].reset(new MSMT19937<128, QM_Block16>(seedinit, seedlength, i, commonJumpMatrix, jumpMatrix));
+        parallelGenerators[i].reset(new VMT19937<128, QM_Block16>(seedinit, seedlength, i, commonJumpMatrix, jumpMatrix));
 
     // The jump matrices are no longer needed and can be released here.
     delete jumpMatrix;
