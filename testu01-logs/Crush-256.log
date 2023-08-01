@@ -10,7 +10,7 @@ Test smarsa_SerialOver calling smultin_MultinomialOver
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smultin_MultinomialOver test:
@@ -49,7 +49,7 @@ Test smarsa_SerialOver calling smultin_MultinomialOver
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smultin_MultinomialOver test:
@@ -88,7 +88,7 @@ Test smarsa_CollisionOver calling smultin_MultinomialOver
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smultin_MultinomialOver test:
@@ -140,7 +140,7 @@ Test smarsa_CollisionOver calling smultin_MultinomialOver
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smultin_MultinomialOver test:
@@ -192,7 +192,7 @@ Test smarsa_CollisionOver calling smultin_MultinomialOver
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smultin_MultinomialOver test:
@@ -244,7 +244,7 @@ Test smarsa_CollisionOver calling smultin_MultinomialOver
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smultin_MultinomialOver test:
@@ -296,7 +296,7 @@ Test smarsa_CollisionOver calling smultin_MultinomialOver
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smultin_MultinomialOver test:
@@ -348,7 +348,7 @@ Test smarsa_CollisionOver calling smultin_MultinomialOver
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smultin_MultinomialOver test:
@@ -400,7 +400,7 @@ Test smarsa_CollisionOver calling smultin_MultinomialOver
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smultin_MultinomialOver test:
@@ -452,7 +452,7 @@ Test smarsa_CollisionOver calling smultin_MultinomialOver
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smultin_MultinomialOver test:
@@ -501,7 +501,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smarsa_BirthdaySpacings test:
@@ -530,7 +530,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smarsa_BirthdaySpacings test:
@@ -559,7 +559,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smarsa_BirthdaySpacings test:
@@ -588,7 +588,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smarsa_BirthdaySpacings test:
@@ -617,7 +617,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smarsa_BirthdaySpacings test:
@@ -646,7 +646,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smarsa_BirthdaySpacings test:
@@ -675,7 +675,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smarsa_BirthdaySpacings test:
@@ -704,7 +704,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 snpair_ClosePairs test:
@@ -749,7 +749,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 snpair_ClosePairs test:
@@ -797,7 +797,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 snpair_ClosePairs test:
@@ -845,7 +845,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 snpair_ClosePairsBitMatch test:
@@ -868,7 +868,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 snpair_ClosePairsBitMatch test:
@@ -891,7 +891,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sknuth_SimpPoker test:
@@ -915,7 +915,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sknuth_SimpPoker test:
@@ -939,7 +939,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sknuth_SimpPoker test:
@@ -963,7 +963,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sknuth_SimpPoker test:
@@ -987,7 +987,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sknuth_CouponCollector test:
@@ -1011,7 +1011,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sknuth_CouponCollector test:
@@ -1035,7 +1035,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sknuth_CouponCollector test:
@@ -1059,7 +1059,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sknuth_CouponCollector test:
@@ -1083,7 +1083,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sknuth_Gap test:
@@ -1107,7 +1107,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sknuth_Gap test:
@@ -1131,7 +1131,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sknuth_Gap test:
@@ -1155,7 +1155,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sknuth_Gap test:
@@ -1179,7 +1179,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sknuth_Run test:
@@ -1203,7 +1203,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sknuth_Run test:
@@ -1230,7 +1230,7 @@ Test sknuth_Permutation calling smultin_Multinomial
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smultin_Multinomial test:
@@ -1269,7 +1269,7 @@ Test sknuth_Permutation calling smultin_Multinomial
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smultin_Multinomial test:
@@ -1308,7 +1308,7 @@ Test sknuth_CollisionPermut calling smultin_Multinomial
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smultin_Multinomial test:
@@ -1358,7 +1358,7 @@ Test sknuth_CollisionPermut calling smultin_Multinomial
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smultin_Multinomial test:
@@ -1405,7 +1405,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sknuth_MaxOft test:
@@ -1458,7 +1458,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sknuth_MaxOft test:
@@ -1511,7 +1511,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sknuth_MaxOft test:
@@ -1544,7 +1544,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sknuth_MaxOft test:
@@ -1577,7 +1577,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 svaria_SampleProd test:
@@ -1600,7 +1600,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 svaria_SampleProd test:
@@ -1623,7 +1623,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 svaria_SampleMean test:
@@ -1653,7 +1653,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 svaria_SampleCorr test:
@@ -1676,7 +1676,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 svaria_AppearanceSpacings test:
@@ -1705,7 +1705,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 svaria_AppearanceSpacings test:
@@ -1734,7 +1734,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 svaria_WeightDistrib test:
@@ -1758,7 +1758,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 svaria_WeightDistrib test:
@@ -1782,7 +1782,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 svaria_WeightDistrib test:
@@ -1806,7 +1806,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 svaria_WeightDistrib test:
@@ -1830,7 +1830,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 svaria_SumCollector test:
@@ -1854,7 +1854,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smarsa_MatrixRank test:
@@ -1878,7 +1878,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smarsa_MatrixRank test:
@@ -1902,7 +1902,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smarsa_MatrixRank test:
@@ -1926,7 +1926,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smarsa_MatrixRank test:
@@ -1950,7 +1950,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smarsa_MatrixRank test:
@@ -1974,7 +1974,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smarsa_MatrixRank test:
@@ -1998,7 +1998,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smarsa_Savir2 test:
@@ -2022,7 +2022,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smarsa_GCD test:
@@ -2048,7 +2048,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 smarsa_GCD test:
@@ -2074,7 +2074,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 swalk_RandomWalk1 test:
@@ -2134,7 +2134,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 swalk_RandomWalk1 test:
@@ -2194,7 +2194,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 swalk_RandomWalk1 test:
@@ -2254,7 +2254,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 swalk_RandomWalk1 test:
@@ -2314,7 +2314,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 swalk_RandomWalk1 test:
@@ -2374,7 +2374,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 swalk_RandomWalk1 test:
@@ -2434,7 +2434,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 scomp_LinearComp test:
@@ -2466,7 +2466,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 scomp_LinearComp test:
@@ -2498,7 +2498,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 scomp_LempelZiv test:
@@ -2535,7 +2535,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sspectral_Fourier3 test:
@@ -2565,7 +2565,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sspectral_Fourier3 test:
@@ -2595,7 +2595,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sstring_LongestHeadRun test:
@@ -2625,7 +2625,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sstring_LongestHeadRun test:
@@ -2655,7 +2655,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sstring_PeriodsInStrings test:
@@ -2679,7 +2679,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sstring_PeriodsInStrings test:
@@ -2703,7 +2703,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sstring_HammingWeight2 test:
@@ -2738,7 +2738,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sstring_HammingWeight2 test:
@@ -2773,7 +2773,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sstring_HammingCorr test:
@@ -2797,7 +2797,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sstring_HammingCorr test:
@@ -2821,7 +2821,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sstring_HammingCorr test:
@@ -2845,7 +2845,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sstring_HammingIndep test:
@@ -2871,7 +2871,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sstring_HammingIndep test:
@@ -2897,7 +2897,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sstring_HammingIndep test:
@@ -2923,7 +2923,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sstring_HammingIndep test:
@@ -2949,7 +2949,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sstring_HammingIndep test:
@@ -2975,7 +2975,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sstring_HammingIndep test:
@@ -3001,7 +3001,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sstring_Run test:
@@ -3036,7 +3036,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sstring_Run test:
@@ -3071,7 +3071,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sstring_AutoCor test:
@@ -3108,7 +3108,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sstring_AutoCor test:
@@ -3145,7 +3145,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sstring_AutoCor test:
@@ -3182,7 +3182,7 @@ Generator state:
 ***********************************************************
 HOST = beelink, CYGWIN_NT-10.0-19044
 
-MS-MT1937 (M=8)
+VMT1937 (M=8)
 
 
 sstring_AutoCor test:
@@ -3220,7 +3220,7 @@ Generator state:
 ========= Summary results of Crush =========
 
  Version:          TestU01 1.2.3
- Generator:        MS-MT1937 (M=8)
+ Generator:        VMT1937 (M=8)
  Number of statistics:  144
  Total CPU time:   00:55:13.57
  The following tests gave p-values outside [0.001, 0.9990]:

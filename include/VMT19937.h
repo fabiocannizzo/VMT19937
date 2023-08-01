@@ -17,11 +17,11 @@
 #include <cstdint>
 #include <cstddef>
 
-enum MSMT19937QueryMode { QM_Scalar, QM_Block16, QM_StateSize };
+enum VMT19937QueryMode { QM_Scalar, QM_Block16, QM_StateSize };
 
 
-template <size_t RegisterBitLen = SIMD_N_BITS, MSMT19937QueryMode QueryMode = QM_Scalar>
-class MSMT19937
+template <size_t RegisterBitLen = SIMD_N_BITS, VMT19937QueryMode QueryMode = QM_Scalar>
+class VMT19937
 {
     const static size_t s_regLenBits = RegisterBitLen;
     const static size_t s_regLenWords = s_regLenBits / 32;
@@ -234,20 +234,20 @@ public:
     const static size_t s_qryBlkSize = (QueryMode == QM_Scalar) ? 1 : (QueryMode == QM_Block16) ? 16 : s_N * s_regLenWords;
 
     // constructors
-    MSMT19937()
+    VMT19937()
         : m_pst(nullptr)
         , m_pst_end(m_state+s_N)
         , m_prnd(nullptr)
     {}
 
-    MSMT19937(uint32_t seed, size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
-        : MSMT19937()
+    VMT19937(uint32_t seed, size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
+        : VMT19937()
     {
         reinit(seed, commonJumpRepeat, commonJump, sequentialJump);
     }
 
-    MSMT19937(const uint32_t seeds[], uint32_t n_seeds, size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
-        : MSMT19937()
+    VMT19937(const uint32_t seeds[], uint32_t n_seeds, size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
+        : VMT19937()
     {
         reinit(seeds, n_seeds, commonJumpRepeat, commonJump, sequentialJump);
     }
