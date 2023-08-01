@@ -3,13 +3,14 @@
 %\usepackage{graphicx}
 %\usepackage{amsfonts}
 %\usepackage{multirow}
-\usepackage{algorithm}
-\usepackage{algpseudocode}
-\usepackage{centernot}
-\usepackage{verbatim}
+%\usepackage{algorithm}
+%\usepackage{algpseudocode}
+%\usepackage{centernot}
+%\usepackage{verbatim}
 %\usepackage{algorithmicx}
 \usepackage{amssymb}
 \usepackage{amsmath}
+\usepackage{float}
 %\usepackage{filecontents}
 \usepackage{listings}
 %\usepackage[T1]{fontenc}
@@ -17,9 +18,9 @@
 %\usepackage[utf8]{inputenc}
 %\usepackage[english]{babel}
 %\usepackage[margin=0.8in]{geometry}
-\usepackage[hidelinks]{hyperref}
+%\usepackage[hidelinks]{hyperref}
 %\usepackage{pgfplots}
-\usepackage{enumitem}
+%\usepackage{enumitem}
 \usepackage{titlesec}
 %\usetikzlibrary{patterns}
 
@@ -76,17 +77,17 @@
 
 %\newcommand\bibsection{\section*{\bibname\markright{\MakeUppercase{\bibname}}}}
 
-% \journal{TBD}
+\journal{TBD}
 % \journal{Journal of Parallel and Distributed Computing}
 
 \begin{document}
 
-\newenvironment{myitemize}
-{ \begin{itemize} [topsep= 3pt] %\parskip]
-    \setlength{\itemsep}{0pt}
-    \setlength{\parskip}{0pt}
-    \setlength{\parsep}{0pt}     }
-{ \end{itemize}                  }
+%\newenvironment{myitemize}
+%{ \begin{itemize} [topsep= 3pt] %\parskip]
+%    \setlength{\itemsep}{0pt}
+%    \setlength{\parskip}{0pt}
+%    \setlength{\parsep}{0pt}     }
+%{ \end{itemize}                  }
 
 %\newcommand {\inred}[1] {\textcolor{red}{#1}}
 %\newcommand {\curle}[1]{ \left \{      #1 \right \}      }
@@ -94,6 +95,7 @@
 \newcommand\XOR{\mathbin{\oplus}}
 \newcommand\OR{\mid}
 \newcommand\AND{\&}
+\newcommand\myceil[1]{\left\lceil{#1}\right\rceil}
 
 
 
@@ -271,10 +273,36 @@ Let's construct a new sequence $\boldsymbol{S}$ which interleaves the sequences 
 \label{eq:combseq}
    \boldsymbol{S}=\underbrace{z_0, z_J, z_{2J}, \dots, z_{(M-1)J,}}_{\text{1-st number from each sub-sequence}} \,\underbrace{z_1, z_{J+1}, z_{2J+1}, \dots, z_{(M-1)J+1},}_{\text{2-nd number from each sub-sequence}}\, \dots, \underbrace{z_{J-1}, z_{2J-1}, z_{3J-1}, \dots, z_{MJ-1}}_{\text{$J$-th number from each sub-sequence}}
 \end{equation}
-Note that, because the numbers in the original sequence $\boldsymbol{Z}$ are independent and identically distributed, the numbers in the new sequence $\boldsymbol{S}$ obtained by interleaving the sub-sequences $\boldsymbol{Z_t}$ are also independent and identically distributed. The period of the new sequence is $MJ$, so if $J$ is chosen as $P/M$, then the new sequence has the same period as the original one.
+Because the numbers in the original sequence $\boldsymbol{Z}$ are independent and identically distributed, the numbers in the new sequence $\boldsymbol{S}$, obtained by interleaving the sub-sequences $\boldsymbol{Z_t}$, are also independent and identically distributed. The period of the new sequence is $MJ$, so if $J$ is chosen as $P/M$, then the new sequence has the same period as the original one. Note that, since $P$ might not be divisible by $M$, we choose $J$ so that the first $P \% M$ sequences have length $J=\myceil{P/M}$ and the last $P - P \% M$ sequences have length $J-1$, which preserves the total original period $P$. \\
 
-\noindent Given a CPU architecture with SIMD register size of width $L$ expressed in number of bits, we can choose $M$ as the number of 32-bit words which fits in the SIMD registers, i.e. $M=L/32$. We divide the total periods in sub-sequences of length $$J=\frac{P+1}{M}=2^{19937-\log_2M}$$
-For example, working with AVX512 instructions where $L=512$, we have $M=16$, $J=2^{19933}$. Note that we used as a numerator $P+1$, instead of $P$. This is because the period $P$ is not a perfect power of 2, whereas $P+1$ is. As a result, the last sequence $S_{M-1}$ is a bit shorter than the others and has length $J-1$ instead of $J$.
+\noindent Let $L$ be the SIMD register size expressed in number of bits available on a certain CPUs, which can be 128, 256 or 512 depending if the CPU supports only SSE2, AVX or AVX512 instructions, we choose $M$ as the number of 32-bit words which fits in the SIMD registers, i.e. $M=L/32$.
+We can think about $M$ as the vectorization coefficient, i.e. the number of 32-bit operations which can be performed in parallel using vectorial instructions.
+Then we divide the total periods of the Mersenne twister $P=s^{19937}-1$ in $P \% M$ sub-sequences of length
+$$J=\myceil{\frac{P}{M}}=2^{19937-\log_2M}$$
+with the last $P - P \% M$ sequences having length $J-1$. Table \ref{tab:jvalues} shows the parameters $L$, $M$ and $J$ for various SIMD architectures, including the special case $M=1$, which yields the original undivided MT19937 sequence \eqref{eq:mainseq}.
+
+\begin{table}[h!]
+	\centering
+	\begin{tabular}{|c | c | c | c | c | c|} 
+		\hline
+    	\vspace{-10pt}  & \vspace{0pt} & \vspace{0pt}& \vspace{0pt}& \vspace{0pt}& \vspace{0pt} \\
+		SIMD   & L   & M & J & $P \% M$ & $P-P \% M$ \\
+		\hline
+    	\vspace{-9pt}  & \vspace{0pt} & \vspace{0pt}& \vspace{0pt}& \vspace{0pt}& \vspace{0pt} \\
+		n.a.   & 32  & 1 & $2^{19937}-1$  & 1  & 0 \\		
+		\hline
+    	\vspace{-9pt}  & \vspace{0pt} & \vspace{0pt}& \vspace{0pt}& \vspace{0pt}& \vspace{0pt} \\
+		SSE2   & 128 & 4 & $2^{19935}$  & 3  & 1 \\		
+		\hline
+    	\vspace{-9pt}  & \vspace{0pt} & \vspace{0pt}& \vspace{0pt}& \vspace{0pt}& \vspace{0pt} \\
+		AVX    & 256 & 8 & $2^{19934}$  & 7  & 1 \\		
+		\hline
+    	\vspace{-9pt}  & \vspace{0pt} & \vspace{0pt}& \vspace{0pt}& \vspace{0pt}& \vspace{0pt} \\
+		AVX512 & 512 & 16 & $2^{19933}$ & 15 & 1 \\		
+		\hline
+	\end{tabular}
+	\caption{\label{tab:jvalues} MS-MT19937 parameters $L$, $M$ and $J$ for various SIMD architectures.}
+\end{table}
 
 \noindent A pseudo-random number generator which produces the sequence $\boldsymbol{S}$ can be obtained by duplicating $M$ times the original MT19937 generator with initial state $X_0$, thus obtaining an array of $M$ MT19937 generators $G_t$ ($t=0,\dots, M-1$) with identical state vector $X_0$. Then we advance the state vector of each generator $G_t$ by $(t\cdot J)$ steps, so that it will produce the sequence $\boldsymbol{S_t}$. Last we combine the array of generators $G_t$ ($t=0,\dots, M-1$) into a single new generator, which produces a sequence by polling each of the $G_t$ generators in round robin mode, i.e. it produces the desired sequence $\boldsymbol{S}$.
 
@@ -304,10 +332,11 @@ This allows to transform each of the 32-bits operations in \eqref{eq:step} into 
 
 \subsection{Computation of the initial state vectors $X_{tJ}$}
 To construct the generator described in section \ref{sec:simdgen}, we need to advance the state vector $X_0$ by $J$ steps. In theory, we could apply transformation \eqref{eq:step} $J$ times. However, in practice, since $J$ is a huge number, this operation would be astronomically expensive. 
-To overcome this, techniques known as \textit{jump ahead} are used to compute the state $X_{tJ}$ directly from $X_0$ without calculating all the intermediate states. \\
+To overcome this, techniques known as \textit{jump ahead} are used to compute the state $X_{tJ}$ directly from $X_0$ without calculating all the intermediate states.
+
 \subsubsection{\textit{Jump ahead} via binary matrix multiplications modulo 2}
 \label{sec:jumpahead}
-The simplest \textit{jump ahead} methodology for the MT19937 is based on binary matrix multiplications modulo 2, as proposed by Knuth \cite{knuth}. Let $Y$ be a subset of the state vector $X$, with the first $r$ bits (where $r = 31$) removed since they are not used in transformation \eqref{eq:step}. 
+\noindent The simplest \textit{jump ahead} methodology for the MT19937 is based on binary matrix multiplications modulo 2, as proposed by Knuth \cite{knuth}. Let $Y$ be a subset of the state vector $X$, with the first $r$ bits (where $r = 31$) removed since they are not used in transformation \eqref{eq:step}. 
 The effective state vector $Y$ is a binary matrix with dimensions $1\times (nw-r)$. Advancing the effective state vector $Y_k$ to $Y_{k+1}$ using \eqref{eq:step} is equivalent to the binary vector-matrix multiplication modulo-2:
 \begin{equation}
 Y_{k+1} = Y_k \star F
@@ -344,28 +373,28 @@ $$
 $$
 The computation of $B=F^{2^{19933}}$ involves 19933 matrix square operations and takes several hours when using SIMD-optimized code on a 32-core machine. This computation can be done offline, and the resulting matrix $B$ can be stored for later use. Storing $B$ requires approximately 47Mb of space ($19937^2/8$ bytes), but it can be compressed to only 296Kb using LZMA2 compression.
 
-The overhead associated with initializing the generator state vectors as in \eqref{eq:jumpahead}, which requires $M-1$ vector-matrix multiplications, is negligible in the context of generating a large stream of pseudo-random numbers.
+\noindent The overhead associated with initializing the generator state vectors as in \eqref{eq:jumpahead}, which requires $M-1$ vector-matrix multiplications, is negligible in the context of generating a large stream of pseudo-random numbers.
 
 \subsubsection{Alternative \textit{jump ahead} methods}
-It is worth noting that there exist more efficient \textit{jump-ahead} algorithms that do not require storing the jump matrix and are faster than performing a vector-matrix multiplication as in \eqref{eq:jumpahead}. Examples of such algorithms can be found in \cite{jump1} and \cite{jump2}. However, these algorithms have not been discussed here, as the one adopted in section \ref{sec:jumpahead} is simpler to implement and is already very fast.\\
+\noindent It is worth noting that there exist more efficient \textit{jump-ahead} algorithms that do not require storing the jump matrix and are faster than performing a vector-matrix multiplication as in \eqref{eq:jumpahead}. Examples of such algorithms can be found in \cite{jump1} and \cite{jump2}. However, these algorithms have not been discussed here, as the one adopted in section \ref{sec:jumpahead} is simpler to implement and is already very fast.\\
 
-Furthermore, the main contribution of this paper is the vectorization of the algorithm to advance the state vector. If a more efficient \textit{jump-ahead} method were to be adopted, it would further improve initialization time, but it would not invalidate any of the arguments presented in this paper regarding the algorithm's throughput.
+\noindent Furthermore, the main contribution of this paper is the vectorization of the algorithm to advance the state vector. If a more efficient \textit{jump-ahead} method were to be adopted, it would further improve initialization time, but it would not invalidate any of the arguments presented in this paper regarding the algorithm's throughput.
 
 \section{MS-MT19937 Implementation details}
-An implementation of the multi-state generator described in section \ref{sec:simdgen} is available on github\footnote{\label{fn:github} https://github.com/fabiocannizzo/MS-MT19937}. It uses a few optimization techniques introduced to speed up SIMD computations.
+\noindent An implementation of the multi-state generator described in section \ref{sec:simdgen} is available on github\footnote{\label{fn:github} https://github.com/fabiocannizzo/MS-MT19937}. It uses a few optimization techniques introduced to speed up SIMD computations.
 
 \subsection{Memory alignment}
-The state vector array $\hat{X_k}$ is memory-aligned on a 64-byte boundary, i.e. its starting address is a multiple of 64 bytes. This ensures that the data is aligned with cache lines, minimizing the risk of cache misses\footnote{a cache miss fault is a performance penalty paid when a piece of requested data is not available in cache} or cache split\footnote{a cache split fault is a performance penalty paid when a piece of requested data is located in two different cache lines} faults. As a result, it leads to efficient memory access and improved performance, which is  crucial when performing vectorized operations on the state vector using SIMD instructions.
+\noindent The state vector array $\hat{X_k}$ is memory-aligned on a 64-byte boundary, i.e. its starting address is a multiple of 64 bytes. This ensures that the data is aligned with cache lines, minimizing the risk of cache misses\footnote{a cache miss fault is a performance penalty paid when a piece of requested data is not available in cache} or cache split\footnote{a cache split fault is a performance penalty paid when a piece of requested data is located in two different cache lines} faults. As a result, it leads to efficient memory access and improved performance, which is  crucial when performing vectorized operations on the state vector using SIMD instructions.
 
 \subsection{Avoid code branches when regenerating the state vector}
-The vector-matrix multiplication in \eqref{eq:matmult} involves resolving conditional code. In C++ notation, this can be represented as \lstinline{(w % 2 ? w ^ a : w)}.
+\noindent The vector-matrix multiplication in \eqref{eq:matmult} involves resolving conditional code. In C++ notation, this can be represented as \lstinline{(w % 2 ? w ^ a : w)}.
 
-When $w$ and $a$ are scalar words, an efficient implementation can be achieved by avoiding expensive code branches and using a \textit{conditional-move} instruction (e.g., the \textit{CMOVxx} assembler instructions in Intel \textit{x86-64}). Alternatively, as seen in the original MT19937 code, it can be implemented by defining an array \lstinline|tmp[2]={0, a}| and using the result of \lstinline{(w % 2)} as an index into this array, i.e. \lstinline{tmp[w % 2]}.
+\noindent When $w$ and $a$ are scalar words, an efficient implementation can be achieved by avoiding expensive code branches and using a \textit{conditional-move} instruction (e.g., the \textit{CMOVxx} assembler instructions in Intel \textit{x86-64}). Alternatively, as seen in the original MT19937 code, it can be implemented by defining an array \lstinline|tmp[2]={0, a}| and using the result of \lstinline{(w % 2)} as an index into this array, i.e. \lstinline{tmp[w % 2]}.
 
-When $w$ and $a$ are SIMD vectors, the implementation is also optimized to avoid costly code branches using special SIMD instructions and bit masking. For example, with SSE2 instructions, it becomes \lstinline{(((w & 1) > 0) & a)}, where $w$, $a$, $1$, and $0$ are SIMD vectors. This approach leverages the SSE2 SIMD comparison '$>$', which returns a mask with all bits set to ones or zeros for each packed word, depending on whether the comparison is true or false.
+\noindent When $w$ and $a$ are SIMD vectors, the implementation is also optimized to avoid costly code branches using special SIMD instructions and bit masking. For example, with SSE2 instructions, it becomes \lstinline{(((w & 1) > 0) & a)}, where $w$, $a$, $1$, and $0$ are SIMD vectors. This approach leverages the SSE2 SIMD comparison '$>$', which returns a mask with all bits set to ones or zeros for each packed word, depending on whether the comparison is true or false.
 
 \subsection{Vectorize tempering}
-The sequence of loops in \eqref{eq:stepnomod} generates an entirely new state vector, which needs to be consumed word by word to produce random numbers via \textit{tempering}, as shown in \eqref{eq:tempering}. To facilitate this process, we use the variable \textit{nUsed} to keep track of how many state elements have already been used. This variable is reset to zero every time the state vector is regenerated. The pseudo-code for querying one random number from the generator is as follows:
+\noindent The sequence of loops in \eqref{eq:stepnomod} generates an entirely new state vector, which needs to be consumed word by word to produce random numbers via \textit{tempering}, as shown in \eqref{eq:tempering}. To facilitate this process, we use the variable \textit{nUsed} to keep track of how many state elements have already been used. This variable is reset to zero every time the state vector is regenerated. The pseudo-code for querying one random number from the generator is as follows:
 \begin{verbatim}
  int32 getRandom() {
    if (nUsed == stateVectorSize) {
@@ -476,7 +505,7 @@ Test have been run on different CPUs. Note that results for some CPUs are not av
 
 \noindent One key advantage of MS-MT19937 is that it does not require re-calibration of the parameters of the underlying MT19937 generator. Additionally, the technique has the potential to be applied to other linear congruential generators, as long as an effective jump ahead methodology exists.
 
-\noindent Furthermore, while we illustrated the implementation with SIMD instructions, the generality of this technique suggests its applicability to other vectorial processing systems, such as GPUs or FPGAs. This versatility opens up possibilities for optimizing random number generation across various hardware platforms, which is particularly valuable in simulation applications that require long sequences of pseudo-random numbers.
+\noindent Furthermore, while we illustrated the implementation with SIMD instructions, the generality of this technique suggests its applicability to other vectorial processing systems, such as GPUs or FPGAs.
 
 \noindent Overall, MS-MT19937 offers an efficient and flexible solution for generating random numbers with SIMD-friendly characteristics, making it a valuable addition to the repertoire of pseudo-random number generators.
 
