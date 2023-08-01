@@ -42,11 +42,3 @@
 #error "SIMD_N_BITS not defined"
 #endif
 
-inline int64_t popcnt(int64_t x)
-{
-#ifdef _MSC_VER
-    return __popcnt64(x);
-#else
-    return __builtin_popcountll(x);
-#endif
-}
