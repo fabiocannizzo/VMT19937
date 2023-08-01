@@ -44,11 +44,11 @@ The associated query functions are:
 The table below shows the time in seconds to generate 5 billions of uniform discrete 32-bit random numbers in the range $[0,2^{32}-1]$.
 `NBITS` and `GENMODE` are the template parameters of the generator. Peformance is compared against the original MT19937 generator and the vectorized SFMT19937 variation [^2].
 ```
----------------------------------------------------------------------
-| GENERATOR   | NBITS | GENMODE   | TARGET  | CPU-1 | CPU-2 | CPU-3 |
----------------------------------------------------------------------
-| MT19937     | n.a.  | n.a.      | SSE2    | 31.56 | 20.07 | 16.90 | 
-| SFMT19937   | n.a.  | n.a.      | SSE2    | 21.67 | 6.99  | 9.97  |
+-------------------------------------------------------------------
+| GENERATOR | NBITS | GENMODE   | TARGET  | CPU-1 | CPU-2 | CPU-3 |
+-------------------------------------------------------------------
+| MT19937   | n.a.  | n.a.      | SSE2    | 31.56 | 20.07 | 16.90 | 
+| SFMT19937 | n.a.  | n.a.      | SSE2    | 21.67 | 6.99  | 9.97  |
 | VMT19937  | 32    | Scalar    | SSE2    | 20.83 | 11.10 | 13.54 |
 | VMT19937  | 128   | Scalar    | SSE2    | 13.28 | 6.19  | 7.14  |
 | VMT19937  | 128   | Block16   | SSE2    | 7.77  | 3.59  | 4.19  |
@@ -59,7 +59,7 @@ The table below shows the time in seconds to generate 5 billions of uniform disc
 | VMT19937  | 512   | Scalar    | AVX512  | n.a.  | n.a.  | 5.66  |
 | VMT19937  | 512   | Block16   | AVX512  | n.a.  | n.a.  | 1.45  |
 | VMT19937  | 512   | StateSize | AVX512  | n.a.  | n.a.  | 1.14  |
----------------------------------------------------------------------
+-------------------------------------------------------------------
 ```
 Performance stats obtained with the following CPUs:
 - CPU-1: Intel(R) Celeron(R) J4125, cache 4Mb, frequency 2.0 GHz, burst frequency 2.7 GHz, SIMD support for SSE4.2 (a low end CPU).
