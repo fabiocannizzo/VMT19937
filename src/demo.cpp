@@ -3,7 +3,11 @@
 #include <array>
 #include <memory>
 
-// In this demo we show how to construct and use a geneartor with VecLen=128 and GenMode=QM_Block16
+// This is the initialization seed. Refer to the original MT19937 documentation.
+const uint32_t seedlength = 4;
+const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
+
+// show how to construct and use a geneartor with VecLen=128 and GenMode=QM_Block16
 void demo128()
 {
     std::cout << "example of how to use the generator with M=4 and SSE2 instructions\n";
@@ -32,10 +36,6 @@ void demo128()
         In this example we do not pass any matrix.
     */
     MT19937Matrix *commonJumpMatrix = nullptr;
-
-    // This is the initialization seed. Refer to the original MT19937 documentation.
-    const uint32_t seedlength = 4;
-    const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 
     /*
         Create the generator
@@ -70,9 +70,11 @@ void demo128()
     myAlignedDelete(buffer);
 }
 
-
+// show how to construct multiple independent generators
 void demoParallel()
 {
+    std::cout << "example of how to use multiple independent generators\n";
+
     // Get the relevant jump matrix. With 128 bits registers we pick F19935.bits
     const MT19937Matrix* jumpMatrix = new MT19937Matrix(std::string("./dat/F19935.bits"));
 
@@ -81,10 +83,6 @@ void demoParallel()
     // We can think about this as the period of the parallel generator.
     // In this example we use the F00100.bits matrix.
     const MT19937Matrix* commonJumpMatrix = new MT19937Matrix(std::string("./dat/F00100.bits"));
-
-    // This is the initialization seed. Refer to the original MT19937 documentation.
-    const uint32_t seedlength = 4;
-    const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 
     // an array of parallel independent generators, which are guaraneteed not to be overlapping
     // up to a period of 2^100
@@ -120,6 +118,7 @@ int main()
 {
     // show how to construct and use a geneartor with VecLen=128 and GenMode=QM_Block16
     demo128();
+    std::cout << "\n\n\n";
 
     // show how to construct multiple independent generators
     demoParallel();
