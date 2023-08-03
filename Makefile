@@ -9,7 +9,7 @@ ifndef TESTU01_DIR
    TESTU01_DIR=../testu01/install
 endif
 
-ifdef BUIL_MKL
+ifdef MKLROOT
     $(info MKLROOT: $(MKLROOT))
 endif
 
@@ -72,7 +72,7 @@ dat/%.hmat : dat/%.bits $(BINDIR)/encoder.exe
 
 # extra compilation flags specific files
 $(BINDIR)/perf.cpp.obj : CPPFLAGS += $(SFMT_FLAGS)
-ifdef BUILD_MKL
+ifdef MKLROOT
     $(BINDIR)/perf.cpp.obj : CPPFLAGS += -DTEST_MKL -I$(MKLROOT)/include
 endif
 $(BINDIR)/testu01.cpp.obj : CPPFLAGS += -I$(TESTU01_DIR)/include
@@ -91,7 +91,7 @@ $(BINDIR)/test.exe $(BINDIR)/perf.exe : $(MT_OBJ) $(SFMT_OBJ) | dat/F00009.bits 
 $(BINDIR)/demo.exe : | dat/F19935.bits dat/F00100.bits
 $(BINDIR)/testu01.exe : | dat/F19933.bits dat/F19934.bits dat/F19935.bits
 $(BINDIR)/testu01.exe :	LFLAGS += -L$(TESTU01_DIR)/lib -ltestu01 -lprobdist -lmylib -lm
-ifdef BUILD_MKL
+ifdef MKLROOT
     $(BINDIR)/perf.exe : LFLAGS += -L$(MKLROOT)/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl
 endif
 
