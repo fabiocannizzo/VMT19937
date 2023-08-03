@@ -63,15 +63,20 @@ struct SimdRegister<32>
 template <size_t M>
 struct SimdRegisterEmulator
 {
-    struct A { uint32_t a[M]; };
+    struct A
+    {
+        A() : a{ {} } {}
+        A(uint32_t v) { std::fill_n(a, M, v); }
+        uint32_t a[M];
+    };
     A m_v;
 
     typedef SimdRegisterEmulator<M> XV;
 
     SimdRegisterEmulator() {}
-    SimdRegisterEmulator(uint32_t v) { std::fill_n(m_v.a, M, v); }
-    SimdRegisterEmulator(const void* p) { std::copy_n((const uint32_t*) p, M, m_v.a); }
-    SimdRegisterEmulator(const A& v) { std::copy_n(v.a, M, m_v.a); }
+    SimdRegisterEmulator(uint32_t v) : m_v(v) {}
+    SimdRegisterEmulator(const uint32_t* p) : m_v(*p) {}
+    SimdRegisterEmulator(const A& v) : m_v(v) {}
 
     template <bool A>
     void store(uint32_t* dst) { std::copy_n(m_v.a, M, dst); }
