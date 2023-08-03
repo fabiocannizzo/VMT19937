@@ -11,16 +11,14 @@ endif
 
 ifneq ("$(wildcard $(TESTU01_DIR)/include/TestU01.h)","")
     TESTU01_AVAIL = 1
-    $(info TestU01.h header file found)
+    $(info TESTU01_DIR: $(TESTU01_DIR))
 else
     TESTU01_AVAIL = 0
     $(info TestU01.h header file NOT found)
 endif
-$(info TESTU01_DIR: $(TESTU01_DIR))
 
 PLATFORM := $(shell uname -s)
 $(info PLATFORM: $(PLATFORM))
-
 
 ifeq ($(NBITS), 512)
    SIMD=-mavx512f -mavx512dq
@@ -31,7 +29,7 @@ else ifeq ($(NBITS), 128)
 endif
 
 BINDIR=bin-$(NBITS)
-LOGDIR=testu01-logs
+LOGDIR=logs/testu01
 
 COMMONFLAGS = -c -O3 $(SIMD)
 
@@ -51,11 +49,11 @@ CPP_OBJ=$(patsubst src/%.cpp,$(BINDIR)/%.cpp.obj,$(CPP_SRC))
 $(info C++ obj: $(CPP_OBJ))
 
 MT_OBJ = $(BINDIR)/mt19937ar.c.obj
-SFMT_OBJ = $(BINDIR)/sfmt.c.obj
+SFMT_OBJ = $(BINDIR)/SFMT.c.obj
 
 TARGETS := $(patsubst src/%.cpp,$(BINDIR)/%.exe,$(CPP_SRC))
 ifeq ($(TESTU01_AVAIL), 0)
-    TARGETS := $(filter-out src/testu01.cpp, $(TARGETS))
+    TARGETS := $(filter-out $(BINDIR)/testu01.exe, $(TARGETS))
 endif
 $(info TARGETS: $(TARGETS))
 
@@ -70,8 +68,8 @@ dat/%.hmat : dat/%.bits $(BINDIR)/encoder.exe
 
 # extra compilation flags specific files
 $(BINDIR)/perf.cpp.obj : CPPFLAGS += $(SFMT_FLAGS)
-ifdef MKL_ROOT
-    $(BINDIR)/perf.cpp.obj : CPPFLAGS += -DTEST_MKL -I$(MKL_ROOT)/include
+ifdef BUILD_MKL
+    $(BINDIR)/perf.cpp.obj : CPPFLAGS += -DTEST_MKL
 endif
 $(BINDIR)/testu01.cpp.obj : CPPFLAGS += -I$(TESTU01_DIR)/include
 
@@ -81,7 +79,7 @@ $(BINDIR)/%.cpp.obj : src/%.cpp $(HEADERS) Makefile | $(BINDIR)
 $(MT_OBJ) : mt19937-original/mt19937ar.c Makefile | $(BINDIR)
 	gcc $(CFLAGS) -o $@ $<
 
-$(SFMT_OBJ) : SFMT-src-1.5.1/sfmt.c Makefile | $(BINDIR)
+$(SFMT_OBJ) : SFMT-src-1.5.1/SFMT.c Makefile | $(BINDIR)
 	gcc $(CFLAGS) $(SFMT_FLAGS) -o $@ $<
 
 # extra dependencies and flags for specific executable
@@ -89,8 +87,7 @@ $(BINDIR)/test.exe $(BINDIR)/perf.exe : $(MT_OBJ) $(SFMT_OBJ) | dat/F00009.bits 
 $(BINDIR)/demo.exe : | dat/F19935.bits dat/F00100.bits
 $(BINDIR)/testu01.exe : | dat/F19933.bits dat/F19934.bits dat/F19935.bits
 $(BINDIR)/testu01.exe :	LFLAGS += -L$(TESTU01_DIR)/lib -ltestu01 -lprobdist -lmylib -lm
-ifdef MKL_ROOT
-    MKL_LIB_DIR=$(MKL_ROOT)/lib/intel64
+ifdef BUILD_MKL
     $(BINDIR)/perf.exe : LFLAGS += -L$(MKL_LIB_DIR) -lmkl_intel_lp64 -lmkl_sequential -lmkl_core.lib -lm
 endif
 
