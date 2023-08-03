@@ -6,7 +6,7 @@
 #include "../SFMT-src-1.5.1/SFMT.h"
 
 #ifdef TEST_MKL
-#include "mkl_vsl.h"
+#include "mkl.h"
 #endif
 
 #include <iostream>
@@ -21,7 +21,7 @@ using namespace std;
 const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 
-const uint64_t nRandomPerf = uint64_t(624) * 16 * 500000;
+const uint64_t nRandomPerf = uint64_t(624) * 16 * 800000;
 
 extern "C" unsigned long genrand_int32();
 extern "C" void init_by_array(unsigned long init_key[], int key_length);
@@ -156,7 +156,7 @@ void usage()
     std::cerr
         << "Invalid command line arguments\n"
         << "Example:\n"
-        << "jump [-n nRepeats]\n"
+        << "perf [-n nRepeats]\n"
         << "  nRepeats defaults to 1\n"
         ;
     std::exit(-1);
@@ -164,6 +164,21 @@ void usage()
 
 int main(int argc, const char** argv)
 {
+#ifdef TEST_MKL
+# if (SIMD_N_BITS==128)
+    std::cout << "Force MKL SSE2 dispatching\n";
+    MYASSERT(mkl_enable_instructions(MKL_ENABLE_SSE4_2), "SSE2 not supported");
+# elif (SIMD_N_BITS==256)
+    std::cout << "set MKL AVX2 dispacthing\n";
+    MYASSERT(mkl_enable_instructions(MKL_ENABLE_AVX2), "AVX2 not supported");
+# elif (SIMD_N_BITS==512)
+    std::cout << "set MKL AVX512 dispacthing\n";
+    MYASSERT(mkl_enable_instructions(MKL_ENABLE_AVX512), "AVX512 not supported");
+# else
+   NOT_IMPLEMENTED;
+# endif
+#endif
+
     size_t nRepeat = 1;
     // parse command line arguments
     for (int i = 1; i < argc; i += 2) {
@@ -185,8 +200,10 @@ int main(int argc, const char** argv)
 #ifdef TEST_MKL
         res.push_back(mklPerformance<VSL_BRNG_MT19937, 1>(i));
         res.push_back(mklPerformance<VSL_BRNG_MT19937, 16>(i));
+        res.push_back(mklPerformance<VSL_BRNG_MT19937, 1024>(i));
         res.push_back(mklPerformance<VSL_BRNG_SFMT19937, 1>(i));
         res.push_back(mklPerformance<VSL_BRNG_SFMT19937, 16>(i));
+        res.push_back(mklPerformance<VSL_BRNG_SFMT19937, 1024>(i));
 #endif
         res.push_back(testPerformance<32, QM_Scalar>(i));
         res.push_back(testPerformance<32, QM_Block16>(i));
@@ -216,7 +233,7 @@ int main(int argc, const char** argv)
             iter->time += r.time;
         }
     }
-    std::cout << std::setw(8) << std::right << "prng"
+    std::cout << std::setw(12) << std::right << "prng"
         << std::setw(8) << std::right << "n-bits"
         << std::setw(8) << std::right << "blksize"
         << std::setw(8) << std::right << "time"
