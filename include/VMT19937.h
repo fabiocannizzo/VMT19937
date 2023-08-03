@@ -1,12 +1,5 @@
 #pragma once
 
-/* 
-   Converted to C++ from the original code downloaded from:
-   mt19937ar.c
-   http://www.math.sci.hiroshima-u.ac.jp/m-mat/MT/MT2002/emt19937ar.html
-   and vectorized using SIMD.
-*/
-
 #include "SIMD.h"
 #include "jump_matrix.h"
 
@@ -26,27 +19,35 @@ class VMT19937
     const static size_t s_regLenBits = RegisterBitLen;
     const static size_t s_regLenWords = s_regLenBits / 32;
     typedef SimdRegister<s_regLenBits> XV;
+    typedef SimdRegister<SIMD_N_BITS> XVMax;
 
     // Period parameters
     static const size_t s_nBits = 19937;
     static const size_t s_N = s_nBits / 32 + (s_nBits % 32 != 0); // 624
     static const size_t s_M = 397;
+
+    static const uint32_t s_rndBlockSize = 64 / sizeof(uint32_t); // exactly one cache line
+    
     static const uint32_t s_matrixA = 0x9908b0dfUL;   // constant vector a
     static const uint32_t s_upperMask = 0x80000000UL; // most significant w-r bits
     static const uint32_t s_lowerMask = 0x7fffffffUL; // least significant r bits
     static const uint32_t s_temperMask1 = 0x9d2c5680UL;
     static const uint32_t s_temperMask2 = 0xefc60000UL;
 
-    alignas(64) XV m_state[s_N];  // the array of state vectors
-    alignas(64) XV m_rnd[64/sizeof(XV)];
-    const XV *m_pst, *m_pst_end;    // m_pos==m_pst_end means the state vector has been consumed and need to be regenerated
+    alignas(64) XV m_state[s_N];    // the array of state vectors
+
+    // This data members is necessary only if QueryMode==QM_Scalar
+    alignas(64) uint32_t m_rnd[s_rndBlockSize]; // buffer of tempered numbers with same size as a cache line
     const uint32_t* m_prnd;
+
+    // This data members are redundant if QueryMode==QM_StateSize
+    const XV *m_pst, *m_pst_end;    // m_pos==m_pst_end means the state vector has been consumed and need to be regenerated
 
     static const inline XV v_upperMask = XV(s_upperMask);
     static const inline XV v_lowerMask = XV(s_lowerMask);
     static const inline XV v_matrixA = XV(s_matrixA);
-    static const inline XV v_temperMask1 = XV(s_temperMask1);
-    static const inline XV v_temperMask2 = XV(s_temperMask2);
+    static const inline XVMax v_temperMask1 = XVMax(s_temperMask1);
+    static const inline XVMax v_temperMask2 = XVMax(s_temperMask2);
 
     template <typename U>
     static FORCE_INLINE U temper(U y, U mask1, U mask2)
@@ -59,28 +60,19 @@ class VMT19937
     }
 
     template <bool Aligned>
-    void FORCE_INLINE temperRefill(XV *dst)
+    static FORCE_INLINE void temperRefillBlock(const XV *&st, uint32_t *dst)
     {
-        if constexpr (s_regLenWords < 4) {
-            typedef SimdRegister<128> XV128;
-            XV128 mask1(s_temperMask1);
-            XV128 mask2(s_temperMask2);
-            XV128* prnd = (XV128*)dst;
-            const XV128* pst = (XV128*)m_pst;
-            for (size_t i = 0; i < sizeof(m_rnd) / sizeof(mask1); ++i) {
-                XV128 tmp = temper(*pst++, mask1, mask2);
-                tmp.template store<Aligned>((uint32_t*)(prnd + i));
-            }
-            m_pst = (const XV *) pst;
+        typedef SimdRegister<SIMD_N_BITS> XVmax;
+
+        const XVmax mask1(v_temperMask1);
+        const XVmax mask2(v_temperMask2);
+        XVMax* prnd = (XVMax*)dst;
+        const XVMax* pst = (XVMax*)st;
+        for (size_t i = 0; i < s_rndBlockSize * sizeof(uint32_t) / sizeof(XVmax); ++i) {
+            XVmax tmp = temper(*pst++, mask1, mask2);
+            tmp.template store<Aligned>((uint32_t*)(prnd++));
         }
-        else {
-            const XV mask1 = v_temperMask1;
-            const XV mask2 = v_temperMask2;
-            for (size_t i = 0; i < sizeof(m_rnd) / sizeof(XV); ++i) {
-                XV tmp = temper(*m_pst++, mask1, mask2);
-                tmp.template store<Aligned>((uint32_t*)(dst + i));
-            }
-        }
+        st = (const XV*)(pst);
     }
 
     static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, const XV& upperMask, const XV& lowerMask, const XV& matrixA)
@@ -302,14 +294,14 @@ public:
         else
             refill();
 
-        temperRefill<true>(m_rnd);
-        m_prnd = (const uint32_t*)&m_rnd;
+        temperRefillBlock<true>(m_pst, m_rnd);
+        m_prnd = m_rnd;
 
         return *m_prnd++;
     }
 
     // generates 16 uniform discrete random numbers in [0,0xffffffff] interval
-    // note the vector dst mus be aligned on a 64 byte boundary
+    // for optimal performance the vector dst should be aligned on a 64 byte boundary
     void genrand_uint32_blk16(uint32_t* dst)
     {
         static_assert(QueryMode == QM_Block16);
@@ -318,21 +310,19 @@ public:
             /* do nothing*/; // most likely case first
         else
             refill();
-        temperRefill<false>((XV*)dst);
-        dst += sizeof(m_rnd) / sizeof(uint32_t);
+        temperRefillBlock<false>(m_pst, dst);
     }
 
     // generates a block of the same size as the state vector of uniform discrete random numbers in [0,0xffffffff] interval
-    // note the vector dst mus be aligned on a 64 byte boundary
+    // for optimal performance the vector dst should be aligned on a 64 byte boundary
     void genrand_uint32_stateBlk(uint32_t* dst)
     {
         static_assert(QueryMode == QM_StateSize);
 
         refill();
-        for (size_t i = 0; i < sizeof(m_state) / sizeof(m_rnd); ++i) {
-            temperRefill<false>((XV*)dst);
-            dst += sizeof(m_rnd) / sizeof(uint32_t);
-        }
+        const XV* pst = m_state;
+        for (size_t i = 0; i < sizeof(m_state) / sizeof(m_rnd); ++i, dst += s_rndBlockSize)
+            temperRefillBlock<false>(pst, dst);
     }
 
     // generates a random number on [0,0x7fffffff]-interval
