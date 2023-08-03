@@ -89,9 +89,14 @@ class VMT19937
     void FORCE_INLINE refill()
     {
         XV* stCur = m_state;
-        XV* stNxt = m_state + 1;
-        const XV* stMid = m_state + s_M;
-        const XV* stEnd = m_state + s_N;
+
+        static const int N = s_N;
+        static const int M = s_M;
+        static_assert(N == 624 && M == 397, "unrolling designed for these parameters");
+
+        //XV* stNxt = m_state + 1;
+        //const XV* stMid = m_state + s_M;
+        //const XV* stEnd = m_state + s_N;
 
         // Load the variables in registers and passes them to the function as argument,
         // to avoid to re-read the static variables from memory at every iteration
@@ -101,21 +106,29 @@ class VMT19937
         const XV lowerMask(v_lowerMask);
         const XV matrixA(v_matrixA);
 
-        //size_t kk;
-        XV cur = *stCur;
-        for (; stMid != stEnd; ++stMid, stCur = stNxt++) {
-            XV nextp = *stNxt;
-            *stCur = advance1(cur, nextp, *stMid, upperMask, lowerMask, matrixA);
-            cur = nextp;
-        }
-        for (stMid = m_state; stNxt != stEnd; ++stMid, stCur = stNxt++) {
-            XV nextp = *stNxt;
-            *stCur = advance1(cur, nextp, *stMid, upperMask, lowerMask, matrixA);
-            cur = nextp;
-        }
-        {
-            *stCur = advance1(cur, m_state[0], *stMid, upperMask, lowerMask, matrixA);
-        }
+        size_t n4 = (N - M) / 4; // 226
+        do {
+            stCur[0] = advance1(stCur[0], stCur[1], stCur[M], upperMask, lowerMask, matrixA);
+            stCur[1] = advance1(stCur[1], stCur[2], stCur[M + 1], upperMask, lowerMask, matrixA);
+            stCur[2] = advance1(stCur[2], stCur[3], stCur[M + 2], upperMask, lowerMask, matrixA);
+            stCur[3] = advance1(stCur[3], stCur[4], stCur[M + 3], upperMask, lowerMask, matrixA);
+            stCur += 4;
+        } while (--n4);
+        stCur[0] = advance1(stCur[0], stCur[1], stCur[M], upperMask, lowerMask, matrixA);
+        stCur[1] = advance1(stCur[1], stCur[2], stCur[M + 1], upperMask, lowerMask, matrixA);
+        stCur[2] = advance1(stCur[2], stCur[3], stCur[M + 2], upperMask, lowerMask, matrixA);
+        stCur += 3;
+
+        n4 = (M - 1) / 4 ; // M-1
+        do {
+            stCur[0] = advance1(stCur[0], stCur[1], stCur[M - N], upperMask, lowerMask, matrixA);
+            stCur[1] = advance1(stCur[1], stCur[2], stCur[M - N + 1], upperMask, lowerMask, matrixA);
+            stCur[2] = advance1(stCur[2], stCur[3], stCur[M - N + 2], upperMask, lowerMask, matrixA);
+            stCur[3] = advance1(stCur[3], stCur[4], stCur[M - N + 3], upperMask, lowerMask, matrixA);
+            stCur += 4;
+        } while (--n4);
+
+        stCur[0] = advance1(stCur[0], stCur[1 - N], stCur[M - N], upperMask, lowerMask, matrixA);
 
         m_pst = m_state;
     }
