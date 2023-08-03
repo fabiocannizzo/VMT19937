@@ -67,7 +67,7 @@ Performance stats obtained with the following CPUs:
 - CPU-3: Intel® Xeon® Gold 6234, cache 24.75Mb, base frequency 3.3GHz, turbo frequency 4.0 GHz, SIMD support for AVX512 (a high performance desktop CPU).
 
 ## Empirical random tests
-The empirical quality of the pseudo random sequences generated via VMT19937 is tested with the _TestU01_ suite [^3]. The results are in the subfolder [testu01-logs](testu01-logs).
+The empirical quality of the pseudo random sequences generated via VMT19937 is tested with the _TestU01_ suite [^3]. The results are in the subfolder [logs/testu01](testu01-logs).
 Results are comparable with the original MT19937 generator.
 
 ## Usage
