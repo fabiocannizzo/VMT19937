@@ -1,9 +1,10 @@
-ifndef $(NBITS)
+ifndef NBITS
    $(info WARNING: NBITS not defined. Using default value: 128)
    NBITS=128
 endif
+$(info NBITS: $(NBITS))
 
-ifndef $(TESTU01_DIR)
+ifndef TESTU01_DIR
    $(info WARNING: TESTU01_DIR not defined. Using default value: ../testu01/install)
    TESTU01_DIR=../testu01/install
 endif
@@ -15,9 +16,10 @@ else
     TESTU01_AVAIL = 0
     $(info TestU01.h header file NOT found)
 endif
-
-$(info NBITS: $(NBITS))
 $(info TESTU01_DIR: $(TESTU01_DIR))
+
+PLATFORM := $(shell uname -s)
+$(info PLATFORM: $(PLATFORM))
 
 
 ifeq ($(NBITS), 512)
@@ -68,6 +70,9 @@ dat/%.hmat : dat/%.bits $(BINDIR)/encoder.exe
 
 # extra compilation flags specific files
 $(BINDIR)/perf.cpp.obj : CPPFLAGS += $(SFMT_FLAGS)
+ifdef MKL_ROOT
+    $(BINDIR)/perf.cpp.obj : CPPFLAGS += -DTEST_MKL -I$(MKL_ROOT)/include
+endif
 $(BINDIR)/testu01.cpp.obj : CPPFLAGS += -I$(TESTU01_DIR)/include
 
 $(BINDIR)/%.cpp.obj : src/%.cpp $(HEADERS) Makefile | $(BINDIR)
@@ -84,7 +89,10 @@ $(BINDIR)/test.exe $(BINDIR)/perf.exe : $(MT_OBJ) $(SFMT_OBJ) | dat/F00009.bits 
 $(BINDIR)/demo.exe : | dat/F19935.bits dat/F00100.bits
 $(BINDIR)/testu01.exe : | dat/F19933.bits dat/F19934.bits dat/F19935.bits
 $(BINDIR)/testu01.exe :	LFLAGS += -L$(TESTU01_DIR)/lib -ltestu01 -lprobdist -lmylib -lm
-
+ifdef MKL_ROOT
+    MKL_LIB_DIR=$(MKL_ROOT)/lib/intel64
+    $(BINDIR)/perf.exe : LFLAGS += -L$(MKL_LIB_DIR) -lmkl_intel_lp64 -lmkl_sequential -lmkl_core.lib -lm
+endif
 
 $(BINDIR)/%.exe : $(BINDIR)/%.cpp.obj
 	g++ -o $@ $^ $(LFLAGS)
