@@ -95,8 +95,8 @@ struct SimdRegisterEmulator
     {
         size_t n;
         for (auto v : m_v.a)
-            n += v;
-        return popcnt(n) % 2;
+            n += popcnt(v);
+        return n % 2;
     }
 };
 
