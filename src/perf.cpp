@@ -166,13 +166,13 @@ int main(int argc, const char** argv)
 {
 #ifdef TEST_MKL
 # if (SIMD_N_BITS==128)
-    std::cout << "Force MKL SSE2 dispatching\n";
+    std::cout << "Force MKL dispatching to SSE2\n";
     MYASSERT(mkl_enable_instructions(MKL_ENABLE_SSE4_2), "SSE2 not supported");
 # elif (SIMD_N_BITS==256)
-    std::cout << "set MKL AVX2 dispacthing\n";
+    std::cout << "set MKL dispacthing to AVX2\n";
     MYASSERT(mkl_enable_instructions(MKL_ENABLE_AVX2), "AVX2 not supported");
 # elif (SIMD_N_BITS==512)
-    std::cout << "set MKL AVX512 dispacthing\n";
+    std::cout << "set MKL dispacthing to AVX512\n";
     MYASSERT(mkl_enable_instructions(MKL_ENABLE_AVX512), "AVX512 not supported");
 # else
    NOT_IMPLEMENTED;
