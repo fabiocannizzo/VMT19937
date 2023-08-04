@@ -42,6 +42,17 @@
         throw std::logic_error(str); \
     }
 
-
-
 #define NOT_IMPLEMENTED throw std::logic_error("NOT IMPLEMENTED")
+
+// define FORCE_INLINE
+#if defined(__GNUC__)
+#   define FORCE_INLINE __attribute__((always_inline)) inline
+#   define NO_INLINE __attribute__((noinline)) inline
+#elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
+#   define FORCE_INLINE __forceinline
+#   define NO_INLINE __declspec(noinline)
+#else
+#   define FORCE_INLINE inline
+#   define NO_INLINE
+#endif
+
