@@ -43,9 +43,9 @@ class VMT19937
     // This data members are redundant if QueryMode==QM_StateSize
     const XV *m_pst, *m_pst_end;    // m_pos==m_pst_end means the state vector has been consumed and need to be regenerated
 
-    static const inline XV v_upperMask = XV(s_upperMask);
-    static const inline XV v_lowerMask = XV(s_lowerMask);
-    static const inline XV v_matrixA = XV(s_matrixA);
+    //static const inline XV v_upperMask = XV(s_upperMask);
+    //static const inline XV v_lowerMask = XV(s_lowerMask);
+    //static const inline XV v_matrixA = XV(s_matrixA);
     static const inline XVMax v_temperMask1 = XVMax(s_temperMask1);
     static const inline XVMax v_temperMask2 = XVMax(s_temperMask2);
 
@@ -80,10 +80,34 @@ class VMT19937
         XV y = (s & upperMask) | (sp & lowerMask);
         // y and sp are either both even or both odd,
         // hence in the next line we can check if sp is odd
-        // so that the operation is independent on the clauclation of y
+        // so that the operation is independent on the calculation of y
         // and the compiler is free to rearrange the code
         XV r = sm ^ (y >> 1) ^ sp.ifOddValueElseZero(matrixA);
         return r;
+    }
+
+    template <int I, int N, int J0, int J1, int JM>
+    static FORCE_INLINE void advanceN(XV* p, const XV& upperMask, const XV& lowerMask, const XV& matrixA)
+    {
+        if constexpr (N > 0) {
+            p[J0] = advance1(p[J0], p[J1], p[JM], upperMask, lowerMask, matrixA);
+            advanceN<I + 1, N - 1, J0 + 1, J1 + 1, JM + 1>(p, upperMask, lowerMask, matrixA);
+        }
+    }
+
+    template <int UnrollBlkSize, int N, int J0, int J1, int JM>
+    static FORCE_INLINE XV* advanceLoop(XV* p, const XV& upperMask, const XV& lowerMask, const XV& matrixA)
+    {
+        size_t nBlks = N / UnrollBlkSize;
+        // unroll the loop in blocks of UnrollBlkSize
+        do {
+            advanceN<0, UnrollBlkSize, J0, J1, JM>(p, upperMask, lowerMask, matrixA);
+            p += UnrollBlkSize;
+        } while (--nBlks);
+        const size_t nRes = N % UnrollBlkSize;
+        advanceN<0, nRes, J0, J1, JM>(p, upperMask, lowerMask, matrixA);
+        p += nRes;
+        return p;
     }
 
     void FORCE_INLINE refill()
@@ -94,40 +118,21 @@ class VMT19937
         static const int M = s_M;
         static_assert(N == 624 && M == 397, "unrolling designed for these parameters");
 
-        //XV* stNxt = m_state + 1;
-        //const XV* stMid = m_state + s_M;
-        //const XV* stEnd = m_state + s_N;
-
         // Load the variables in registers and passes them to the function as argument,
         // to avoid to re-read the static variables from memory at every iteration
         // Note that since the function is forced inline, the function arguments
-        // do no need to be loaded on the stack.
-        const XV upperMask(v_upperMask);
-        const XV lowerMask(v_lowerMask);
-        const XV matrixA(v_matrixA);
+        // will not be passed as arguments via the stack, but reside in registers
+        const XV upperMask(s_upperMask);
+        const XV lowerMask(s_lowerMask);
+        const XV matrixA(s_matrixA);
 
-        size_t n4 = (N - M) / 4; // 226
-        do {
-            stCur[0] = advance1(stCur[0], stCur[1], stCur[M], upperMask, lowerMask, matrixA);
-            stCur[1] = advance1(stCur[1], stCur[2], stCur[M + 1], upperMask, lowerMask, matrixA);
-            stCur[2] = advance1(stCur[2], stCur[3], stCur[M + 2], upperMask, lowerMask, matrixA);
-            stCur[3] = advance1(stCur[3], stCur[4], stCur[M + 3], upperMask, lowerMask, matrixA);
-            stCur += 4;
-        } while (--n4);
-        stCur[0] = advance1(stCur[0], stCur[1], stCur[M], upperMask, lowerMask, matrixA);
-        stCur[1] = advance1(stCur[1], stCur[2], stCur[M + 1], upperMask, lowerMask, matrixA);
-        stCur[2] = advance1(stCur[2], stCur[3], stCur[M + 2], upperMask, lowerMask, matrixA);
-        stCur += 3;
+        // unroll first part of the loop (N-M) iterations
+        stCur = advanceLoop<9, N - M, 0, 1, M>(stCur, upperMask, lowerMask, matrixA);
 
-        n4 = (M - 1) / 4 ; // M-1
-        do {
-            stCur[0] = advance1(stCur[0], stCur[1], stCur[M - N], upperMask, lowerMask, matrixA);
-            stCur[1] = advance1(stCur[1], stCur[2], stCur[M - N + 1], upperMask, lowerMask, matrixA);
-            stCur[2] = advance1(stCur[2], stCur[3], stCur[M - N + 2], upperMask, lowerMask, matrixA);
-            stCur[3] = advance1(stCur[3], stCur[4], stCur[M - N + 3], upperMask, lowerMask, matrixA);
-            stCur += 4;
-        } while (--n4);
+        // unroll second part of the loop (M-1) iterations
+        stCur = advanceLoop<9, M - 1, 0, 1, M - N>(stCur, upperMask, lowerMask, matrixA);
 
+        // last iteration
         stCur[0] = advance1(stCur[0], stCur[1 - N], stCur[M - N], upperMask, lowerMask, matrixA);
 
         m_pst = m_state;
