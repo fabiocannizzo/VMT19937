@@ -95,26 +95,26 @@ class VMT19937
         return r;
     }
 
-    template <int I, int N, int J0, int J1, int JM>
+    template <int N, int J0, int J1, int JM>
     static FORCE_INLINE void advanceN(XV* p, const RefillMasks& masks)
     {
         if constexpr (N > 0) {
             p[J0] = advance1(p[J0], p[J1], p[JM], masks);
-            advanceN<I + 1, N - 1, J0 + 1, J1 + 1, JM + 1>(p, masks);
+            advanceN<N - 1, J0 + 1, J1 + 1, JM + 1>(p, masks);
         }
     }
 
-    template <int UnrollBlkSize, int N, int J0, int J1, int JM>
+    template <int UnrollBlkSize, int N, int J1, int JM>
     static FORCE_INLINE XV* advanceLoop(XV* p, const RefillMasks& masks)
     {
         size_t nBlks = N / UnrollBlkSize;
         // unroll the loop in blocks of UnrollBlkSize
         do {
-            advanceN<0, UnrollBlkSize, J0, J1, JM>(p, masks);
+            advanceN<UnrollBlkSize, 0, J1, JM>(p, masks);
             p += UnrollBlkSize;
         } while (--nBlks);
         const size_t nRes = N % UnrollBlkSize;
-        advanceN<0, nRes, J0, J1, JM>(p, masks);
+        advanceN<nRes, 0, J1, JM>(p, masks);
         p += nRes;
         return p;
     }
@@ -134,13 +134,14 @@ class VMT19937
         const RefillMasks masks{};
 
         // unroll first part of the loop (N-M) iterations
-        stCur = advanceLoop<9, N - M, 0, 1, M>(stCur, masks);
+        stCur = advanceLoop<4, N - M, 1, M>(stCur, masks);
 
         // unroll second part of the loop (M-1) iterations
-        stCur = advanceLoop<9, M - 1, 0, 1, M - N>(stCur, masks);
+        stCur = advanceLoop<4, M - 1, 1, M - N>(stCur, masks);
 
         // last iteration
-        stCur[0] = advance1(stCur[0], stCur[1 - N], stCur[M - N], masks);
+        stCur = advanceLoop<1, 1, 1-N, M - N>(stCur, masks);
+        //stCur[0] = advance1(stCur[0], stCur[1 - N], stCur[M - N], masks);
 
         m_pst = m_state;
     }
