@@ -43,16 +43,18 @@ class VMT19937
     // This data members are redundant if QueryMode==QM_StateSize
     const XV *m_pst, *m_pst_end;    // m_pos==m_pst_end means the state vector has been consumed and need to be regenerated
 
-    struct TemperMasks
+
+    template <typename XVI>
+    struct TemperCst
     {
-        TemperMasks() : m_mask1(s_temperMask1), m_mask2(s_temperMask2) {}
-        const XV m_mask1;
-        const XV m_mask2;
+        TemperCst() : m_mask1(s_temperMask1), m_mask2(s_temperMask2) {}
+        const XVI m_mask1;
+        const XVI m_mask2;
     };
 
-    struct RefillMasks : TemperMasks
+    struct RefillCst : TemperCst<XV>
     {
-        RefillMasks() : m_upperMask(s_upperMask), m_lowerMask(s_lowerMask), m_matrixA(s_matrixA) {}
+        RefillCst() : m_upperMask(s_upperMask), m_lowerMask(s_lowerMask), m_matrixA(s_matrixA) {}
         const XV m_upperMask;
         const XV m_lowerMask;
         const XV m_matrixA;
@@ -73,18 +75,17 @@ class VMT19937
     {
         typedef SimdRegister<SIMD_N_BITS> XVmax;
 
-        const XVmax mask1(s_temperMask1);
-        const XVmax mask2(s_temperMask2);
-        XVMax* prnd = (XVMax*)dst;
+        TemperCst<XVmax> cst{};
+        XVmax* prnd = (XVmax*)dst;
         const XVMax* pst = (XVMax*)st;
         for (size_t i = 0; i < s_rndBlockSize * sizeof(uint32_t) / sizeof(XVmax); ++i) {
-            XVmax tmp = temper(*pst++, mask1, mask2);
+            XVmax tmp = temper(*pst++, cst.m_mask1, cst.m_mask2);
             tmp.template store<Aligned>((uint32_t*)(prnd++));
         }
         st = (const XV*)(pst);
     }
 
-    static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, const RefillMasks& masks)
+    static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, const RefillCst& masks)
     {
         XV y = (s & masks.m_upperMask) | (sp & masks.m_lowerMask);
         // y and sp are either both even or both odd,
@@ -96,7 +97,7 @@ class VMT19937
     }
 
     template <int N, int J0, int J1, int JM>
-    static FORCE_INLINE void advanceN(XV* p, const RefillMasks& masks)
+    static FORCE_INLINE void advanceN(XV* p, const RefillCst& masks)
     {
         if constexpr (N > 0) {
             p[J0] = advance1(p[J0], p[J1], p[JM], masks);
@@ -105,7 +106,7 @@ class VMT19937
     }
 
     template <int UnrollBlkSize, int N, int J1, int JM>
-    static FORCE_INLINE XV* advanceLoop(XV* p, const RefillMasks& masks)
+    static FORCE_INLINE XV* advanceLoop(XV* p, const RefillCst& masks)
     {
         size_t nBlks = N / UnrollBlkSize;
         // unroll the loop in blocks of UnrollBlkSize
@@ -131,7 +132,7 @@ class VMT19937
         // to avoid to re-read the static variables from memory at every iteration
         // Note that since the function is forced inline, the function arguments
         // will not be passed as arguments via the stack, but reside in registers
-        const RefillMasks masks{};
+        const RefillCst masks{};
 
         // unroll first part of the loop (N-M) iterations
         stCur = advanceLoop<4, N - M, 1, M>(stCur, masks);
