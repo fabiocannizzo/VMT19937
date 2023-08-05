@@ -71,7 +71,7 @@ dat/%.hmat : dat/%.bits $(BINDIR)/encoder.exe
 	$(BINDIR)/encoder.exe -i $< -o $@
 
 # extra compilation flags specific files
-$(BINDIR)/perf.cpp.obj : CPPFLAGS += $(SFMT_FLAGS)
+$(BINDIR)/perf.cpp.obj : CPPFLAGS += $(SFMT_FLAGS) -DHAVE_SSE2
 ifdef MKLROOT
     $(BINDIR)/perf.cpp.obj : CPPFLAGS += -DTEST_MKL -I$(MKLROOT)/include
 endif
@@ -83,6 +83,7 @@ $(BINDIR)/%.cpp.obj : src/%.cpp $(HEADERS) Makefile | $(BINDIR)
 $(MT_OBJ) : mt19937-original/mt19937ar.c Makefile | $(BINDIR)
 	gcc $(CFLAGS) -o $@ $<
 
+$(SFMT_OBJ) : CFLAGS += -DHAVE_SSE2
 $(SFMT_OBJ) : SFMT-src-1.5.1/SFMT.c Makefile | $(BINDIR)
 	gcc $(CFLAGS) $(SFMT_FLAGS) -o $@ $<
 
