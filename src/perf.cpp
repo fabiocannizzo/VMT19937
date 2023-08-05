@@ -2,7 +2,6 @@
 
 #include "VMT19937.h"
 
-#define HAVE_SSE2
 #include "../SFMT-src-1.5.1/SFMT.h"
 
 #ifdef TEST_MKL
@@ -207,7 +206,6 @@ int main(int argc, const char** argv)
 #endif
         res.push_back(testPerformance<32, QM_Scalar>(i));
         res.push_back(testPerformance<32, QM_Block16>(i));
-        //testPerformance<64>();
         res.push_back(testPerformance<128, QM_Scalar>(i));
         res.push_back(testPerformance<128, QM_Block16>(i));
         res.push_back(testPerformance<128, QM_StateSize>(i));
