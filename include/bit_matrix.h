@@ -64,7 +64,7 @@ class BinaryMatrix
 
     typedef BinaryMatrix<_nBitRows, _nBitCols> this_t;
 
-    uint8_t* m_data;
+    AlignedVector<uint8_t, s_nAlignBytes> m_data;
 
 public:
     static const size_t s_nBitRows = _nBitRows;
@@ -115,25 +115,18 @@ private:
 
 public:
     BinaryMatrix(bool allocateMemory = true)
-        : m_data(nullptr)
     {
         if (allocateMemory) {
             // allocate memory
-            m_data = myAlignedNew<uint8_t, s_nAlignBytes>(s_nUsedBytes);
+            m_data.init(s_nUsedBytes);
             // initialize to zero
             resetZero();
         }
     }
 
-    ~BinaryMatrix()
-    {
-        myAlignedDelete(m_data);
-        m_data = NULL;
-    }
-
     bool operator==(const BinaryMatrix& rhs) const
     {
-        if (0 == memcmp(m_data, rhs.m_data, s_nUsedBytes))
+        if (0 == memcmp(m_data.data(), rhs.m_data.data(), s_nUsedBytes))
             return true;
 #ifdef TESTING
         for (size_t i = 0; i < s_nBitRows; ++i) {
@@ -317,7 +310,7 @@ public:
     {
         size_t n = 0;
         static_assert(s_nUsedBytes % sizeof(uint64_t) == 0);
-        for (const uint64_t *p = (const uint64_t*)m_data, * const pend = p + (s_nUsedBytes / sizeof(*p)); p != pend; ++p)
+        for (const uint64_t *p = (const uint64_t*)m_data.data(), * const pend = p + (s_nUsedBytes / sizeof(*p)); p != pend; ++p)
             n += popcnt(*p);
         return n;
     }
@@ -337,18 +330,10 @@ public:
         return p[colBitIndex / (8 * sizeof(U))];
     }
 
-    const uint8_t* rowBegin(size_t rowIndex) const { return m_data + rowIndex * s_nBytesPerPaddedRow; }
-    uint8_t* rowBegin(size_t rowIndex) { return m_data + rowIndex * s_nBytesPerPaddedRow; }
+    const uint8_t* rowBegin(size_t rowIndex) const { return m_data.data() + rowIndex * s_nBytesPerPaddedRow; }
+    uint8_t* rowBegin(size_t rowIndex) { return m_data.data() + rowIndex * s_nBytesPerPaddedRow; }
 
-    void resetZero() { std::fill_n(m_data, s_nUsedBytes, 0); }
-
-    //bool multiplyRowByCol(size_t r, size_t c) const
-    //{
-    //    bool result = false;
-    //    for (size_t j = 0; j < s_nBitCols; ++j)
-    //        result ^= getBit(r, j) && getBit(j, c);
-    //    return result;
-    //}
+    void resetZero() { std::fill_n(m_data.data(), s_nUsedBytes, 0); }
 
     // Multiply all rows by 1 column (psrc) and stores the resulting column in (pdst)
     // It is assumed that:

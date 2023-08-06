@@ -56,18 +56,15 @@ void demo128()
     delete jumpMatrix;
 
     // Create storage vector aligned with cache lines, where we will store results
-    uint32_t* buffer = myAlignedNew<uint32_t, 64>(16);
+    AlignedVector<uint32_t, 64> buffer(16);
 
     // Query 10 times the generator in blocks of 16 numbers
     for (size_t i = 0; i < 10; ++i) {
-        mt.genrand_uint32_blk16(buffer);
+        mt.genrand_uint32_blk16(buffer.data());
         for (size_t j = 0; j < 16; ++j)
             std::cout << buffer[j] << ", ";
     }
     std::cout << "\n";
-
-    // release buffer
-    myAlignedDelete(buffer);
 }
 
 // show how to construct multiple independent generators
@@ -97,21 +94,18 @@ void demoParallel()
     delete commonJumpMatrix;
 
     // Create storage vector aligned with cache lines, where we will store results
-    uint32_t* buffer = myAlignedNew<uint32_t, 64>(16);
+    AlignedVector<uint32_t, 64> buffer(16);
 
     // Query 10 times each of the generators in blocks of 16
     // We could also use mt.genrand_uint32(), which queries one number at a time, but it is slower.
     for (auto& g : parallelGenerators) {
         for (size_t i = 0; i < 10; ++i) {
-            g->genrand_uint32_blk16(buffer);
+            g->genrand_uint32_blk16(buffer.data());
             for (size_t j = 0; j < 16; ++j)
                 std::cout << buffer[j] << ", ";
         }
         std::cout << "\n";
     }
-
-    // release buffer
-    myAlignedDelete(buffer);
 }
 
 int main()
