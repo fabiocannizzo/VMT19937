@@ -26,3 +26,37 @@ void myAlignedDelete(void *p)
         delete p8;
     }
 }
+
+template <typename T, unsigned nAlign>
+class AlignedVector
+{
+    T* m_data;
+    size_t m_n;
+
+    void deallocate()
+    {
+        if (m_data) {
+            myAlignedDelete(m_data);
+            m_data = nullptr;
+        }
+    }
+
+public:
+    AlignedVector() : m_data(nullptr), m_n(0) {}
+    AlignedVector(size_t n) : m_data(nullptr), m_n(0) { init(n); }
+    ~AlignedVector() { deallocate(); }
+
+    void init(size_t n)
+    {
+        if (n != m_n) {
+            deallocate();
+            m_data = myAlignedNew<T, nAlign>(n);
+            m_n = n;
+        }
+    }
+
+    T& operator[](size_t i) { return m_data[i]; }
+    const T& operator[](size_t i) const { return m_data[i]; }
+    T* data() { return m_data; }
+    const T* data() const { return m_data; }
+};

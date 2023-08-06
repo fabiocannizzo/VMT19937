@@ -53,7 +53,7 @@ Result testPerformance(size_t runId)
     std::cout << "Generate " << nRandomPerf << " random numbers with VMT19937 length " << VecLen
               << " in blocks of " << BlkSize << " ... ";
 
-    uint32_t* aligneddst = myAlignedNew<uint32_t, 64>(BlkSize);
+    AlignedVector<uint32_t, 64> aligneddst(BlkSize);
 
     gen_t mt(seedinit, seedlength, 0, nullptr, nullptr);
 
@@ -62,17 +62,15 @@ Result testPerformance(size_t runId)
         if constexpr (BlkMode == QM_Scalar)
             aligneddst[0] = mt.genrand_uint32();
         else if constexpr (BlkMode == QM_Block16)
-            mt.genrand_uint32_blk16(aligneddst);
+            mt.genrand_uint32_blk16(aligneddst.data());
         else if constexpr (BlkMode == QM_StateSize)
-            mt.genrand_uint32_stateBlk(aligneddst);
+            mt.genrand_uint32_stateBlk(aligneddst.data());
         else
             NOT_IMPLEMENTED;
         auto end = std::chrono::system_clock::now();
 
     std::chrono::duration<double> elapsed_seconds = end - start;
     double nSeconds = elapsed_seconds.count();
-
-    myAlignedDelete(aligneddst);
 
     std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s" << std::endl;
 
@@ -103,7 +101,7 @@ Result originalPerformance(size_t runId)
 
 Result sfmtPerformance(size_t runId)
 {
-    std::vector<uint32_t> dst(1);
+    AlignedVector<uint32_t, 64> aligneddst(1);
 
     sfmt_t sfmtgen;
     sfmt_init_gen_rand(&sfmtgen, 12345);
@@ -111,7 +109,7 @@ Result sfmtPerformance(size_t runId)
     std::cout << "Generate " << nRandomPerf << " random numbers with SFMT code ... ";
     auto start = std::chrono::system_clock::now();
     for (size_t i = 0; i < nRandomPerf; ++i)
-        dst[0] = sfmt_genrand_uint32(&sfmtgen);
+        aligneddst[0] = sfmt_genrand_uint32(&sfmtgen);
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
     double nSeconds = elapsed_seconds.count();
@@ -125,7 +123,7 @@ Result sfmtPerformance(size_t runId)
 template <MKL_INT GenCode, MKL_INT BlkSize>
 Result mklPerformance(size_t runId)
 {
-    uint32_t* aligneddst = myAlignedNew<uint32_t, 64>(BlkSize);
+    AlignedVector<uint32_t, 64> aligneddst(BlkSize);
 
     VSLStreamStatePtr stream;
     vslNewStream(&stream, GenCode, 5489);
@@ -136,7 +134,7 @@ Result mklPerformance(size_t runId)
 
     auto start = std::chrono::system_clock::now();
     for (size_t i = 0; i < nRandomPerf / BlkSize; ++i)
-        viRngUniformBits32(VSL_RNG_METHOD_UNIFORMBITS32_STD, stream, BlkSize, aligneddst);
+        viRngUniformBits32(VSL_RNG_METHOD_UNIFORMBITS32_STD, stream, BlkSize, aligneddst.data());
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
     double nSeconds = elapsed_seconds.count();
@@ -144,7 +142,6 @@ Result mklPerformance(size_t runId)
 
     // Deleting the stream
     vslDeleteStream(&stream);
-    myAlignedDelete(aligneddst);
 
     return Result((GenCode == VSL_BRNG_MT19937 ? mkl_mt : mkl_sfmt), 32, BlkSize, runId, nSeconds);
 }

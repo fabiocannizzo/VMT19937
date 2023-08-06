@@ -103,19 +103,16 @@ For example, to instantiate a genrator with 128 bits regsiters and
 Then we can generater random numbers in blocks of 16
 ```c++
     // create storage vector aligned with cache lines, where we will store results
-    uint32_t* buffer = myAlignedNew<uint32_t, 64>(16);
+    AlignedVector<uint32_t, 64> buffer(16);
 
     // Query 10 times the generator in blocks of 16 numbers
     // We could also use mt.genrand_uint32(), which queries one number at a time, but it is slower.
     for (size_t i = 0; i < 10; ++i) {
-        mt.genrand_uint32_blk16(buffer);
+        mt.genrand_uint32_blk16(buffer.data());
         for (size_t j = 0; j < 16; ++j)
             std::cout << buffer[j] << ", ";
     }
     std::cout << "\n";
-
-    // release memory
-    myAlignedDelete(buffer);
 ```
 The full source code for this example is in the file [src/demo.cpp](src/demo.cpp) in the routine `demo128`.
 
