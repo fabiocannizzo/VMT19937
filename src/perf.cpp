@@ -99,23 +99,30 @@ Result originalPerformance(size_t runId)
     return Result(orig, 32, 1, runId, nSeconds);
 }
 
+template <size_t BlkSize>
 Result sfmtPerformance(size_t runId)
 {
-    AlignedVector<uint32_t, 64> aligneddst(1);
+    static_assert(BlkSize == 1 || (BlkSize % 4 == 0 && BlkSize >= SFMT_N32), "BlkSize must be a multiple of 4 and >=156*128");
+    static_assert(nRandomPerf % BlkSize == 0, "nRandomPerf must be a multiple of BlkSize");
+    AlignedVector<uint32_t, 64> aligneddst(BlkSize);
 
     sfmt_t sfmtgen;
     sfmt_init_gen_rand(&sfmtgen, 12345);
 
-    std::cout << "Generate " << nRandomPerf << " random numbers with SFMT code ... ";
+    std::cout << "Generate " << nRandomPerf << " random numbers with SFMT code in blocks of " << BlkSize << " ... ";
     auto start = std::chrono::system_clock::now();
-    for (size_t i = 0; i < nRandomPerf; ++i)
-        aligneddst[0] = sfmt_genrand_uint32(&sfmtgen);
+    for (size_t i = 0; i < nRandomPerf / BlkSize; ++i) {
+        if constexpr (BlkSize == 1)
+            aligneddst[0] = sfmt_genrand_uint32(&sfmtgen);
+        else
+            sfmt_fill_array32(&sfmtgen, aligneddst.data(), BlkSize);
+    }
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
     double nSeconds = elapsed_seconds.count();
     std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s\n";
 
-    return Result(sfmt, 128, 1, runId, nSeconds);
+    return Result(sfmt, 128, BlkSize, runId, nSeconds);
 }
 
 #ifdef TEST_MKL
@@ -192,7 +199,8 @@ int main(int argc, const char** argv)
     for (size_t i = 0; i < nRepeat; ++i) {
 
         res.push_back(originalPerformance(i));
-        res.push_back(sfmtPerformance(i));
+        res.push_back(sfmtPerformance<1>(i));
+        res.push_back(sfmtPerformance<156*128/32>(i));
 #ifdef TEST_MKL
         res.push_back(mklPerformance<VSL_BRNG_MT19937, 1>(i));
         res.push_back(mklPerformance<VSL_BRNG_MT19937, 16>(i));
@@ -203,6 +211,7 @@ int main(int argc, const char** argv)
 #endif
         res.push_back(testPerformance<32, QM_Scalar>(i));
         res.push_back(testPerformance<32, QM_Block16>(i));
+        res.push_back(testPerformance<32, QM_StateSize>(i));
         res.push_back(testPerformance<128, QM_Scalar>(i));
         res.push_back(testPerformance<128, QM_Block16>(i));
         res.push_back(testPerformance<128, QM_StateSize>(i));
