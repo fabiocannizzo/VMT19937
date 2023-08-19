@@ -201,7 +201,7 @@ namespace Encoder {
     {
         size_t n = b64.size();
         MYASSERT(((n % 4) == 0 && n > 0), "bad stream size: " << n);
-        size_t nEq = (b64[n - 1] == '=' ? 1 : 0) + (b64[n - 2] == '=' ? 1 : 0);
+        size_t nEq = (b64[n - 1] == '=' ? size_t(1) : 0) + (b64[n - 2] == '=' ? size_t(1) : 0);
         size_t n4 = n / 4 - (nEq > 0);
         res.resize(n4 * 3 + ((nEq > 0) ? 3 - nEq : 0));
         const uint8_t* dec = reinterpret_cast<const uint8_t*>(b64.c_str());
