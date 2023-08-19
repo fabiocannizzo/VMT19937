@@ -99,27 +99,36 @@ class VMT19937
     }
 
     template <int N, int J0, int J1, int JM>
-    static FORCE_INLINE void advanceN(XV* p, const RefillCst& masks)
+    static FORCE_INLINE XV advanceN(XV* p, XV pJ0, const RefillCst& masks)
     {
         if constexpr (N > 0) {
-            p[J0] = advance1(p[J0], p[J1], p[JM], masks);
-            advanceN<N - 1, J0 + 1, J1 + 1, JM + 1>(p, masks);
+            //if (!pJ0.eq(p[J0]))
+            //    std::cout << "error\n";
+            XV pJ1(p[J1]);
+            p[J0] = advance1(pJ0, pJ1, p[JM], masks);
+            return advanceN<N - 1, J0 + 1, J1 + 1, JM + 1>(p, pJ1, masks);
         }
+        return pJ0;
     }
 
     template <int UnrollBlkSize, int N, int J1, int JM>
-    static FORCE_INLINE XV* advanceLoop(XV* p, const RefillCst& masks)
+    static FORCE_INLINE std::pair<XV*, XV> advanceLoop(XV* p, XV pJ0, const RefillCst& masks)
     {
-        size_t nBlks = N / UnrollBlkSize;
-        // unroll the loop in blocks of UnrollBlkSize
-        do {
-            advanceN<UnrollBlkSize, 0, J1, JM>(p, masks);
-            p += UnrollBlkSize;
-        } while (--nBlks);
+
+        if constexpr (N >= UnrollBlkSize) {
+            size_t nBlks = N / UnrollBlkSize;
+            // unroll the loop in blocks of UnrollBlkSize
+            do {
+                pJ0 = advanceN<UnrollBlkSize, 0, J1, JM>(p, pJ0, masks);
+                p += UnrollBlkSize;
+            } while (--nBlks);
+        }
         const size_t nRes = N % UnrollBlkSize;
-        advanceN<nRes, 0, J1, JM>(p, masks);
-        p += nRes;
-        return p;
+        if constexpr (nRes) {
+            pJ0 = advanceN<nRes, 0, J1, JM>(p, pJ0, masks);
+            p += nRes;
+        }
+        return { p, pJ0 };
     }
 
     void FORCE_INLINE refill()
@@ -136,15 +145,16 @@ class VMT19937
         // will not be passed as arguments via the stack, but reside in registers
         const RefillCst masks{};
 
+        XV pJ0 = stCur[0];
+
         // unroll first part of the loop (N-M) iterations
-        stCur = advanceLoop<4, N - M, 1, M>(stCur, masks);
+        std::tie(stCur, pJ0) = advanceLoop<4, N - M, 1, M>(stCur, pJ0, masks);
 
         // unroll second part of the loop (M-1) iterations
-        stCur = advanceLoop<4, M - 1, 1, M - N>(stCur, masks);
+        std::tie(stCur, pJ0) = advanceLoop<4, M - 1, 1, M - N>(stCur, pJ0, masks);
 
         // last iteration
-        stCur = advanceLoop<1, 1, 1-N, M - N>(stCur, masks);
-        //stCur[0] = advance1(stCur[0], stCur[1 - N], stCur[M - N], masks);
+        std::tie(stCur, pJ0) = advanceLoop<1, 1, 1 - N, M - N>(stCur, pJ0, masks);
 
         m_pst = m_state;
     }
