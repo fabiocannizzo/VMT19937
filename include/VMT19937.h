@@ -16,14 +16,16 @@ enum VMT19937QueryMode { QM_Scalar, QM_Block16, QM_StateSize };
 template <size_t RegisterBitLen = SIMD_N_BITS, VMT19937QueryMode QueryMode = QM_Scalar>
 class VMT19937
 {
+    static const size_t s_nBits = 19937;
+    const static size_t s_wordSizeBits = 32;
+
     const static size_t s_regLenBits = RegisterBitLen;
-    const static size_t s_regLenWords = s_regLenBits / 32;
+    const static size_t s_regLenWords = s_regLenBits / s_wordSizeBits;
     typedef SimdRegister<s_regLenBits> XV;
     typedef SimdRegister<SIMD_N_BITS> XVMax;
 
     // Period parameters
-    static const size_t s_nBits = 19937;
-    static const size_t s_N = s_nBits / 32 + (s_nBits % 32 != 0); // 624
+    static const size_t s_N = s_nBits / s_wordSizeBits + (s_nBits % s_wordSizeBits != 0); // 624
     static const size_t s_M = 397;
 
     static const uint32_t s_rndBlockSize = 64 / sizeof(uint32_t); // exactly one cache line
@@ -204,7 +206,7 @@ class VMT19937
             vectorToState(0, (const uint32_t*) tmp.rowBegin(commonJumpRepeat % 2));
         }
 
-        if (s_regLenWords > 1) {
+        if constexpr (s_regLenWords > 1) {
             if (sequentialJump) {
 
                 // perform jump ahead of the s_regLenWords states
