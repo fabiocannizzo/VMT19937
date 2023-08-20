@@ -17,14 +17,15 @@ template <size_t RegisterBitLen = SIMD_N_BITS, VMT19937QueryMode QueryMode = QM_
 class VSFMT19937
 {
     static const size_t s_nBits = 19937;
-    const static size_t s_wordSizeBits = 128;
+    static const size_t s_wordSizeBits = 128;
 
     static_assert(RegisterBitLen >= s_wordSizeBits);
 
 public:
-    const static size_t s_regLenBits = RegisterBitLen;
-    const static size_t s_nStates = RegisterBitLen / s_wordSizeBits;
-    const static VMT19937QueryMode s_queryMode = QueryMode;
+    static const size_t s_regLenBits = RegisterBitLen;
+    static const size_t s_nStates = RegisterBitLen / s_wordSizeBits;
+    static const VMT19937QueryMode s_queryMode = QueryMode;
+    static const size_t s_n32InOneWord = s_wordSizeBits / 32;
     typedef BinaryMatrix<156 * 4 * 32> matrix_t;
 
 private:
@@ -42,7 +43,7 @@ private:
 
     alignas(64) XV m_state[s_N];    // the array of state vectors
 
-    // This data members is necessary only if QueryMode==QM_Scalar
+    // This data members is necessary only if QueryMode!=QM_StateSize
     const uint32_t* m_prnd;
 
     // This data members are redundant if QueryMode==QM_StateSize
@@ -245,8 +246,6 @@ private:
         }
         //sfmt->idx = s_SFMT_N32;
         ensure_period();
-
-        m_prnd = end();
     }
 
     /**
@@ -313,16 +312,14 @@ private:
         }
 
         ensure_period();
-
-        m_prnd = end();
     }
 
 
-#if 0
     void fillOtherStates(size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
     {
         uint32_t* pstate = (uint32_t*)m_state;
 
+#if 0
         // temporary workspace matrix
         BinaryMatrix<2, s_nBits> tmp;
 
@@ -338,10 +335,10 @@ private:
             // copy to the state vector shifting all bits to the right by 31
             vectorToState(0, (const uint32_t*) tmp.rowBegin(commonJumpRepeat % 2));
         }
-
-        if constexpr (s_regLenWords > 1) {
+#endif
+        if constexpr (s_nStates > 1) {
             if (sequentialJump) {
-
+#if 0
                 // perform jump ahead of the s_regLenWords states
                 // State_0 = State_0
                 // State_1 = Jump x State_0
@@ -362,37 +359,31 @@ private:
                     // copy to the state vector shifting all bits to the right by 31
                     vectorToState(s, (const uint32_t*)pdst);
                 }
+#endif
             }
             else {
                 for (size_t w = 0; w < s_N; ++w)
-                    for (size_t j = 1; j < s_regLenWords; ++j)
-                        pstate[w * s_regLenWords + j] = pstate[w * s_regLenWords];
+                    m_state[w].broadcastLo128();
             }
         }
 
-        m_pst = m_pst_end;
-        m_prnd = (const uint32_t *)(((uint8_t *) m_rnd) + sizeof(m_rnd));
+        m_prnd = end();
     }
 
-    // initializes the first state with a seed
-    void __reinit(uint32_t s)
+
+    void getBlock16(uint32_t *dst)
     {
-        const uint32_t mask = uint32_t(1812433253UL);
-        uint32_t prev = scalarState(0) = s;
-        for (uint32_t i = 1; i < s_N; i++)
-            prev = scalarState(i) = (mask * (prev ^ (prev >> 30)) + i);
+        std::copy(m_prnd, m_prnd + 16, dst);
+        m_prnd += 16;
     }
-#endif
 
 public:
 
-    const static size_t s_qryBlkSize = (QueryMode == QM_Scalar) ? 1 : (QueryMode == QM_Block16) ? 16 : s_N * s_regLenWords;
+    const static size_t s_qryStateSize = (QueryMode == QM_Scalar) ? 1 : (QueryMode == QM_Block16) ? 16 : sizeof(m_state) / sizeof(uint32_t);
 
     // constructors
     VSFMT19937()
-        : /*m_pst(nullptr)
-        , m_pst_end(m_state+s_N)
-        , */m_prnd(nullptr)
+        : m_prnd(nullptr)
     {}
 
     VSFMT19937(uint32_t seed, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
@@ -411,7 +402,7 @@ public:
     void reinit(uint32_t s, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
     {
         init(s);
-        //fillOtherStates(commonJumpRepeat, commonJump, sequentialJump);
+        fillOtherStates(commonJumpRepeat, commonJump, sequentialJump);
     }
 
     // initialize by an array with array-length
@@ -420,7 +411,7 @@ public:
     void reinit(const uint32_t* seeds, uint32_t nSeeds, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
     {
         init(seeds, nSeeds);
-        //fillOtherStates(commonJumpRepeat, commonJump, sequentialJump);
+        fillOtherStates(commonJumpRepeat, commonJump, sequentialJump);
     }
 
 
@@ -444,13 +435,12 @@ public:
         static_assert(QueryMode == QM_Block16);
 
         if (m_prnd != end()) {
-            std::copy(m_prnd, m_prnd + 16, dst);
-            return;
+            getBlock16(dst);
         }
-
-        refill();
-
-        std::copy(m_prnd, m_prnd + 16, dst);
+        else {
+            refill();
+            getBlock16(dst);
+        }
     }
 
     // generates a block of the same size as the state vector of uniform discrete random numbers in [0,0xffffffff] interval

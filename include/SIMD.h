@@ -77,17 +77,58 @@ struct SimdRegisterEmulator
 
     SimdRegisterEmulator() {}
     SimdRegisterEmulator(uint32_t v) : m_v(v) {}
+    SimdRegisterEmulator(uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3)
+    {
+        for (size_t i = 0; i < M / 4; ++i) {
+            m_v.a[0 + 4 * i] = v0;
+            m_v.a[1 + 4 * i] = v1;
+            m_v.a[2 + 4 * i] = v2;
+            m_v.a[3 + 4 * i] = v3;
+        }
+    }
     SimdRegisterEmulator(const uint32_t* p) : m_v(*p) {}
     SimdRegisterEmulator(const A& v) : m_v(v) {}
 
     template <bool A>
     void store(uint32_t* dst) { std::copy_n(m_v.a, M, dst); }
 
-    friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = a.m_v.a[i] & b.m_v.a[i]; return r; }
-    friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = a.m_v.a[i] ^ b.m_v.a[i]; return r; }
-    friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = a.m_v.a[i] | b.m_v.a[i]; return r; }
-    friend FORCE_INLINE XV operator<<(const XV& a, const int n) { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = a.m_v.a[i] << n; return r; }
-    friend FORCE_INLINE XV operator>>(const XV& a, const int n) { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = a.m_v.a[i] >> n; return r; }
+    friend XV operator&(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = a.m_v.a[i] & b.m_v.a[i]; return r; }
+    friend XV operator^(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = a.m_v.a[i] ^ b.m_v.a[i]; return r; }
+    friend XV operator|(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = a.m_v.a[i] | b.m_v.a[i]; return r; }
+    friend XV operator<<(const XV& a, const int n) { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = a.m_v.a[i] << n; return r; }
+    friend XV operator>>(const XV& a, const int n) { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = a.m_v.a[i] >> n; return r; }
+
+    template <int nBytes>
+    static XV shl128(const XV& a)
+    {
+        XV r;
+        for (size_t s = 0; s < M / 4; ++s) {
+            const uint8_t* ps = (const uint8_t*) & a.m_v.a[4 * s];
+            uint8_t* pd = (uint8_t*) &r.m_v.a[4 * s];
+            std::copy_n(ps, 16 - nBytes, pd + nBytes);
+        }
+        return r;
+    }
+
+    template <int nBytes>
+    static XV shr128(const XV& a)
+    {
+        XV r;
+        for (size_t s = 0; s < M / 4; ++s) {
+            const uint8_t* ps = (const uint8_t*) &a.m_v.a[4 * s];
+            uint8_t* pd = (uint8_t*) &r.m_v.a[4 * s];
+            std::copy_n(ps + nBytes, 16 - nBytes, pd);
+        }
+        return r;
+    }
+
+    void broadcastLo128()
+    {
+        static_assert(M > 4);
+        for (size_t i = 0; i < M / 4; ++i)
+            for (size_t j = 0; j < 4; ++j)
+                m_v.a[4*i+j] = m_v.a[j];
+    }
 
     bool eq(const XV& rhs) const
     {
@@ -97,9 +138,9 @@ struct SimdRegisterEmulator
         return true;
     }
 
-    static FORCE_INLINE XV zero() { return XV(uint32_t(0)); }
+    static XV zero() { return XV(uint32_t(0)); }
 
-    FORCE_INLINE XV ifOddValueElseZero(const XV& value) const { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = (m_v.a[i] % 2) ? value.m_v.a[i] : 0; return r; }
+    XV ifOddValueElseZero(const XV& value) const { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = (m_v.a[i] % 2) ? value.m_v.a[i] : 0; return r; }
 
     uint8_t parity() const
     {
@@ -240,6 +281,8 @@ struct SimdRegister<256>
     template <int n>
     static FORCE_INLINE XV shr128(const XV& a) { return _mm256_bsrli_si128(a.m_v, n); }
 
+    void broadcastLo128() { m_v = _mm256_broadcastsi128_si256(_mm256_castsi256_si128(m_v)); }
+
     static FORCE_INLINE XV zero() { return _mm256_setzero_si256(); }
 
     FORCE_INLINE XV ifOddValueElseZero(const XV& value) const
@@ -299,6 +342,8 @@ struct SimdRegister<512>
     static FORCE_INLINE XV shl128(const XV& a) { return _mm512_bslli_si128(a.m_v, n); }
     template <int n>
     static FORCE_INLINE XV shr128(const XV& a) { return _mm512_bsrli_si128(a.m_v, n); }
+
+    void broadcastLo128() { m_v = _mm512_broadcast_i32x4(_mm512_castsi512_si128(m_v)); }
 
     FORCE_INLINE XV ifOddValueElseZero(const XV& value) const
     {

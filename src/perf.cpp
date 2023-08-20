@@ -48,7 +48,7 @@ Result testPerformance(size_t runId)
 {
     typedef VMT19937<VecLen, BlkMode> gen_t;
 
-    static const size_t BlkSize = gen_t::s_qryBlkSize;
+    static const size_t BlkSize = gen_t::s_qryStateSize;
 
     std::cout << "Generate " << nRandomPerf << " random numbers with VMT19937 length " << VecLen
               << " in blocks of " << BlkSize << " ... ";
