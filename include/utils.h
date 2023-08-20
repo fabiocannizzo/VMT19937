@@ -4,7 +4,7 @@
 
 // nAlign must be a multiple of 2 and no more than 64
 template <typename T, unsigned nAlign>
-T* myAlignedNew(size_t n)
+inline T* myAlignedNew(size_t n)
 {
     // allocate memory
     uint8_t *p = new uint8_t[n * sizeof(T) + nAlign];
@@ -18,7 +18,7 @@ T* myAlignedNew(size_t n)
     return (T*)p;
 }
 
-void myAlignedDelete(void *p)
+inline void myAlignedDelete(void *p)
 {
     if (p) {
         uint8_t* p8 = (uint8_t*)p;
