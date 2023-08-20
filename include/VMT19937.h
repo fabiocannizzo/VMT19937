@@ -29,12 +29,6 @@ class VMT19937
     static const size_t s_M = 397;
 
     static const uint32_t s_rndBlockSize = 64 / sizeof(uint32_t); // exactly one cache line
-    
-    static const uint32_t s_matrixA = 0x9908b0dfUL;   // constant vector a
-    static const uint32_t s_upperMask = 0x80000000UL; // most significant w-r bits
-    static const uint32_t s_lowerMask = 0x7fffffffUL; // least significant r bits
-    static const uint32_t s_temperMask1 = 0x9d2c5680UL;
-    static const uint32_t s_temperMask2 = 0xefc60000UL;
 
     alignas(64) XV m_state[s_N];    // the array of state vectors
 
@@ -47,15 +41,22 @@ class VMT19937
 
 
     template <typename XVI>
-    struct TemperCst
+    class TemperCst
     {
+        static const uint32_t s_temperMask1 = 0x9d2c5680UL;
+        static const uint32_t s_temperMask2 = 0xefc60000UL;
+    public:
         TemperCst() : m_mask1(s_temperMask1), m_mask2(s_temperMask2) {}
         const XVI m_mask1;
         const XVI m_mask2;
     };
 
-    struct RefillCst : TemperCst<XV>
+    class RefillCst
     {
+        static const uint32_t s_matrixA = 0x9908b0dfUL;   // constant vector a
+        static const uint32_t s_upperMask = 0x80000000UL; // most significant w-r bits
+        static const uint32_t s_lowerMask = 0x7fffffffUL; // least significant r bits
+    public:
         RefillCst() : m_upperMask(s_upperMask), m_lowerMask(s_lowerMask), m_matrixA(s_matrixA) {}
         const XV m_upperMask;
         const XV m_lowerMask;
