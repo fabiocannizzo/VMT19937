@@ -2,6 +2,9 @@
 #define SIMD_EMULATION
 
 #include "VMT19937.h"
+#include "VSFMT19937.h"
+
+#include "../SFMT-src-1.5.1/SFMT.h"
 
 const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
@@ -175,6 +178,17 @@ void generateBenchmark_MT19937()
     printSome(benchmark);
 }
 
+void generateBenchmark_SFMT19937()
+{
+    std::cout << "Generate SFMT19937 random numbers with the original C source code ... ";
+    sfmt_t sfmtgen;
+    sfmt_init_by_array(&sfmtgen, const_cast<uint32_t *>(seedinit), seedlength);
+    for (size_t i = 0, n = benchmark.size(); i < n; ++i)
+        benchmark[i] = sfmt_genrand_uint32(&sfmtgen);
+    std::cout << "done!\n";
+    printSome(benchmark);
+}
+
 void startTest(const char* name)
 {
     std::cout << "\n"
@@ -249,9 +263,32 @@ void test_VMT19937()
     testEquivalence<VMT19937<512, QM_StateSize>>(0, nullptr, &jumpMatrix1024, 0, 1024);
 }
 
+void test_VSFMT19937()
+{
+    std::cout << "\nTest VSFMT19937\n";
+
+    generateBenchmark_SFMT19937();
+
+    //MT19937Matrix jumpMatrix1;                                          // jump ahead 1 element
+    //MT19937Matrix jumpMatrix512(std::string("./dat/F00009.bits"));      // jump ahead 2^9 (512) elements
+    //MT19937Matrix jumpMatrix1024(std::string("./dat/F00010.bits"));     // jump ahead 2^10 (1024) elements
+    //MT19937Matrix jumpMatrixPeriod(std::string("./dat/F19937.bits"));   // jump ahead 2^19937 elements
+
+    //testEquivalence<VMT19937, 32, QM_Scalar>(0, nullptr, nullptr, 0, 0);
+    //testEquivalence<VMT19937, 32, QM_Scalar>(1, &jumpMatrix1024, nullptr, 1024, 0);
+    //// two jumps of 512 are equivalent to one jump of 1024
+    //testEquivalence<VMT19937, 32, QM_Scalar>(2, &jumpMatrix512, nullptr, 512, 0);
+    //// since the period is 2^19937-1, after applying a jump matrix of 2^19937, we restart from the sequence from step 1
+    //testEquivalence<VMT19937, 32, QM_Scalar>(1, &jumpMatrixPeriod, nullptr, 1, 0);
+
+    //testEquivalence<VMT19937, 64, QM_Scalar>(0, nullptr, nullptr, 0, 0);
+    testEquivalence<VSFMT19937<128, QM_Scalar>>(0, nullptr, nullptr, 0, 0);
+}
+
 int main()
 {
     try {
+        test_VSFMT19937();
         testEncoding();
         testSquareMatrix();
         test_VMT19937();
