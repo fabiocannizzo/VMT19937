@@ -20,12 +20,13 @@ template <size_t RegisterBitLen = SIMD_N_BITS, VMT19937QueryMode QueryMode = QM_
 class VMT19937
 {
     static const size_t s_nBits = 19937;
-    const static size_t s_wordSizeBits = 32;
+    static const size_t s_wordSizeBits = 32;
 
 public:
-    const static size_t s_regLenBits = RegisterBitLen;
-    const static size_t s_nStates = RegisterBitLen / s_wordSizeBits;
-    const static VMT19937QueryMode s_queryMode = QueryMode;
+    static const size_t s_regLenBits = RegisterBitLen;
+    static const size_t s_nStates = RegisterBitLen / s_wordSizeBits;
+    static const size_t s_n32InOneWord = s_wordSizeBits / 32;
+    static const VMT19937QueryMode s_queryMode = QueryMode;
     typedef MT19937Matrix matrix_t;
 
 private:
@@ -279,7 +280,7 @@ private:
 
 public:
 
-    const static size_t s_qryBlkSize = (QueryMode == QM_Scalar) ? 1 : (QueryMode == QM_Block16) ? 16 : s_N * s_regLenWords;
+    const static size_t s_qryStateSize = (QueryMode == QM_Scalar) ? 1 : (QueryMode == QM_Block16) ? 16 : sizeof(m_state) / sizeof(uint32_t);
 
     // constructors
     VMT19937()
