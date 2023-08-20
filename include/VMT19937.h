@@ -109,8 +109,10 @@ class VMT19937
     static FORCE_INLINE XV advanceN(XV* p, XV pJ0, const RefillCst& masks)
     {
         if constexpr (N > 0) {
-            //if (!pJ0.eq(p[J0]))
-            //    std::cout << "error\n";
+#ifdef DEBUG
+            if (!pJ0.eq(p[J0]))
+                THROW("how did this happen?");
+#endif
             XV pJ1(p[J1]);
             p[J0] = advance1(pJ0, pJ1, p[JM], masks);
             return advanceN<N - 1, J0 + 1, J1 + 1, JM + 1>(p, pJ1, masks);

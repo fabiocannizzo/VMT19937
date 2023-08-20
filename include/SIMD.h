@@ -29,6 +29,8 @@ struct SimdRegister<32>
     friend FORCE_INLINE XV operator>>(const XV a, int n) { return uint32_t(a.m_v >> n); }
     friend FORCE_INLINE XV operator<<(const XV a, int n) { return uint32_t(a.m_v << n); }
 
+    FORCE_INLINE bool eq(const XV& rhs) const { return m_v == rhs.m_v; }
+
     FORCE_INLINE XV ifOddValueElseZero(const XV value) const
     {
 #if 0 && defined(__GNUC__) && defined(__x86_64__)
@@ -87,6 +89,14 @@ struct SimdRegisterEmulator
     friend FORCE_INLINE XV operator<<(const XV& a, const int n) { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = a.m_v.a[i] << n; return r; }
     friend FORCE_INLINE XV operator>>(const XV& a, const int n) { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = a.m_v.a[i] >> n; return r; }
 
+    bool eq(const XV& rhs) const
+    {
+        for (size_t i = 0; i < M; ++i)
+            if (m_v.a[i] != rhs.m_v.a[i])
+            return false;
+        return true;
+    }
+
     static FORCE_INLINE XV zero() { return XV(uint32_t(0)); }
 
     FORCE_INLINE XV ifOddValueElseZero(const XV& value) const { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = (m_v.a[i] % 2) ? value.m_v.a[i] : 0; return r; }
@@ -126,6 +136,8 @@ struct SimdRegister<64>
         return uint64_t(a.m_v << n);
     }
 
+    FORCE_INLINE bool eq(const XV& rhs) const { return m_v == rhs.m_v; }
+
     FORCE_INLINE XV ifOddValueElseZero(const XV& value) const
     {
         const uint64_t maskHi = m_v & (uint64_t(1) << 32) ? (uint64_t(0xFFFFFFFF) << 32) : 0;
@@ -160,6 +172,8 @@ struct SimdRegister<128>
     //friend FORCE_INLINE XV operator>(const XV& a, const XV& b) { return _mm_cmpgt_epi32(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return _mm_slli_epi32(a.m_v, n); }
     friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm_srli_epi32(a.m_v, n); }
+
+    FORCE_INLINE bool eq(const XV& rhs) const { return _mm_test_all_ones(_mm_cmpeq_epi32(m_v, rhs.m_v)); }
 
     static FORCE_INLINE XV zero() { return _mm_setzero_si128(); }
 
@@ -209,6 +223,8 @@ struct SimdRegister<256>
     //friend FORCE_INLINE XV operator>(const XV& a, const XV& b) { return _mm256_cmpgt_epi32(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return _mm256_slli_epi32(a.m_v, n); }
     friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm256_srli_epi32(a.m_v, n); }
+
+    FORCE_INLINE bool eq(const XV& rhs) const { return int(0xFFFFFFFF) == _mm256_movemask_epi8(_mm256_cmpeq_epi32(m_v, rhs.m_v)); }
 
     static FORCE_INLINE XV zero() { return _mm256_setzero_si256(); }
 
@@ -264,6 +280,8 @@ struct SimdRegister<512>
     friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { return _mm512_or_si512(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return _mm512_slli_epi32(a.m_v, n); }
     friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm512_srli_epi32(a.m_v, n); }
+
+    FORCE_INLINE bool eq(const XV& rhs) const { return __mmask16(0xFFFF) == _mm512_cmpeq_epi32_mask(m_v, rhs.m_v); }
 
     FORCE_INLINE XV ifOddValueElseZero(const XV& value) const
     {
