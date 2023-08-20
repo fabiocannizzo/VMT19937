@@ -135,17 +135,16 @@ void testEquivalence(size_t mCommonJumpRepeat, const MT19937Matrix* commonJump, 
 
     const static size_t s_nStates = gen_t::s_nStates;
 
-    std::vector<uint32_t> dst(nRandomTest + 64 / sizeof(uint32_t));
-    uint32_t* aligneddst = (uint32_t*)((intptr_t)dst.data() + (64 - ((intptr_t)dst.data() % 64)));
+    AlignedVector<uint32_t, 64> aligneddst(nRandomTest);
 
     gen_t mt(seedinit, seedlength, mCommonJumpRepeat, commonJump, seqJump);
     for (size_t i = 0; i < nRandomTest / BlkSize; ++i)
         if constexpr (BlkMode == QM_Scalar)
             aligneddst[i] = mt.genrand_uint32();
         else if constexpr (BlkMode == QM_Block16)
-            mt.genrand_uint32_blk16(aligneddst + i * BlkSize);
+            mt.genrand_uint32_blk16(aligneddst.data() + i * BlkSize);
         else if constexpr (BlkMode == QM_StateSize)
-            mt.genrand_uint32_stateBlk(aligneddst + i * BlkSize);
+            mt.genrand_uint32_stateBlk(aligneddst.data() + i * BlkSize);
         else
             NOT_IMPLEMENTED;
 
