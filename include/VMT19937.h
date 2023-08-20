@@ -22,8 +22,13 @@ class VMT19937
     static const size_t s_nBits = 19937;
     const static size_t s_wordSizeBits = 32;
 
+public:
     const static size_t s_regLenBits = RegisterBitLen;
-    const static size_t s_regLenWords = s_regLenBits / s_wordSizeBits;
+    const static size_t s_nStates = RegisterBitLen / s_wordSizeBits;
+    const static VMT19937QueryMode s_queryMode = QueryMode;
+
+private:
+    const static size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
     typedef SimdRegister<s_regLenBits> XV;
     typedef SimdRegister<SIMD_N_BITS> XVMax;
 
