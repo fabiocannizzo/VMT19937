@@ -12,6 +12,9 @@
 
 enum VMT19937QueryMode { QM_Scalar, QM_Block16, QM_StateSize };
 
+#ifndef VMT19937_STATIC_CONST
+#   define VMT19937_STATIC_CONST 0
+#endif
 
 template <size_t RegisterBitLen = SIMD_N_BITS, VMT19937QueryMode QueryMode = QM_Scalar>
 class VMT19937
@@ -62,6 +65,9 @@ class VMT19937
         const XV m_lowerMask;
         const XV m_matrixA;
     };
+#if (VMT19937_STATIC_CONST==1)
+    const static RefillCst s_refillCst;
+#endif
 
     template <typename U>
     static FORCE_INLINE U temper(U y, U mask1, U mask2)
@@ -140,12 +146,14 @@ class VMT19937
         static const int M = s_M;
         static_assert(N == 624 && M == 397, "unrolling designed for these parameters");
 
-        // Load the variables in registers and passes them to the function as argument,
-        // to avoid to re-read the static variables from memory at every iteration
-        // Note that since the function is forced inline, the function arguments
-        // will not be passed as arguments via the stack, but reside in registers
-        const RefillCst masks{};
-
+        // Create local copy of the constants and pass them to the function as arguments.
+        // Since all functions invoked from here are forced inline, the function arguments
+        // will not be passed as arguments via the stack, but reside in CPU registers
+#if (VMT19937_STATIC_CONST==1)
+        const RefillCst masks{ s_refillCst };  // use copy constructor
+#else
+        const RefillCst masks;  // use default constructor
+#endif
         XV pJ0 = stCur[0];
 
         // unroll first part of the loop (N-M) iterations
@@ -399,3 +407,8 @@ public:
         return(a * 67108864.0 + b) * (1.0 / 9007199254740992.0);
     }
 };
+
+#if (VMT19937_STATIC_CONST==1)
+template <size_t RegisterBitLen, VMT19937QueryMode QueryMode>
+const typename VMT19937<RegisterBitLen, QueryMode>::RefillCst VMT19937<RegisterBitLen, QueryMode>::s_refillCst;
+#endif
