@@ -288,10 +288,10 @@ public:
         reinit(seed, commonJumpRepeat, commonJump, sequentialJump);
     }
 
-    VMT19937(const uint32_t seeds[], uint32_t n_seeds, size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
+    VMT19937(const uint32_t *seeds, uint32_t nSeeds, size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
         : VMT19937()
     {
-        reinit(seeds, n_seeds, commonJumpRepeat, commonJump, sequentialJump);
+        reinit(seeds, nSeeds, commonJumpRepeat, commonJump, sequentialJump);
     }
 
     // initializes m_state[s_N] with a seed
@@ -304,18 +304,18 @@ public:
     // initialize by an array with array-length
     // init_key is the array for initializing keys
     // key_length is its length
-    void reinit(const uint32_t seeds[], uint32_t n_seeds, size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
+    void reinit(const uint32_t *seeds, uint32_t nSeeds, size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
     {
         __reinit(uint32_t(19650218));
         uint32_t i = 1, j = 0;
-        uint32_t k = (s_N > n_seeds ? s_N : n_seeds);
+        uint32_t k = (s_N > nSeeds ? s_N : nSeeds);
         for (; k; k--) {
             scalarState(i) = (scalarState(i) ^ ((scalarState(i-1) ^ (scalarState(i-1) >> 30)) * uint32_t(1664525)))
                 + seeds[j] + j; // non linear
             //m_state[i] &= 0xffffffffUL; // for WORDSIZE > 32 machines
             i++; j++;
             if (i >= s_N) { scalarState(0) = scalarState(s_N - 1); i = 1; }
-            if (j >= n_seeds) j = 0;
+            if (j >= nSeeds) j = 0;
         }
         for (k = s_N - 1; k; k--) {
             scalarState(i) = (scalarState(i) ^ ((scalarState(i - 1) ^ (scalarState(i - 1) >> 30)) * uint32_t(1566083941)))
