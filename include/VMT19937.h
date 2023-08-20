@@ -26,6 +26,7 @@ public:
     const static size_t s_regLenBits = RegisterBitLen;
     const static size_t s_nStates = RegisterBitLen / s_wordSizeBits;
     const static VMT19937QueryMode s_queryMode = QueryMode;
+    typedef MT19937Matrix matrix_t;
 
 private:
     const static size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
