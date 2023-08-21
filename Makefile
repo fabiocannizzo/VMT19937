@@ -25,7 +25,7 @@ PLATFORM := $(shell uname -s)
 $(info PLATFORM: $(PLATFORM))
 
 ifeq ($(NBITS), 512)
-   SIMD=-mavx512f -mavx512dq
+   SIMD=-mavx512f -mavx512bw
 else ifeq ($(NBITS), 256)
    SIMD=-mavx2
 else ifeq ($(NBITS), 128)
@@ -37,7 +37,7 @@ LOGDIR=logs/testu01
 
 COMMONFLAGS = -c -O3 $(SIMD)
 
-SFMT_FLAGS = -DSFMT_MEXP=19937
+SFMT_FLAGS = -DSFMT_MEXP=19937 -DHAVE_SSE2
 
 CFLAGS += $(COMMONFLAGS)
 CPPFLAGS += $(COMMONFLAGS) -O3 -std=c++17 -Iinclude $(SIMD)
@@ -71,7 +71,7 @@ dat/%.hmat : dat/%.bits $(BINDIR)/encoder.exe
 	$(BINDIR)/encoder.exe -i $< -o $@
 
 # extra compilation flags specific files
-$(BINDIR)/perf.cpp.obj : CPPFLAGS += $(SFMT_FLAGS) -DHAVE_SSE2
+$(BINDIR)/perf.cpp.obj $(BINDIR)/test.cpp.obj : CPPFLAGS += $(SFMT_FLAGS)
 ifdef MKLROOT
     $(BINDIR)/perf.cpp.obj : CPPFLAGS += -DTEST_MKL -I$(MKLROOT)/include
 endif
