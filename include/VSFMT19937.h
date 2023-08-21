@@ -61,12 +61,6 @@ private:
         const XV m_bMask;
     };
 
-    template <bool Aligned>
-    static FORCE_INLINE void refillBlock(const XV *&st, uint32_t *dst)
-    {
-        //st = (const XV*)(pst);
-    }
-
     static FORCE_INLINE XV advance1(const XV& a, const XV& b, const XV& c, const XV& d, const RefillCst& masks)
     {
         const uint32_t SFMT_SL1 = 18;
@@ -74,17 +68,15 @@ private:
         const uint32_t SFMT_SR1 = 11;
         const uint32_t SFMT_SR2 = 1;
 
-        XV v, x, y, z;
-
-        y = b >> SFMT_SR1;
-        z = XV::shr128<SFMT_SR2>(c);
-        v = d << SFMT_SL1;
+        XV y = b >> SFMT_SR1;
+        XV z = XV::template shr128<SFMT_SR2>(c);
+        XV v = d << SFMT_SL1;
         z = z ^ a;
         z = z ^ v;
-        x = XV::shl128<SFMT_SL2>(a);
+        XV x = XV::template shl128<SFMT_SL2>(a);
         y = y & masks.m_bMask;
         z = z ^ x;
-        return z ^ y;
+        return (z ^ y);
     }
 
     template <int N, int JA, int JB>
@@ -122,8 +114,6 @@ private:
 
     void FORCE_INLINE refill()
     {
-        XV* stCur = m_state;
-
         static const int N = s_N;
         static const int M = s_M;
         static_assert(N == 156 && M == 122, "unrolling designed for these parameters");
@@ -133,7 +123,10 @@ private:
         // will not be passed as arguments via the stack, but reside in CPU registers
         const RefillCst masks{};
 
-        XV pJC = stCur[s_N - 2], pJD = stCur[s_N - 1];
+        // local variables
+        XV* stCur = m_state;
+        XV pJC = stCur[s_N - 2];
+        XV pJD = stCur[s_N - 1];
 
         // unroll first part of the loop: (N-M) iterations
         std::tie(stCur, pJC, pJD) = advanceLoop<2, N - M, M>(stCur, pJC, pJD, masks);
@@ -248,23 +241,15 @@ private:
         ensure_period();
     }
 
-    /**
-     * This function represents a function used in the initialization
-     * by init_by_array
-     * @param x 32-bit integer
-     * @return 32-bit integer
-     */
-    static uint32_t func1(uint32_t x) {
+    // convenience used in the initialization
+    static uint32_t func1(uint32_t x)
+    {
         return (x ^ (x >> 27)) * (uint32_t)1664525UL;
     }
 
-    /**
-     * This function represents a function used in the initialization
-     * by init_by_array
-     * @param x 32-bit integer
-     * @return 32-bit integer
-     */
-    static uint32_t func2(uint32_t x) {
+    // convenience used in the initialization
+    static uint32_t func2(uint32_t x)
+    {
         return (x ^ (x >> 27)) * (uint32_t)1566083941UL;
     }
 
@@ -432,7 +417,7 @@ public:
     // for optimal performance the vector dst should be aligned on a 64 byte boundary
     void genrand_uint32_blk16(uint32_t* dst)
     {
-        static_assert(QueryMode == QM_Block16);
+        static_assert(QueryMode == QM_Block16, "This function can only be invoked when query mode is QM_Block16");
 
         if (m_prnd != end()) {
             getBlock16(dst);
@@ -447,8 +432,8 @@ public:
     // for optimal performance the vector dst should be aligned on a 64 byte boundary
     void genrand_uint32_stateBlk(uint32_t* dst)
     {
-        static_assert(QueryMode == QM_StateSize);
+        static_assert(QueryMode == QM_StateSize, "This function can only be invoked when query mode is QM_StateSize");
         refill();
-        std::copy(begin(), end(), dst);
+        memcpy(dst, begin(), sizeof(m_state));
     }
 };
