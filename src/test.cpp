@@ -10,7 +10,6 @@ const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 
 const uint64_t nRandomTest = 50ul * 624 * 16;
-//const uint64_t nRandomTest = 624 * 1;
 
 extern "C" unsigned long genrand_int32();
 extern "C" void init_by_array(unsigned long init_key[], int key_length);

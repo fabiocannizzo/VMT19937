@@ -1,6 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 
 #include "VMT19937.h"
+#include "VSFMT19937.h"
 
 #include "../SFMT-src-1.5.1/SFMT.h"
 
@@ -25,9 +26,25 @@ const uint64_t nRandomPerf = uint64_t(624) * 16 * 800000;
 extern "C" unsigned long genrand_int32();
 extern "C" void init_by_array(unsigned long init_key[], int key_length);
 
-enum Mode {orig, sfmt, mkl_mt, mkl_sfmt, simd};
+enum Mode {orig, sfmt, mkl_mt, mkl_sfmt, vmt, vsfmt};
 
-const char* modename[] = {"MT19937", "SFMT19937", "VSLMT19937", "VSLSFMT19937", "VMT19937"};
+const char* modename[] = {"MT19937", "SFMT19937", "VSLMT19937", "VSLSFMT19937", "VMT19937", "VSFMT19937" };
+
+template <typename T> struct GenTraits;
+
+template <size_t VecLen, VMT19937QueryMode QryMode>
+struct GenTraits<VMT19937<VecLen, QryMode>>
+{
+    static const Mode mode = vmt;
+    static const char* name() { return "VMT19937"; }
+};
+
+template <size_t VecLen, VMT19937QueryMode QryMode>
+struct GenTraits<VSFMT19937<VecLen, QryMode>>
+{
+    static const Mode mode = vsfmt;
+    static const char* name() { return "VSFMT19937"; }
+};
 
 struct Result
 {
@@ -43,19 +60,21 @@ struct Result
     }
 };
 
-template <size_t VecLen, VMT19937QueryMode BlkMode>
+template <typename Gen>
 Result testPerformance(size_t runId)
 {
-    typedef VMT19937<VecLen, BlkMode> gen_t;
+    const size_t VecLen = Gen::s_regLenBits;
+    const VMT19937QueryMode BlkMode = Gen::s_queryMode;
+    const size_t BlkSize = Gen::s_qryStateSize;
+    const Mode mode = GenTraits<Gen>::mode;
+    const char* name = GenTraits<Gen>::name();
 
-    static const size_t BlkSize = gen_t::s_qryStateSize;
-
-    std::cout << "Generate " << nRandomPerf << " random numbers with VMT19937 length " << VecLen
+    std::cout << "Generate " << nRandomPerf << " random numbers with " << name << " length " << VecLen
               << " in blocks of " << BlkSize << " ... ";
 
     AlignedVector<uint32_t, 64> aligneddst(BlkSize);
 
-    gen_t mt(seedinit, seedlength, 0, nullptr, nullptr);
+    Gen mt(seedinit, seedlength, 0, nullptr, nullptr);
 
     auto start = std::chrono::system_clock::now();
     for (size_t i = 0; i < nRandomPerf / BlkSize; ++i)
@@ -74,7 +93,7 @@ Result testPerformance(size_t runId)
 
     std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s" << std::endl;
 
-    return Result(simd, VecLen, BlkSize, runId, nSeconds);
+    return Result(mode, VecLen, BlkSize, runId, nSeconds);
 }
 
 
@@ -204,26 +223,35 @@ int main(int argc, const char** argv)
 #ifdef TEST_MKL
         res.push_back(mklPerformance<VSL_BRNG_MT19937, 1>(i));
         res.push_back(mklPerformance<VSL_BRNG_MT19937, 16>(i));
-        res.push_back(mklPerformance<VSL_BRNG_MT19937, 1024>(i));
+        res.push_back(mklPerformance<VSL_BRNG_MT19937, 624>(i));
         res.push_back(mklPerformance<VSL_BRNG_SFMT19937, 1>(i));
         res.push_back(mklPerformance<VSL_BRNG_SFMT19937, 16>(i));
-        res.push_back(mklPerformance<VSL_BRNG_SFMT19937, 1024>(i));
+        res.push_back(mklPerformance<VSL_BRNG_SFMT19937, 624>(i));
 #endif
-        res.push_back(testPerformance<32, QM_Scalar>(i));
-        res.push_back(testPerformance<32, QM_Block16>(i));
-        res.push_back(testPerformance<32, QM_StateSize>(i));
-        res.push_back(testPerformance<128, QM_Scalar>(i));
-        res.push_back(testPerformance<128, QM_Block16>(i));
-        res.push_back(testPerformance<128, QM_StateSize>(i));
+        res.push_back(testPerformance<VMT19937<32, QM_Scalar>>(i));
+        res.push_back(testPerformance<VMT19937<32, QM_Block16>>(i));
+        res.push_back(testPerformance<VMT19937<32, QM_StateSize>>(i));
+        res.push_back(testPerformance<VMT19937<128, QM_Scalar>>(i));
+        res.push_back(testPerformance<VMT19937<128, QM_Block16>>(i));
+        res.push_back(testPerformance<VMT19937<128, QM_StateSize>>(i));
+        res.push_back(testPerformance<VSFMT19937<128, QM_Scalar>>(i));
+        res.push_back(testPerformance<VSFMT19937<128, QM_Block16>>(i));
+        res.push_back(testPerformance<VSFMT19937<128, QM_StateSize>>(i));
 #if SIMD_N_BITS >= 256
-        res.push_back(testPerformance<256, QM_Scalar>(i));
-        res.push_back(testPerformance<256, QM_Block16>(i));
-        res.push_back(testPerformance<256, QM_StateSize>(i));
+        res.push_back(testPerformance<VMT19937<256, QM_Scalar>>(i));
+        res.push_back(testPerformance<VMT19937<256, QM_Block16>>(i));
+        res.push_back(testPerformance<VMT19937<256, QM_StateSize>>(i));
+        res.push_back(testPerformance<VSFMT19937<256, QM_Scalar>>(i));
+        res.push_back(testPerformance<VSFMT19937<256, QM_Block16>>(i));
+        res.push_back(testPerformance<VSFMT19937<256, QM_StateSize>>(i));
 #endif
 #if SIMD_N_BITS >= 512
-        res.push_back(testPerformance<512, QM_Scalar>(i));
-        res.push_back(testPerformance<512, QM_Block16>(i));
-        res.push_back(testPerformance<512, QM_StateSize>(i));
+        res.push_back(testPerformance<VMT19937<512, QM_Scalar>>(i));
+        res.push_back(testPerformance<VMT19937<512, QM_Block16>>(i));
+        res.push_back(testPerformance<VMT19937<512, QM_StateSize>>(i));
+        res.push_back(testPerformance<VSFMT19937<512, QM_Scalar>>(i));
+        res.push_back(testPerformance<VSFMT19937<512, QM_Block16>>(i));
+        res.push_back(testPerformance<VSFMT19937<512, QM_StateSize>>(i));
 #endif
     }
 
