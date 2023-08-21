@@ -110,7 +110,7 @@ private:
         }
     }
 
-    void FORCE_INLINE refill()
+    NO_INLINE void refill()
     {
         static const int N = s_N;
         static const int M = s_M;
