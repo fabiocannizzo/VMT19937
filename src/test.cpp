@@ -14,6 +14,20 @@ const uint64_t nRandomTest = 50ul * 624 * 16;
 extern "C" unsigned long genrand_int32();
 extern "C" void init_by_array(unsigned long init_key[], int key_length);
 
+template <typename T>
+struct GenTraits;
+
+template <size_t VecLen, VMT19937QueryMode QryMode>
+struct GenTraits<VMT19937<VecLen, QryMode>>
+{
+    static const char* name() { return "VMT19937"; }
+};
+
+template <size_t VecLen, VMT19937QueryMode QryMode>
+struct GenTraits<VSFMT19937<VecLen, QryMode>>
+{
+    static const char* name() { return "VSFMT19937"; }
+};
 
 std::vector<uint32_t> benchmark(nRandomTest + 10000);
 
@@ -134,7 +148,7 @@ void testEquivalence(size_t mCommonJumpRepeat, const typename Gen::matrix_t* com
     const size_t s_nStates = Gen::s_nStates;
     const size_t s_n32InOneWord = Gen::s_n32InOneWord;
 
-    std::cout << "Testing equivalence of generators with SIMD length " << VecLen
+    std::cout << GenTraits<Gen>::name() << ": Testing equivalence of generators with SIMD length " << VecLen
         << ", common jump ahead of " << commonJumpSize << " repeated " << mCommonJumpRepeat << " times, sequence jump size of " << sequenceJumpSize
         << ", block size " << BlkSize << " ... ";
 
