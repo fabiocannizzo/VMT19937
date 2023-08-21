@@ -30,7 +30,8 @@ enum Mode {orig, sfmt, mkl_mt, mkl_sfmt, vmt, vsfmt};
 
 const char* modename[] = {"MT19937", "SFMT19937", "VSLMT19937", "VSLSFMT19937", "VMT19937", "VSFMT19937" };
 
-template <typename T> struct GenTraits;
+template <typename T>
+struct GenTraits;
 
 template <size_t VecLen, VMT19937QueryMode QryMode>
 struct GenTraits<VMT19937<VecLen, QryMode>>
