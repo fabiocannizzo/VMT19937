@@ -3,15 +3,8 @@
 #include "SIMD.h"
 #include "jump_matrix.h"
 
-#ifndef SIMD_N_BITS
-#   define SIMD_N_BITS 64
-#endif
-
 #include <cstdint>
 #include <cstddef>
-
-//enum class VSFMT19937QueryMode { QM_Scalar, QM_Block16, QM_StateSize };
-
 
 template <size_t RegisterBitLen = SIMD_N_BITS, VMT19937QueryMode QueryMode = QM_Scalar>
 class VSFMT19937

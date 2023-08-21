@@ -3,10 +3,6 @@
 #include "SIMD.h"
 #include "jump_matrix.h"
 
-#ifndef SIMD_N_BITS
-#   define SIMD_N_BITS 64
-#endif
-
 #include <cstdint>
 #include <cstddef>
 
