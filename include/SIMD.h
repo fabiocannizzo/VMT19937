@@ -277,9 +277,9 @@ struct SimdRegister<256>
     friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm256_srli_epi32(a.m_v, n); }
 
     template <int n>
-    static FORCE_INLINE XV shl128(const XV& a) { return _mm256_bslli_si128(a.m_v, n); }
+    static FORCE_INLINE XV shl128(const XV& a) { return _mm256_bslli_epi128(a.m_v, n); }
     template <int n>
-    static FORCE_INLINE XV shr128(const XV& a) { return _mm256_bsrli_si128(a.m_v, n); }
+    static FORCE_INLINE XV shr128(const XV& a) { return _mm256_bsrli_epi128(a.m_v, n); }
 
     void broadcastLo128() { m_v = _mm256_broadcastsi128_si256(_mm256_castsi256_si128(m_v)); }
 
@@ -325,7 +325,7 @@ struct SimdRegister<512>
     SimdRegister() : m_v(_mm512_undefined_si512()) {}
     SimdRegister(const void* p) : m_v(_mm512_load_si512((const __m512i*)p)) {}
     SimdRegister(uint32_t v) : m_v(_mm512_set1_epi32(v)) {}
-    SimdRegister(uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3) : m_v(_mm512_setr4_epi32(v0, v1, v2, v3); ) {}
+    SimdRegister(uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3) : m_v(_mm512_setr4_epi32(v0, v1, v2, v3)) {}
     SimdRegister(__m512i v) : m_v(v) {}
 
     template <bool A>
@@ -339,9 +339,9 @@ struct SimdRegister<512>
     friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return _mm512_slli_epi32(a.m_v, n); }
     friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm512_srli_epi32(a.m_v, n); }
     template <int n>
-    static FORCE_INLINE XV shl128(const XV& a) { return _mm512_bslli_si128(a.m_v, n); }
+    static FORCE_INLINE XV shl128(const XV& a) { return _mm512_bslli_epi128(a.m_v, n); }
     template <int n>
-    static FORCE_INLINE XV shr128(const XV& a) { return _mm512_bsrli_si128(a.m_v, n); }
+    static FORCE_INLINE XV shr128(const XV& a) { return _mm512_bsrli_epi128(a.m_v, n); }
 
     void broadcastLo128() { m_v = _mm512_broadcast_i32x4(_mm512_castsi512_si128(m_v)); }
 
