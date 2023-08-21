@@ -61,55 +61,53 @@ private:
         const XV m_bMask;
     };
 
-    static FORCE_INLINE XV advance1(const XV& a, const XV& b, const XV& c, const XV& d, const RefillCst& masks)
+
+    static FORCE_INLINE XV advance1(const XV& xA, const XV& xB, const XV& xC, const XV& xD, const RefillCst& masks)
     {
         const uint32_t SFMT_SL1 = 18;
         const uint32_t SFMT_SL2 = 1;
         const uint32_t SFMT_SR1 = 11;
         const uint32_t SFMT_SR2 = 1;
 
-        XV y = b >> SFMT_SR1;
-        XV z = XV::template shr128<SFMT_SR2>(c);
-        XV v = d << SFMT_SL1;
-        z = z ^ a;
+        XV y(xB >> SFMT_SR1);
+        XV z(XV::template shr128<SFMT_SR2>(xC));
+        XV v(xD << SFMT_SL1);
+        z = z ^ xA;
         z = z ^ v;
-        XV x = XV::template shl128<SFMT_SL2>(a);
+        XV x(XV::template shl128<SFMT_SL2>(xA));
         y = y & masks.m_bMask;
         z = z ^ x;
         return (z ^ y);
     }
 
     template <int N, int JA, int JB>
-    static FORCE_INLINE std::pair<XV, XV> advanceN(XV* p, XV pJC, XV pJD, const RefillCst& masks)
+    static FORCE_INLINE void advanceN(XV* p, XV& xC, XV& xD, const RefillCst& masks)
     {
         if constexpr (N > 0) {
-            XV tmp;
-            p[JA] = tmp = advance1(p[JA], p[JB], pJC, pJD, masks);
-            pJC = pJD;
-            pJD = tmp;
-            return advanceN<N - 1, JA + 1, JB + 1>(p, pJC, pJD, masks);
+            XV tmp = advance1(p[JA], p[JB], xC, xD, masks);
+            xC = xD;
+            xD = tmp;
+            p[JA] = tmp;
+            advanceN<N - 1, JA + 1, JB + 1>(p, xC, xD, masks);
         }
-        else
-            return { pJC, pJD };
     }
 
     template <int UnrollBlkSize, int N, int JB>
-    static FORCE_INLINE std::tuple<XV*, XV, XV> advanceLoop(XV* p, XV pJC, XV pJD, const RefillCst& masks)
+    static FORCE_INLINE void advanceLoop(XV*& p, XV& xC, XV& xD, const RefillCst& masks)
     {
         if constexpr (N >= UnrollBlkSize) {
             size_t nBlks = N / UnrollBlkSize;
             // unroll the loop in blocks of UnrollBlkSize
             do {
-                std::tie(pJC, pJD) = advanceN<UnrollBlkSize, 0, JB>(p, pJC, pJD, masks);
+                advanceN<UnrollBlkSize, 0, JB>(p, xC, xD, masks);
                 p += UnrollBlkSize;
             } while (--nBlks);
         }
         const size_t nRes = N % UnrollBlkSize;
         if constexpr (nRes) {
-            std::tie(pJC, pJD) = advanceN<nRes, 0, JB>(p, pJC, pJD, masks);
+            advanceN<nRes, 0, JB>(p, xC, xD, masks);
             p += nRes;
         }
-        return { p, pJC, pJD };
     }
 
     void FORCE_INLINE refill()
@@ -125,14 +123,14 @@ private:
 
         // local variables
         XV* stCur = m_state;
-        XV pJC = stCur[s_N - 2];
-        XV pJD = stCur[s_N - 1];
+        XV xC = stCur[s_N - 2];
+        XV xD = stCur[s_N - 1];
 
         // unroll first part of the loop: (N-M) iterations
-        std::tie(stCur, pJC, pJD) = advanceLoop<2, N - M, M>(stCur, pJC, pJD, masks);
+        advanceLoop<2, N - M, M>(stCur, xC, xD, masks);
 
         // unroll second part of the loop: M iterations
-        std::tie(stCur, pJC, pJD) = advanceLoop<2, M, M - N>(stCur, pJC, pJD, masks);
+        advanceLoop<2, M, M - N>(stCur, xC, xD, masks);
 
         m_prnd = begin();
     }
