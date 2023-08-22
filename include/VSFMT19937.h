@@ -27,8 +27,9 @@ public:
     static const size_t s_n32InOneWord = s_wordSizeBits / 32;            // 4
     static const size_t s_n32InOneState = s_N * s_n32InOneWord;          // 624
     const static size_t s_n32InFullState = s_n32InOneState * s_nStates;  // 624 * nStates
+    const static size_t s_nMatrixBits = s_N * s_wordSizeBits;            // 19968
 
-    typedef BinaryMatrix<156 * 4 * 32> matrix_t;
+    typedef BinaryMatrix<s_nMatrixBits> matrix_t;
 
 private:
     const static size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
@@ -70,7 +71,7 @@ private:
             XV tmp = advance1(xA, xB, xC, xD, bMask);
             xC = xD;
             xD = tmp;
-            tmp.store<true>(p + JA * s_n32inReg);
+            tmp.template store<true>(p + JA * s_n32inReg);
             unroll<nIter - 1, JA + 1, JB + 1>(p, xC, xD, bMask);
         }
     }
@@ -96,16 +97,6 @@ private:
             p += nResIter * s_n32inReg;
         }
     }
-
-    // return the absolute index in the state vector
-    // of the 32-bit word `w32RelIndex` belonging to state `stateIndex`
-    static size_t w32AbsIndex(size_t w32RelIndex, size_t stateIndex = 0)
-    {
-        size_t w128RelIndex = w32RelIndex / s_n32InOneWord;
-        size_t w128RelOffset = w32RelIndex % s_n32InOneWord;
-        return w128RelIndex * s_n32inReg + s_n32InOneWord * stateIndex + w128RelOffset;
-    }
-
 
     NO_INLINE void refill()
     {
@@ -152,13 +143,22 @@ private:
     //    return ((uint32_t*)m_state)[scalarIndex * s_regLenWords];
     //}
 
+    // return the absolute index in the state vector
+    // of the 32-bit word `w32RelIndex` belonging to state `stateIndex`
+    static size_t w32AbsIndex(size_t w32RelIndex, size_t stateIndex = 0)
+    {
+        size_t w128RelIndex = w32RelIndex / s_n32InOneWord;
+        size_t w128RelOffset = w32RelIndex % s_n32InOneWord;
+        return w128RelIndex * s_n32inReg + s_n32InOneWord * stateIndex + w128RelOffset;
+    }
+
     // extract one of the interleaved state vectors and save it to dst
     void stateToVector(size_t stateIndex, uint32_t* pdst) const
     {
         const uint32_t* pstate = m_state + s_n32InOneWord * stateIndex;
         for (size_t i = 0; i < s_N; ++i)
-            for (size_t j = 0; i < s_n32InOneWord; ++j)
-                pdst[s_n32InOneWord * i + j] = pstate[i * s_n32inReg + j];
+            for (size_t j = 0; j < s_n32InOneWord; ++j)
+                pdst[i * s_n32InOneWord + j] = pstate[i * s_n32inReg + j];
     }
 
     // store vector into the interleaved elements of the state vector
@@ -167,7 +167,7 @@ private:
         uint32_t* pstate = m_state + s_n32InOneWord * stateIndex;
         for (size_t i = 0; i < s_N; ++i)
             for (size_t j = 0; j < s_n32InOneWord; ++j)
-                pstate[i * s_n32inReg + j] = psrc[s_n32InOneWord * i + j];
+                pstate[i * s_n32inReg + j] = psrc[i * s_n32InOneWord + j];
     }
 
 
@@ -282,27 +282,26 @@ private:
     }
 
 
-    void fillOtherStates(size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
+    void fillOtherStates(size_t nCommonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
     {
         //uint32_t* pstate = begin();
 
-#if 0
         // temporary workspace matrix
-        BinaryMatrix<2, s_nBits> tmp;
+        BinaryMatrix<2, s_nMatrixBits> tmp;
 
-        if (commonJumpRepeat) {
-            MYASSERT(commonJump, "commonJump is required when commnJumpRepeat>0");
+        if (nCommonJumpRepeat) {
+            MYASSERT(commonJump, "commonJump is required when nCommonJumpRepeat>0");
 
-            // copy state to the first row shifting all bits to the left by 31
+            // extract state 0
             stateToVector(0, (uint32_t*)tmp.rowBegin(0));
 
-            for (size_t i = 0; i < commonJumpRepeat; ++i)
+            for (size_t i = 0; i < nCommonJumpRepeat; ++i)
                 commonJump->multiplyByColumn(tmp.rowBegin((i + 1) % 2), tmp.rowBegin(i % 2));
 
             // copy to the state vector shifting all bits to the right by 31
-            vectorToState(0, (const uint32_t*)tmp.rowBegin(commonJumpRepeat % 2));
+            vectorToState(0, (const uint32_t*)tmp.rowBegin(nCommonJumpRepeat % 2));
         }
-#endif
+
         if constexpr (s_nStates > 1) {
             if (sequentialJump) {
 #if 0

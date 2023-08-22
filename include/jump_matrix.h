@@ -202,3 +202,85 @@ struct MT19937Matrix : BinarySquareMatrix<19937>
         base_t::fromArrayChar(pchar, len);
     }
 };
+
+struct SFMT19937Matrix : BinarySquareMatrix<19968>
+{
+    typedef BinarySquareMatrix<19968> base_t;
+
+    // Initialize the matrix as per MT19937 32 bit generator transition matrix
+    // This is equivalent to a jump ahead of 4 random numbers
+    SFMT19937Matrix()
+    {
+        init4();
+    }
+
+    SFMT19937Matrix(const std::string& binaryfilename)
+    {
+        fromBinaryFile(binaryfilename);
+    }
+
+    void init4()
+    {
+        const uint32_t s_SFMT_MSK1 = 0xdfffffefU;
+        const uint32_t s_SFMT_MSK2 = 0xddfecb7fU;
+        const uint32_t s_SFMT_MSK3 = 0xbffaffffU;
+        const uint32_t s_SFMT_MSK4 = 0xbffffff6U;
+        const uint32_t masks[] = { s_SFMT_MSK1, s_SFMT_MSK2, s_SFMT_MSK3, s_SFMT_MSK4 };
+
+        auto K = [&masks](size_t i) -> bool { return masks[i / 32] & (1 << (i % 32)); };
+
+        const size_t s_nBits = base_t::s_nBitRows;
+        const uint32_t s_matA = 0x9908B0DF;
+        const int s_N = 156;
+        const int s_M = 122;
+
+        // from row 0 to to row nBits - 128, state bits are just shifted left by 128 bits
+        for (uint32_t r = 0; r < s_nBits - 128; ++r)
+            setBit(r, r + 128);
+
+        // The new state element is composed of elements which were in position {0, M, N-2, N-1}
+        // W[N] = w[0] + (w[0] <<< 8) + ((w[M] >> 11) & K) + (w[N-2] >>> 8) + (w[N - 1] << 18)
+        // where:
+        //    <<< and >>> are 128 bit shifts
+        //    << and >> are 32 bit shifts
+        
+        const size_t B = s_nBits - 128;
+
+        bool mask[128] = {};
+
+        // w[0]
+        for (size_t r = 0; r < 128; ++r)
+            setBit(B + r, r);
+
+        // w[0] <<< 8
+        for (size_t r = 8; r < 128; ++r)
+            setBit(B + r, r - 8);
+
+        // w[N-2] >>> 8
+        for (size_t r = 0; r < 128 - 8; ++r)
+            setBit(B + r, (s_N-2)*128 + r + 8);
+
+        // w[N - 1] << 18
+        for (size_t w = 0; w < 4; ++w)
+            for (size_t r = 18; r < 32; ++r)
+                setBit(B + 32 * w + r, (s_N - 1) * 128 + 32 * w + r - 18);
+
+        // K & (w[M] >> 11)
+        for (size_t w = 0; w < 4; ++w)
+            for (size_t r = 0; r < 32-11; ++r)
+                if (K(32 * w + r))
+                    setBit(B + 32 * w + r, s_M * 128 + 32 * w + r + 11);
+    }
+
+    // initialize from a binary file saved with the toBin method
+    void fromBinaryFile(const std::string& filename)
+    {
+        std::ifstream is(filename, std::ios::binary);
+        MYASSERT(is.is_open(), "error opening binary file: " << filename);
+        base_t::fromBin(is);
+#ifdef TESTING
+        std::cout << "loaded matrix from file: " << filename << "\n";
+        printSparsity();
+#endif
+    }
+};
