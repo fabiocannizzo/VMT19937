@@ -86,7 +86,7 @@ struct MAY_ALIAS SimdRegisterEmulator
             m_v.a[3 + 4 * i] = v3;
         }
     }
-    SimdRegisterEmulator(const uint32_t* p) : m_v(*p) {}
+    SimdRegisterEmulator(const uint32_t* p) { std::copy_n(p, M, m_v.a); }
     SimdRegisterEmulator(const A& v) : m_v(v) {}
 
     template <bool A>

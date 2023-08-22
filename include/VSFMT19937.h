@@ -14,50 +14,36 @@ class VSFMT19937Base
     static const size_t s_nBits = 19937;
     static const size_t s_wordSizeBits = 128;
 
+    static const int s_N = s_nBits / s_wordSizeBits + (s_nBits % s_wordSizeBits != 0);     // 156
+    static_assert(s_N == 156);
+    static const int s_M = 122;
+    static const size_t s_n32inReg = RegisterBitLen / 32;
+
     static_assert(RegisterBitLen >= s_wordSizeBits);
 
 public:
     static const size_t s_regLenBits = RegisterBitLen;
     static const size_t s_nStates = RegisterBitLen / s_wordSizeBits;
-    static const size_t s_n32InOneWord = s_wordSizeBits / 32;
+    static const size_t s_n32InOneWord = s_wordSizeBits / 32;            // 4
+    static const size_t s_n32InOneState = s_N * s_n32InOneWord;          // 624
+    const static size_t s_n32InFullState = s_n32InOneState * s_nStates;  // 624 * nStates
+
     typedef BinaryMatrix<156 * 4 * 32> matrix_t;
 
 private:
     const static size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
+
     typedef SimdRegister<s_regLenBits> XV;
 
     // Period parameters
-    static const size_t s_N = s_nBits / s_wordSizeBits + (s_nBits % s_wordSizeBits != 0);
-    static_assert(s_N == 156);
-    static const size_t s_M = 122;
-    static const size_t s_SFMT_N32 = s_N * 4;
-    static const size_t s_n32inReg = sizeof(XV) / sizeof(uint32_t);
 
-    static const uint32_t s_rndBlockSize = 64 / sizeof(uint32_t); // exactly one cache line
-
-    alignas(64) XV m_state[s_N];    // the array of state vectors
-
+    alignas(64) uint32_t m_state[s_n32InFullState];    // the array of state vectors
 
     // This data members is necessary only if QueryMode!=QM_StateSize
     const uint32_t* m_prnd;
 
-public:
-    const static size_t s_n32InState = s_N * s_regLenBits / sizeof(uint32_t);
 
-private:
-    class RefillCst
-    {
-        static const uint32_t s_SFMT_MSK1 = 0xdfffffefU;
-        static const uint32_t s_SFMT_MSK2 = 0xddfecb7fU;
-        static const uint32_t s_SFMT_MSK3 = 0xbffaffffU;
-        static const uint32_t s_SFMT_MSK4 = 0xbffffff6U;
-    public:
-        RefillCst() : m_bMask(s_SFMT_MSK1, s_SFMT_MSK2, s_SFMT_MSK3, s_SFMT_MSK4) {}
-        const XV m_bMask;
-    };
-
-
-    static FORCE_INLINE XV advance1(const XV& xA, const XV& xB, const XV& xC, const XV& xD, const RefillCst& masks)
+    static FORCE_INLINE XV advance1(const XV& xA, const XV& xB, const XV& xC, const XV& xD, const XV& bMask)
     {
         const uint32_t SFMT_SL1 = 18;
         const uint32_t SFMT_SL2 = 1;
@@ -70,86 +56,90 @@ private:
         z = z ^ xA;
         z = z ^ v;
         XV x(XV::template shl128<SFMT_SL2>(xA));
-        y = y & masks.m_bMask;
+        y = y & bMask;
         z = z ^ x;
         return (z ^ y);
     }
 
     template <int nIter, int JA, int JB>
-    static FORCE_INLINE void unroll(XV* p, XV& xC, XV& xD, const RefillCst& masks)
+    static FORCE_INLINE void unroll(uint32_t* p, XV& xC, XV& xD, const XV& bMask)
     {
         if constexpr (nIter > 0) {
-            XV tmp = advance1(p[JA], p[JB], xC, xD, masks);
+            XV xA(p + JA * s_n32inReg);
+            XV xB(p + JB * s_n32inReg);
+            XV tmp = advance1(xA, xB, xC, xD, bMask);
             xC = xD;
             xD = tmp;
-            p[JA] = tmp;
-            unroll<nIter - 1, JA + 1, JB + 1>(p, xC, xD, masks);
+            tmp.store<true>(p + JA * s_n32inReg);
+            unroll<nIter - 1, JA + 1, JB + 1>(p, xC, xD, bMask);
         }
     }
 
     template <int nUnroll, int nIter, int JB>
-    static FORCE_INLINE void advanceLoop(XV*& p, XV& xC, XV& xD, const RefillCst& masks)
+    static FORCE_INLINE void advanceLoop(uint32_t*& p, XV& xC, XV& xD, const XV& bMask)
     {
-        if constexpr (nIter >= nUnroll) {
-            auto pend = p + (nIter / nUnroll) * nUnroll;
+        // unroll main iterations
+        const size_t nMainIter = nIter / nUnroll;
+        if constexpr (nMainIter) {
+            auto pend = p + nMainIter * nUnroll * s_n32inReg;
             // unroll the loop in blocks of UnrollBlkSize
             do {
-                unroll<nUnroll, 0, JB>(p, xC, xD, masks);
-                p += nUnroll;
+                unroll<nUnroll, 0, JB>(p, xC, xD, bMask);
+                p += nUnroll * s_n32inReg;
             } while (p != pend);
         }
+
+        // unroll residual iterations (if any)
         const size_t nResIter = nIter % nUnroll;
         if constexpr (nResIter) {
-            unroll<nResIter, 0, JB>(p, xC, xD, masks);
-            p += nResIter;
+            unroll<nResIter, 0, JB>(p, xC, xD, bMask);
+            p += nResIter * s_n32inReg;
         }
     }
 
+    // return the absolute index in the state vector
+    // of the 32-bit word `w32RelIndex` belonging to state `stateIndex`
+    static size_t w32AbsIndex(size_t w32RelIndex, size_t stateIndex = 0)
+    {
+        size_t w128RelIndex = w32RelIndex / s_n32InOneWord;
+        size_t w128RelOffset = w32RelIndex % s_n32InOneWord;
+        return w128RelIndex * s_n32inReg + s_n32InOneWord * stateIndex + w128RelOffset;
+    }
+
+
     NO_INLINE void refill()
     {
-        static const int N = s_N;
-        static const int M = s_M;
-        static_assert(N == 156 && M == 122, "unrolling designed for these parameters");
-
         // Create local copy of the constants and pass them to the function as arguments.
         // Since all functions invoked from here are forced inline, the function arguments
         // will not be passed as arguments via the stack, but reside in CPU registers
-        const RefillCst masks{};
+        const uint32_t s_SFMT_MSK1 = 0xdfffffefU;
+        const uint32_t s_SFMT_MSK2 = 0xddfecb7fU;
+        const uint32_t s_SFMT_MSK3 = 0xbffaffffU;
+        const uint32_t s_SFMT_MSK4 = 0xbffffff6U;
+        XV bMask(s_SFMT_MSK1, s_SFMT_MSK2, s_SFMT_MSK3, s_SFMT_MSK4);
 
         // local variables
-        XV* stCur = m_state;
-        XV xC = stCur[s_N - 2];
-        XV xD = stCur[s_N - 1];
+        uint32_t* stCur = m_state;
+        XV xC(stCur + (s_N - 2) * s_n32inReg);
+        XV xD(stCur + (s_N - 1) * s_n32inReg);
 
         // unroll first part of the loop: (N-M) iterations
-        advanceLoop<2, N - M, M>(stCur, xC, xD, masks);
+        advanceLoop<2, s_N - s_M, s_M>(stCur, xC, xD, bMask);
 
         // unroll second part of the loop: M iterations
-        advanceLoop<2, M, M - N>(stCur, xC, xD, masks);
+        advanceLoop<2, s_M, s_M - s_N>(stCur, xC, xD, bMask);
 
         m_prnd = begin();
     }
 
-    static size_t w32StateIndex(size_t stateIndex, size_t scalarIndex)
-    {
-        size_t b32 = scalarIndex / 4;
-        size_t o32 = scalarIndex % 4;
-        return b32 * s_n32inReg + 4 * stateIndex + o32;
-    }
-
-    static size_t idxof(size_t scalarIndex)
-    {
-        return w32StateIndex(0, scalarIndex);
-    }
-
     const uint32_t* begin() const
     {
-        return (const uint32_t*)(m_state);
+        return m_state;
     }
 
     const uint32_t* end() const
     {
-        return (const uint32_t*)(m_state + s_N);
+        return m_state + s_n32InFullState;
     }
 
     //uint32_t& scalarState(uint32_t stateIndex, uint32_t scalarIndex)
@@ -165,19 +155,19 @@ private:
     // extract one of the interleaved state vectors and save it to dst
     void stateToVector(size_t stateIndex, uint32_t* pdst) const
     {
-        const uint32_t* pstate = ((const uint32_t*)m_state) + 4 * stateIndex;
+        const uint32_t* pstate = m_state + s_n32InOneWord * stateIndex;
         for (size_t i = 0; i < s_N; ++i)
-            for (size_t j = 0; i < 4; ++j)
-                pdst[4 * i + j] = pstate[i * s_n32inReg + j];
+            for (size_t j = 0; i < s_n32InOneWord; ++j)
+                pdst[s_n32InOneWord * i + j] = pstate[i * s_n32inReg + j];
     }
 
     // store vector into the interleaved elements of the state vector
     void vectorToState(size_t stateIndex, const uint32_t* psrc)
     {
-        uint32_t* pstate = ((const uint32_t*)m_state) + 4 * stateIndex;
+        uint32_t* pstate = m_state + s_n32InOneWord * stateIndex;
         for (size_t i = 0; i < s_N; ++i)
-            for (size_t j = 0; j < 4; ++j)
-                pstate[i * s_n32inReg + j] = psrc[4 * i + j];
+            for (size_t j = 0; j < s_n32InOneWord; ++j)
+                pstate[i * s_n32inReg + j] = psrc[s_n32InOneWord * i + j];
     }
 
 
@@ -192,7 +182,7 @@ private:
         const uint32_t parity[4] = { SFMT_PARITY1, SFMT_PARITY2, SFMT_PARITY3, SFMT_PARITY4 };
 
         uint32_t inner = 0;
-        uint32_t* psfmt32 = (uint32_t*)m_state;
+        uint32_t* psfmt32 = m_state;
 
         for (size_t i = 0; i < 4; i++)
             inner ^= psfmt32[i] & parity[i];
@@ -222,15 +212,14 @@ private:
     // Initializes the internal state array with a 32-bit integer seed.
     void init(uint32_t seed)
     {
-        uint32_t* psfmt32 = (uint32_t*)m_state;
+        uint32_t* psfmt32 = begin();
 
         psfmt32[0] = seed;
-        for (size_t i = 1; i < s_SFMT_N32; i++) {
-            psfmt32[idxof(i)] = 1812433253UL * (psfmt32[idxof(i - 1)]
-                ^ (psfmt32[idxof(i - 1)] >> 30))
+        for (size_t i = 1; i < s_n32InOneState; i++) {
+            psfmt32[w32AbsIndex(i)] = 1812433253UL * (psfmt32[w32AbsIndex(i - 1)]
+                ^ (psfmt32[w32AbsIndex(i - 1)] >> 30))
                 + i;
         }
-        //sfmt->idx = s_SFMT_N32;
         ensure_period();
     }
 
@@ -250,44 +239,43 @@ private:
     void init(const uint32_t* init_key, uint32_t key_length)
     {
         uint32_t i, j;
-        uint32_t* psfmt32 = (uint32_t*)m_state;
+        uint32_t* psfmt32 = m_state;
 
         const size_t lag = 11;
-        const size_t mid = (s_SFMT_N32 - lag) / 2;
+        const size_t mid = (s_n32InOneState - lag) / 2;
 
-        //memset(m_state, 0x8b, sizeof(m_state));
-        std::fill_n(m_state, s_N, XV(uint32_t(0x8b8b8b8b)));
-        size_t count = (key_length + 1 > s_SFMT_N32) ? key_length + 1 : s_SFMT_N32;
-        uint32_t r = func1(psfmt32[idxof(0)] ^ psfmt32[idxof(mid)] ^ psfmt32[idxof(s_SFMT_N32 - 1)]);
-        psfmt32[idxof(mid)] += r;
+        std::fill_n(m_state, s_n32InFullState, uint32_t(0x8b8b8b8b));
+        size_t count = (key_length + 1 > s_n32InOneState) ? key_length + 1 : s_n32InOneState;
+        uint32_t r = func1(psfmt32[w32AbsIndex(0)] ^ psfmt32[w32AbsIndex(mid)] ^ psfmt32[w32AbsIndex(s_n32InOneState - 1)]);
+        psfmt32[w32AbsIndex(mid)] += r;
         r += key_length;
-        psfmt32[idxof(mid + lag)] += r;
-        psfmt32[idxof(0)] = r;
+        psfmt32[w32AbsIndex(mid + lag)] += r;
+        psfmt32[w32AbsIndex(0)] = r;
 
         count--;
         for (i = 1, j = 0; (j < count) && (j < key_length); j++) {
-            r = func1(psfmt32[idxof(i)] ^ psfmt32[idxof((i + mid) % s_SFMT_N32)] ^ psfmt32[idxof((i + s_SFMT_N32 - 1) % s_SFMT_N32)]);
-            psfmt32[idxof((i + mid) % s_SFMT_N32)] += r;
+            r = func1(psfmt32[w32AbsIndex(i)] ^ psfmt32[w32AbsIndex((i + mid) % s_n32InOneState)] ^ psfmt32[w32AbsIndex((i + s_n32InOneState - 1) % s_n32InOneState)]);
+            psfmt32[w32AbsIndex((i + mid) % s_n32InOneState)] += r;
             r += init_key[j] + i;
-            psfmt32[idxof((i + mid + lag) % s_SFMT_N32)] += r;
-            psfmt32[idxof(i)] = r;
-            i = (i + 1) % s_SFMT_N32;
+            psfmt32[w32AbsIndex((i + mid + lag) % s_n32InOneState)] += r;
+            psfmt32[w32AbsIndex(i)] = r;
+            i = (i + 1) % s_n32InOneState;
         }
         for (; j < count; j++) {
-            r = func1(psfmt32[idxof(i)] ^ psfmt32[idxof((i + mid) % s_SFMT_N32)] ^ psfmt32[idxof((i + s_SFMT_N32 - 1) % s_SFMT_N32)]);
-            psfmt32[idxof((i + mid) % s_SFMT_N32)] += r;
+            r = func1(psfmt32[w32AbsIndex(i)] ^ psfmt32[w32AbsIndex((i + mid) % s_n32InOneState)] ^ psfmt32[w32AbsIndex((i + s_n32InOneState - 1) % s_n32InOneState)]);
+            psfmt32[w32AbsIndex((i + mid) % s_n32InOneState)] += r;
             r += i;
-            psfmt32[idxof((i + mid + lag) % s_SFMT_N32)] += r;
-            psfmt32[idxof(i)] = r;
-            i = (i + 1) % s_SFMT_N32;
+            psfmt32[w32AbsIndex((i + mid + lag) % s_n32InOneState)] += r;
+            psfmt32[w32AbsIndex(i)] = r;
+            i = (i + 1) % s_n32InOneState;
         }
-        for (j = 0; j < s_SFMT_N32; j++) {
-            r = func2(psfmt32[idxof(i)] + psfmt32[idxof((i + mid) % s_SFMT_N32)] + psfmt32[idxof((i + s_SFMT_N32 - 1) % s_SFMT_N32)]);
-            psfmt32[idxof((i + mid) % s_SFMT_N32)] ^= r;
+        for (j = 0; j < s_n32InOneState; j++) {
+            r = func2(psfmt32[w32AbsIndex(i)] + psfmt32[w32AbsIndex((i + mid) % s_n32InOneState)] + psfmt32[w32AbsIndex((i + s_n32InOneState - 1) % s_n32InOneState)]);
+            psfmt32[w32AbsIndex((i + mid) % s_n32InOneState)] ^= r;
             r -= i;
-            psfmt32[idxof((i + mid + lag) % s_SFMT_N32)] ^= r;
-            psfmt32[idxof(i)] = r;
-            i = (i + 1) % s_SFMT_N32;
+            psfmt32[w32AbsIndex((i + mid + lag) % s_n32InOneState)] ^= r;
+            psfmt32[w32AbsIndex(i)] = r;
+            i = (i + 1) % s_n32InOneState;
         }
 
         ensure_period();
@@ -296,7 +284,7 @@ private:
 
     void fillOtherStates(size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
     {
-        uint32_t* pstate = (uint32_t*)m_state;
+        //uint32_t* pstate = begin();
 
 #if 0
         // temporary workspace matrix
@@ -342,7 +330,9 @@ private:
             }
             else {
                 for (size_t w = 0; w < s_N; ++w)
-                    m_state[w].broadcastLo128();
+                    for (size_t j = 0; j < s_n32InOneWord; ++j)
+                        for (size_t s = 1; s < s_nStates; ++s)
+                            m_state[w * s_n32inReg + s * s_n32InOneWord + j] = m_state[w * s_n32inReg + j];
             }
         }
 
@@ -386,7 +376,7 @@ protected:
     void genrand_uint32_stateBlk(uint32_t* dst)
     {
         refill();
-        memcpy(dst, begin(), sizeof(m_state));
+        std::copy(begin(), end(), dst);
     }
 
 public:

@@ -15,13 +15,24 @@ namespace Details {
 template <size_t RegisterBitLen = SIMD_N_BITS>
 class VMT19937Base
 {
+
     static const size_t s_nBits = 19937;
     static const size_t s_wordSizeBits = 32;
+
+    static_assert(RegisterBitLen >= s_wordSizeBits);
+
+    static const size_t s_n32inReg = RegisterBitLen / 32;
+
+    static const int s_N = s_nBits / s_wordSizeBits + (s_nBits % s_wordSizeBits != 0);     // 624
+    static_assert(s_N == 624);
 
 public:
     static const size_t s_regLenBits = RegisterBitLen;
     static const size_t s_nStates = RegisterBitLen / s_wordSizeBits;
-    static const size_t s_n32InOneWord = s_wordSizeBits / 32;
+    static const size_t s_n32InOneWord = s_wordSizeBits / 32;            // 4
+    static const size_t s_n32InOneState = s_N * s_n32InOneWord;          // 624
+    const static size_t s_n32InFullState = s_n32InOneState * s_nStates;  // 624 * nStates
+
     typedef MT19937Matrix matrix_t;
 
 private:
@@ -30,7 +41,6 @@ private:
     typedef SimdRegister<SIMD_N_BITS> XVMax;
 
     // Period parameters
-    static const size_t s_N = s_nBits / s_wordSizeBits + (s_nBits % s_wordSizeBits != 0); // 624
     static const size_t s_M = 397;
 
     static const uint32_t s_rndBlockSize = 64 / sizeof(uint32_t); // exactly one cache line
@@ -43,9 +53,6 @@ private:
 
     // This data members are redundant if QueryMode==QM_StateSize
     const XV *m_pst, *m_pst_end;    // m_pos==m_pst_end means the state vector has been consumed and need to be regenerated
-
-public:
-    const static size_t s_n32InState = s_N * s_regLenBits / sizeof(uint32_t);
 
 private:
 
@@ -367,7 +374,7 @@ public:
     {
         refill();
         const XV* pst = m_state;
-        for (size_t i = 0; i < s_n32InState / s_rndBlockSize; ++i, dst += s_rndBlockSize)
+        for (size_t i = 0; i < s_n32InFullState / s_rndBlockSize; ++i, dst += s_rndBlockSize)
             temperRefillBlock<false>(pst, dst);
     }
 };

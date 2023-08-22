@@ -143,7 +143,7 @@ void testEquivalence(size_t mCommonJumpRepeat, const typename Gen::matrix_t* com
 {
     const size_t VecLen = Gen::s_regLenBits;
     const VRandGenQueryMode QryMode = Gen::s_queryMode;
-    const size_t BlkSize = QryMode == QM_Scalar ? 1 : QryMode == QM_Block16 ? 16 : Gen::s_n32InState;
+    const size_t BlkSize = QryMode == QM_Scalar ? 1 : QryMode == QM_Block16 ? 16 : Gen::s_n32InFullState;
     const size_t s_nStates = Gen::s_nStates;
     const size_t s_n32InOneWord = Gen::s_n32InOneWord;
 
