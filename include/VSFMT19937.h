@@ -6,8 +6,10 @@
 #include <cstdint>
 #include <cstddef>
 
-template <size_t RegisterBitLen = SIMD_N_BITS, VMT19937QueryMode QueryMode = QM_Scalar>
-class VSFMT19937
+namespace Details {
+
+template <size_t RegisterBitLen>
+class VSFMT19937Base
 {
     static const size_t s_nBits = 19937;
     static const size_t s_wordSizeBits = 128;
@@ -17,14 +19,13 @@ class VSFMT19937
 public:
     static const size_t s_regLenBits = RegisterBitLen;
     static const size_t s_nStates = RegisterBitLen / s_wordSizeBits;
-    static const VMT19937QueryMode s_queryMode = QueryMode;
     static const size_t s_n32InOneWord = s_wordSizeBits / 32;
     typedef BinaryMatrix<156 * 4 * 32> matrix_t;
 
 private:
     const static size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
     typedef SimdRegister<s_regLenBits> XV;
-    
+
     // Period parameters
     static const size_t s_N = s_nBits / s_wordSizeBits + (s_nBits % s_wordSizeBits != 0);
     static_assert(s_N == 156);
@@ -36,13 +37,14 @@ private:
 
     alignas(64) XV m_state[s_N];    // the array of state vectors
 
+
     // This data members is necessary only if QueryMode!=QM_StateSize
     const uint32_t* m_prnd;
 
-    // This data members are redundant if QueryMode==QM_StateSize
-    //const XV *m_pst, *m_pst_end;    // m_pos==m_pst_end means the state vector has been consumed and need to be regenerated
+public:
+    const static size_t s_qryStateSize = sizeof(m_state) / (sizeof(uint32_t));
 
-
+private:
     class RefillCst
     {
         static const uint32_t s_SFMT_MSK1 = 0xdfffffefU;
@@ -179,7 +181,7 @@ private:
     }
 
 
-     // This function ensures the period of 2^{MEXP}
+    // This function ensures the period of 2^{MEXP}
     void ensure_period()
     {
         const uint32_t SFMT_PARITY1 = 0x00000001U;
@@ -190,7 +192,7 @@ private:
         const uint32_t parity[4] = { SFMT_PARITY1, SFMT_PARITY2, SFMT_PARITY3, SFMT_PARITY4 };
 
         uint32_t inner = 0;
-        uint32_t* psfmt32 = (uint32_t *) m_state;
+        uint32_t* psfmt32 = (uint32_t*)m_state;
 
         for (size_t i = 0; i < 4; i++)
             inner ^= psfmt32[i] & parity[i];
@@ -249,7 +251,7 @@ private:
     {
         uint32_t i, j;
         uint32_t* psfmt32 = (uint32_t*)m_state;
-        
+
         const size_t lag = 11;
         const size_t mid = (s_SFMT_N32 - lag) / 2;
 
@@ -306,10 +308,10 @@ private:
             stateToVector(0, (uint32_t*)tmp.rowBegin(0));
 
             for (size_t i = 0; i < commonJumpRepeat; ++i)
-                commonJump->multiplyByColumn(tmp.rowBegin((i+1) % 2), tmp.rowBegin(i % 2));
+                commonJump->multiplyByColumn(tmp.rowBegin((i + 1) % 2), tmp.rowBegin(i % 2));
 
             // copy to the state vector shifting all bits to the right by 31
-            vectorToState(0, (const uint32_t*) tmp.rowBegin(commonJumpRepeat % 2));
+            vectorToState(0, (const uint32_t*)tmp.rowBegin(commonJumpRepeat % 2));
         }
 #endif
         if constexpr (s_nStates > 1) {
@@ -347,29 +349,60 @@ private:
     }
 
 
-    void getBlock16(uint32_t *dst)
+    void getBlock16(uint32_t* dst)
     {
         std::copy(m_prnd, m_prnd + 16, dst);
         m_prnd += 16;
     }
 
+protected:
+    // generates a random number on [0,0xffffffff] interval
+    uint32_t FORCE_INLINE genrand_uint32()
+    {
+        if (m_prnd != end())
+            return *m_prnd++;
+
+        refill();
+
+        return *m_prnd++;
+    }
+
+    // generates 16 uniform discrete random numbers in [0,0xffffffff] interval
+    // for optimal performance the vector dst should be aligned on a 64 byte boundary
+    void genrand_uint32_blk16(uint32_t* dst)
+    {
+        if (m_prnd != end()) {
+            getBlock16(dst);
+        }
+        else {
+            refill();
+            getBlock16(dst);
+        }
+    }
+
+    // generates a block of the same size as the state vector of uniform discrete random numbers in [0,0xffffffff] interval
+    // for optimal performance the vector dst should be aligned on a 64 byte boundary
+    void genrand_uint32_stateBlk(uint32_t* dst)
+    {
+        refill();
+        memcpy(dst, begin(), sizeof(m_state));
+    }
+
 public:
 
-    const static size_t s_qryStateSize = (QueryMode == QM_Scalar) ? 1 : (QueryMode == QM_Block16) ? 16 : sizeof(m_state) / sizeof(uint32_t);
-
     // constructors
-    VSFMT19937()
+    VSFMT19937Base()
         : m_prnd(nullptr)
     {}
 
-    VSFMT19937(uint32_t seed, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
-        : VSFMT19937()
+    VSFMT19937Base(uint32_t seed, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
+        : VSFMT19937Base()
     {
         reinit(seed, commonJumpRepeat, commonJump, sequentialJump);
     }
 
-    VSFMT19937(const uint32_t seeds[], uint32_t n_seeds, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
-        : VSFMT19937()
+    VSFMT19937Base(const uint32_t seeds[], uint32_t n_seeds, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
+        : VSFMT19937Base()
     {
         reinit(seeds, n_seeds, commonJumpRepeat, commonJump, sequentialJump);
     }
@@ -390,41 +423,7 @@ public:
         fillOtherStates(commonJumpRepeat, commonJump, sequentialJump);
     }
 
+}; // VSFMT19937Base
 
-    // generates a random number on [0,0xffffffff] interval
-    uint32_t FORCE_INLINE genrand_uint32()
-    {
-        static_assert(QueryMode == QM_Scalar);
+} // namespace Details
 
-        if (m_prnd != end())
-            return *m_prnd++;
-
-        refill();
-
-        return *m_prnd++;
-    }
-
-    // generates 16 uniform discrete random numbers in [0,0xffffffff] interval
-    // for optimal performance the vector dst should be aligned on a 64 byte boundary
-    void genrand_uint32_blk16(uint32_t* dst)
-    {
-        static_assert(QueryMode == QM_Block16, "This function can only be invoked when query mode is QM_Block16");
-
-        if (m_prnd != end()) {
-            getBlock16(dst);
-        }
-        else {
-            refill();
-            getBlock16(dst);
-        }
-    }
-
-    // generates a block of the same size as the state vector of uniform discrete random numbers in [0,0xffffffff] interval
-    // for optimal performance the vector dst should be aligned on a 64 byte boundary
-    void genrand_uint32_stateBlk(uint32_t* dst)
-    {
-        static_assert(QueryMode == QM_StateSize, "This function can only be invoked when query mode is QM_StateSize");
-        refill();
-        memcpy(dst, begin(), sizeof(m_state));
-    }
-};

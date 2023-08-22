@@ -1,7 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 
-#include "VMT19937.h"
-#include "VSFMT19937.h"
+#include "VRandGen.h"
 
 #include "../SFMT-src-1.5.1/SFMT.h"
 
@@ -33,14 +32,14 @@ const char* modename[] = {"MT19937", "SFMT19937", "VSLMT19937", "VSLSFMT19937", 
 template <typename T>
 struct GenTraits;
 
-template <size_t VecLen, VMT19937QueryMode QryMode>
+template <size_t VecLen, VRandGenQueryMode QryMode>
 struct GenTraits<VMT19937<VecLen, QryMode>>
 {
     static const Mode mode = vmt;
     static const char* name() { return "VMT19937"; }
 };
 
-template <size_t VecLen, VMT19937QueryMode QryMode>
+template <size_t VecLen, VRandGenQueryMode QryMode>
 struct GenTraits<VSFMT19937<VecLen, QryMode>>
 {
     static const Mode mode = vsfmt;
@@ -65,8 +64,8 @@ template <typename Gen>
 Result testPerformance(size_t runId)
 {
     const size_t VecLen = Gen::s_regLenBits;
-    const VMT19937QueryMode BlkMode = Gen::s_queryMode;
-    const size_t BlkSize = Gen::s_qryStateSize;
+    const VRandGenQueryMode QryMode = Gen::s_queryMode;
+    const size_t BlkSize = QryMode == QM_Scalar ? 1 : QryMode == QM_Block16 ? 16 : Gen::s_qryStateSize;
     const Mode mode = GenTraits<Gen>::mode;
     const char* name = GenTraits<Gen>::name();
 
@@ -79,11 +78,11 @@ Result testPerformance(size_t runId)
 
     auto start = std::chrono::system_clock::now();
     for (size_t i = 0; i < nRandomPerf / BlkSize; ++i)
-        if constexpr (BlkMode == QM_Scalar)
+        if constexpr (QryMode == QM_Scalar)
             aligneddst[0] = mt.genrand_uint32();
-        else if constexpr (BlkMode == QM_Block16)
+        else if constexpr (QryMode == QM_Block16)
             mt.genrand_uint32_blk16(aligneddst.data());
-        else if constexpr (BlkMode == QM_StateSize)
+        else if constexpr (QryMode == QM_StateSize)
             mt.genrand_uint32_stateBlk(aligneddst.data());
         else
             NOT_IMPLEMENTED;

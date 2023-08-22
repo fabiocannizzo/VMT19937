@@ -6,14 +6,14 @@
 #include <cstdint>
 #include <cstddef>
 
-enum VMT19937QueryMode { QM_Scalar, QM_Block16, QM_StateSize };
-
 #ifndef VMT19937_STATIC_CONST
 #   define VMT19937_STATIC_CONST 0
 #endif
 
-template <size_t RegisterBitLen = SIMD_N_BITS, VMT19937QueryMode QueryMode = QM_Scalar>
-class VMT19937
+namespace Details {
+
+template <size_t RegisterBitLen = SIMD_N_BITS>
+class VMT19937Base
 {
     static const size_t s_nBits = 19937;
     static const size_t s_wordSizeBits = 32;
@@ -22,7 +22,6 @@ public:
     static const size_t s_regLenBits = RegisterBitLen;
     static const size_t s_nStates = RegisterBitLen / s_wordSizeBits;
     static const size_t s_n32InOneWord = s_wordSizeBits / 32;
-    static const VMT19937QueryMode s_queryMode = QueryMode;
     typedef MT19937Matrix matrix_t;
 
 private:
@@ -45,6 +44,10 @@ private:
     // This data members are redundant if QueryMode==QM_StateSize
     const XV *m_pst, *m_pst_end;    // m_pos==m_pst_end means the state vector has been consumed and need to be regenerated
 
+public:
+    const static size_t s_qryStateSize = sizeof(m_state) / sizeof(uint32_t);
+
+private:
 
     template <typename XVI>
     class TemperCst
@@ -142,7 +145,7 @@ private:
         return { p, pJ0 };
     }
 
-    void FORCE_INLINE refill()
+    void NO_INLINE refill()
     {
         XV* stCur = m_state;
 
@@ -275,23 +278,21 @@ private:
 
 public:
 
-    const static size_t s_qryStateSize = (QueryMode == QM_Scalar) ? 1 : (QueryMode == QM_Block16) ? 16 : sizeof(m_state) / sizeof(uint32_t);
-
     // constructors
-    VMT19937()
+    VMT19937Base()
         : m_pst(nullptr)
         , m_pst_end(m_state+s_N)
         , m_prnd(nullptr)
     {}
 
-    VMT19937(uint32_t seed, size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
-        : VMT19937()
+    VMT19937Base(uint32_t seed, size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
+        : VMT19937Base()
     {
         reinit(seed, commonJumpRepeat, commonJump, sequentialJump);
     }
 
-    VMT19937(const uint32_t *seeds, uint32_t nSeeds, size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
-        : VMT19937()
+    VMT19937Base(const uint32_t *seeds, uint32_t nSeeds, size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
+        : VMT19937Base()
     {
         reinit(seeds, nSeeds, commonJumpRepeat, commonJump, sequentialJump);
     }
@@ -336,8 +337,6 @@ public:
     // generates a random number on [0,0xffffffff] interval
     uint32_t FORCE_INLINE genrand_uint32()
     {
-        static_assert(QueryMode == QM_Scalar);
-
         if ((reinterpret_cast<intptr_t>(m_prnd) % sizeof(m_rnd)) != 0)
             return *m_prnd++;
 
@@ -356,8 +355,6 @@ public:
     // for optimal performance the vector dst should be aligned on a 64 byte boundary
     void genrand_uint32_blk16(uint32_t* dst)
     {
-        static_assert(QueryMode == QM_Block16);
-
         if (m_pst != m_pst_end)
             /* do nothing*/; // most likely case first
         else
@@ -369,8 +366,6 @@ public:
     // for optimal performance the vector dst should be aligned on a 64 byte boundary
     void genrand_uint32_stateBlk(uint32_t* dst)
     {
-        static_assert(QueryMode == QM_StateSize);
-
         refill();
         const XV* pst = m_state;
         for (size_t i = 0; i < sizeof(m_state) / sizeof(m_rnd); ++i, dst += s_rndBlockSize)
@@ -379,6 +374,8 @@ public:
 };
 
 #if (VMT19937_STATIC_CONST==1)
-template <size_t RegisterBitLen, VMT19937QueryMode QueryMode>
+template <size_t RegisterBitLen, VRandGenQueryMode QueryMode>
 const typename VMT19937<RegisterBitLen, QueryMode>::RefillCst VMT19937<RegisterBitLen, QueryMode>::s_refillCst;
 #endif
+
+} // namespace Details

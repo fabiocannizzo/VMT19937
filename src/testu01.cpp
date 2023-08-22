@@ -4,7 +4,7 @@ extern "C" {
 
 #define SIMD_EMULATION
 
-#include "VMT19937.h"
+#include "VRandGen.h"
 
 #include <cstdint>
 #include <functional>
@@ -20,7 +20,7 @@ MT19937Matrix j19934(std::string("./dat/F19934.bits"));
 MT19937Matrix j19935(std::string("./dat/F19935.bits"));
 
 MT19937Matrix* pjump[4] = { nullptr, &j19935, &j19934, &j19933 };
-char genNames[4][64] = { "VMT1937 (M=1)", "VMT1937 (M=4)", "VMT1937 (M=8)", "VMT1937 (M=16)"};
+char genNames[4][64] = { "VMT19937 (M=1)", "VMT19937 (M=4)", "VMT19937 (M=8)", "VMT19937 (M=16)"};
 
 const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };

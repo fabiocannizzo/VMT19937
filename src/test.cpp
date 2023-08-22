@@ -1,8 +1,7 @@
 #define TESTING
 #define SIMD_EMULATION
 
-#include "VMT19937.h"
-#include "VSFMT19937.h"
+#include "VRandGen.h"
 
 #include "../SFMT-src-1.5.1/SFMT.h"
 
@@ -17,13 +16,13 @@ extern "C" void init_by_array(unsigned long init_key[], int key_length);
 template <typename T>
 struct GenTraits;
 
-template <size_t VecLen, VMT19937QueryMode QryMode>
+template <size_t VecLen, VRandGenQueryMode QryMode>
 struct GenTraits<VMT19937<VecLen, QryMode>>
 {
     static const char* name() { return "VMT19937"; }
 };
 
-template <size_t VecLen, VMT19937QueryMode QryMode>
+template <size_t VecLen, VRandGenQueryMode QryMode>
 struct GenTraits<VSFMT19937<VecLen, QryMode>>
 {
     static const char* name() { return "VSFMT19937"; }
@@ -143,8 +142,8 @@ template <typename Gen>
 void testEquivalence(size_t mCommonJumpRepeat, const typename Gen::matrix_t* commonJump, const typename Gen::matrix_t* seqJump, size_t commonJumpSize, size_t sequenceJumpSize)
 {
     const size_t VecLen = Gen::s_regLenBits;
-    const VMT19937QueryMode BlkMode = Gen::s_queryMode;
-    const size_t BlkSize = Gen::s_qryStateSize;
+    const VRandGenQueryMode QryMode = Gen::s_queryMode;
+    const size_t BlkSize = QryMode == QM_Scalar ? 1 : QryMode == QM_Block16 ? 16 : Gen::s_qryStateSize;
     const size_t s_nStates = Gen::s_nStates;
     const size_t s_n32InOneWord = Gen::s_n32InOneWord;
 
@@ -156,11 +155,11 @@ void testEquivalence(size_t mCommonJumpRepeat, const typename Gen::matrix_t* com
 
     Gen mt(seedinit, seedlength, mCommonJumpRepeat, commonJump, seqJump);
     for (size_t i = 0; i < nRandomTest / BlkSize; ++i)
-        if constexpr (BlkMode == QM_Scalar)
+        if constexpr (QryMode == QM_Scalar)
             aligneddst[i] = mt.genrand_uint32();
-        else if constexpr (BlkMode == QM_Block16)
+        else if constexpr (QryMode == QM_Block16)
             mt.genrand_uint32_blk16(aligneddst.data() + i * BlkSize);
-        else if constexpr (BlkMode == QM_StateSize)
+        else if constexpr (QryMode == QM_StateSize)
             mt.genrand_uint32_stateBlk(aligneddst.data() + i * BlkSize);
         else
             NOT_IMPLEMENTED;
