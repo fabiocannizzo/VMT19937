@@ -63,7 +63,7 @@ struct SimdRegister<32>
 // This class is for debugging and testing only
 // It emulates a regsiter with size Mx32 nbits, in case that is not natively available on the hardware
 template <size_t M>
-struct SimdRegisterEmulator
+struct MAY_ALIAS SimdRegisterEmulator
 {
     struct A
     {
@@ -152,7 +152,7 @@ struct SimdRegisterEmulator
 };
 
 template <>
-struct SimdRegister<64>
+struct MAY_ALIAS SimdRegister<64>
 {
     uint64_t m_v;
 
@@ -193,7 +193,7 @@ struct SimdRegister<64>
 
 #if SIMD_N_BITS>=128
 template <>
-struct SimdRegister<128>
+struct MAY_ALIAS SimdRegister<128>
 {
     __m128i m_v;
 
@@ -250,7 +250,7 @@ struct SimdRegister<128>
 
 #if SIMD_N_BITS>=256
 template <>
-struct SimdRegister<256>
+struct MAY_ALIAS SimdRegister<256>
 {
     __m256i m_v;
 
@@ -316,7 +316,7 @@ struct SimdRegister<256> : public SimdRegisterEmulator<8>
 
 #if SIMD_N_BITS>=512
 template <>
-struct SimdRegister<512>
+struct MAY_ALIAS SimdRegister<512>
 {
     __m512i m_v;
 
