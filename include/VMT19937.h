@@ -112,7 +112,7 @@ private:
     }
 
     template <int nIter, int J0, int J1, int JM>
-    static FORCE_INLINE XV unroll(XV* p, XV pJ0, const RefillCst& masks)
+    static FORCE_INLINE void unroll(XV* p, XV& pJ0, const RefillCst& masks)
     {
         if constexpr (nIter > 0) {
 #ifdef DEBUG
@@ -121,28 +121,27 @@ private:
 #endif
             XV pJ1(p[J1]);
             p[J0] = advance1(pJ0, pJ1, p[JM], masks);
-            return unroll<nIter - 1, J0 + 1, J1 + 1, JM + 1>(p, pJ1, masks);
+            pJ0 = pJ1;
+            unroll<nIter - 1, J0 + 1, J1 + 1, JM + 1>(p, pJ0, masks);
         }
-        return pJ0;
     }
 
     template <int nUnroll, int nIter, int J1, int JM>
-    static FORCE_INLINE std::pair<XV*, XV> advanceLoop(XV* p, XV pJ0, const RefillCst& masks)
+    static FORCE_INLINE void advanceLoop(XV*& p, XV& pJ0, const RefillCst& masks)
     {
         if constexpr (nIter >= nUnroll) {
             auto pend = p + (nIter / nUnroll) * nUnroll;
             // unroll the loop in blocks of nUnroll
             do {
-                pJ0 = unroll<nUnroll, 0, J1, JM>(p, pJ0, masks);
+                unroll<nUnroll, 0, J1, JM>(p, pJ0, masks);
                 p += nUnroll;
             } while (p != pend);
         }
         const size_t nResIter = nIter % nUnroll;
         if constexpr (nResIter) {
-            pJ0 = unroll<nResIter, 0, J1, JM>(p, pJ0, masks);
+            unroll<nResIter, 0, J1, JM>(p, pJ0, masks);
             p += nResIter;
         }
-        return { p, pJ0 };
     }
 
     void NO_INLINE refill()
@@ -164,13 +163,13 @@ private:
         XV pJ0 = stCur[0];
 
         // unroll first part of the loop (N-M) iterations
-        std::tie(stCur, pJ0) = advanceLoop<4, N - M, 1, M>(stCur, pJ0, masks);
+        advanceLoop<4, N - M, 1, M>(stCur, pJ0, masks);
 
         // unroll second part of the loop (M-1) iterations
-        std::tie(stCur, pJ0) = advanceLoop<4, M - 1, 1, M - N>(stCur, pJ0, masks);
+        advanceLoop<4, M - 1, 1, M - N>(stCur, pJ0, masks);
 
         // last iteration
-        std::tie(stCur, pJ0) = advanceLoop<1, 1, 1 - N, M - N>(stCur, pJ0, masks);
+        advanceLoop<1, 1, 1 - N, M - N>(stCur, pJ0, masks);
 
         m_pst = m_state;
     }
