@@ -48,11 +48,14 @@
 #if defined(__GNUC__)
 #   define FORCE_INLINE __attribute__((always_inline)) inline
 #   define NO_INLINE __attribute__((noinline)) inline
+#   define MAY_ALIAS __attribute__((__may_alias__))
 #elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
 #   define FORCE_INLINE __forceinline
 #   define NO_INLINE __declspec(noinline)
+#   define MAY_ALIAS
 #else
 #   define FORCE_INLINE inline
 #   define NO_INLINE
+#   define MAY_ALIAS
 #endif
 
