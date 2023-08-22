@@ -73,33 +73,33 @@ private:
         return (z ^ y);
     }
 
-    template <int N, int JA, int JB>
-    static FORCE_INLINE void advanceN(XV* p, XV& xC, XV& xD, const RefillCst& masks)
+    template <int nIter, int JA, int JB>
+    static FORCE_INLINE void unroll(XV* p, XV& xC, XV& xD, const RefillCst& masks)
     {
-        if constexpr (N > 0) {
+        if constexpr (nIter > 0) {
             XV tmp = advance1(p[JA], p[JB], xC, xD, masks);
             xC = xD;
             xD = tmp;
             p[JA] = tmp;
-            advanceN<N - 1, JA + 1, JB + 1>(p, xC, xD, masks);
+            unroll<nIter - 1, JA + 1, JB + 1>(p, xC, xD, masks);
         }
     }
 
-    template <int UnrollBlkSize, int N, int JB>
+    template <int nUnroll, int nIter, int JB>
     static FORCE_INLINE void advanceLoop(XV*& p, XV& xC, XV& xD, const RefillCst& masks)
     {
-        if constexpr (N >= UnrollBlkSize) {
-            size_t nBlks = N / UnrollBlkSize;
+        if constexpr (nIter >= nUnroll) {
+            auto pend = p + (nIter / nUnroll) * nUnroll;
             // unroll the loop in blocks of UnrollBlkSize
             do {
-                advanceN<UnrollBlkSize, 0, JB>(p, xC, xD, masks);
-                p += UnrollBlkSize;
-            } while (--nBlks);
+                unroll<nUnroll, 0, JB>(p, xC, xD, masks);
+                p += nUnroll;
+            } while (p != pend);
         }
-        const size_t nRes = N % UnrollBlkSize;
-        if constexpr (nRes) {
-            advanceN<nRes, 0, JB>(p, xC, xD, masks);
-            p += nRes;
+        const size_t nResIter = nIter % nUnroll;
+        if constexpr (nResIter) {
+            unroll<nResIter, 0, JB>(p, xC, xD, masks);
+            p += nResIter;
         }
     }
 

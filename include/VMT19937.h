@@ -108,37 +108,36 @@ private:
         return r;
     }
 
-    template <int N, int J0, int J1, int JM>
-    static FORCE_INLINE XV advanceN(XV* p, XV pJ0, const RefillCst& masks)
+    template <int nIter, int J0, int J1, int JM>
+    static FORCE_INLINE XV unroll(XV* p, XV pJ0, const RefillCst& masks)
     {
-        if constexpr (N > 0) {
+        if constexpr (nIter > 0) {
 #ifdef DEBUG
             if (!pJ0.eq(p[J0]))
                 THROW("how did this happen?");
 #endif
             XV pJ1(p[J1]);
             p[J0] = advance1(pJ0, pJ1, p[JM], masks);
-            return advanceN<N - 1, J0 + 1, J1 + 1, JM + 1>(p, pJ1, masks);
+            return unroll<nIter - 1, J0 + 1, J1 + 1, JM + 1>(p, pJ1, masks);
         }
         return pJ0;
     }
 
-    template <int UnrollBlkSize, int N, int J1, int JM>
+    template <int nUnroll, int nIter, int J1, int JM>
     static FORCE_INLINE std::pair<XV*, XV> advanceLoop(XV* p, XV pJ0, const RefillCst& masks)
     {
-
-        if constexpr (N >= UnrollBlkSize) {
-            size_t nBlks = N / UnrollBlkSize;
-            // unroll the loop in blocks of UnrollBlkSize
+        if constexpr (nIter >= nUnroll) {
+            auto pend = p + (nIter / nUnroll) * nUnroll;
+            // unroll the loop in blocks of nUnroll
             do {
-                pJ0 = advanceN<UnrollBlkSize, 0, J1, JM>(p, pJ0, masks);
-                p += UnrollBlkSize;
-            } while (--nBlks);
+                pJ0 = unroll<nUnroll, 0, J1, JM>(p, pJ0, masks);
+                p += nUnroll;
+            } while (p != pend);
         }
-        const size_t nRes = N % UnrollBlkSize;
-        if constexpr (nRes) {
-            pJ0 = advanceN<nRes, 0, J1, JM>(p, pJ0, masks);
-            p += nRes;
+        const size_t nResIter = nIter % nUnroll;
+        if constexpr (nResIter) {
+            pJ0 = unroll<nResIter, 0, J1, JM>(p, pJ0, masks);
+            p += nResIter;
         }
         return { p, pJ0 };
     }
