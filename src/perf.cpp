@@ -65,7 +65,7 @@ Result testPerformance(size_t runId)
 {
     const size_t VecLen = Gen::s_regLenBits;
     const VRandGenQueryMode QryMode = Gen::s_queryMode;
-    const size_t BlkSize = QryMode == QM_Scalar ? 1 : QryMode == QM_Block16 ? 16 : Gen::s_qryStateSize;
+    const size_t BlkSize = QryMode == QM_Scalar ? 1 : QryMode == QM_Block16 ? 16 : Gen::s_n32InState;
     const Mode mode = GenTraits<Gen>::mode;
     const char* name = GenTraits<Gen>::name();
 

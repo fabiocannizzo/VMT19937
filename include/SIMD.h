@@ -173,7 +173,7 @@ struct MAY_ALIAS SimdRegister<64>
     }
     friend FORCE_INLINE XV operator<<(const XV& a, int n)
     {
-        uint64_t mask = uint64_t(-1) & ~(((uint64_t(1) << n) - 1) << 32);
+        //uint64_t mask = uint64_t(-1) & ~(((uint64_t(1) << n) - 1) << 32);
         return uint64_t(a.m_v << n);
     }
 
@@ -242,8 +242,8 @@ struct MAY_ALIAS SimdRegister<128>
     {
         __m128i hi(_mm_shuffle_epi32(m_v, 2 | (3 << 2)));
         __m128i mix = _mm_xor_si128(hi, m_v);
-        double d = _mm_cvtsd_f64(_mm_castsi128_pd(mix));
-        return popcnt(*(uint64_t*)(&d)) & 1;
+        uint64_t d = _mm_extract_epi64(mix, 0);
+        return popcnt(d) & 1;
     }
 };
 #endif

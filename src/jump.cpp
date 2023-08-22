@@ -14,10 +14,10 @@ void wait()
     std::cin >> c;
 }
 
-void square(const MT19937Matrix& src, MT19937Matrix& dst, std::vector<MT19937Matrix::buffer_t>& buffers, const MT19937Matrix* target)
+void square(const MT19937Matrix& src, MT19937Matrix& dst, std::vector<MT19937Matrix::buffer_t>& buffers)
 {
     auto start = std::chrono::system_clock::now();
-    dst.square(src, buffers, target);
+    dst.square(src, buffers);
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
     std::cout << "done in: " << std::fixed << std::setprecision(2) << elapsed_seconds.count() << "s" << std::endl;
@@ -109,7 +109,7 @@ int main(int argc, const char** argv)
         size_t in = (i + 1) % 2;
         size_t out = (i) % 2;
         f[out].resetZero();
-        square(f[in], f[out], buffers, nullptr);
+        square(f[in], f[out], buffers);
         std::cout << "  ";
         f[out].printSparsity();
 
