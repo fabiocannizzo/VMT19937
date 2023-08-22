@@ -1,7 +1,8 @@
-#include "VMT19937.h"
+#include "VRandGen.h"
 
 #include <array>
 #include <memory>
+#include <iostream>
 
 // This is the initialization seed. Refer to the original MT19937 documentation.
 const uint32_t seedlength = 4;
