@@ -25,8 +25,8 @@ struct BinarySquareMatrix : BinaryMatrix<N, N>
     template <size_t NRows, size_t nColumns, size_t...Is>
     static void transpose16x8(buffer_t& buffer, const base_t& src, size_t rowBitIndex, size_t colBitIndex,  std::index_sequence<Is...>&&)
     {
-        const size_t simdBits = 128;
-        const size_t nRowsPerBlk = simdBits / s_nBitColsPerBlk;
+        //const size_t simdBits = 128;
+        //const size_t nRowsPerBlk = simdBits / s_nBitColsPerBlk;
 
         static_assert(s_nBitColsPerBlk == 8);
 
@@ -60,7 +60,7 @@ struct BinarySquareMatrix : BinaryMatrix<N, N>
     }
 
     template <size_t nColumns, typename DST>
-    void multiplyBlock(DST& colBuffer, const base_t& src, size_t colBitIndex, const base_t *target)
+    void multiplyBlock(DST& colBuffer, const base_t& src, size_t colBitIndex)
     {
         // transpose columns from colBitIndex to colBitIndex+nBitColsPerBlk-1 and copies then to colBuffer
         // so that then is it more efficient to compute the square of the matrix, where we have to multiply rows by columns
@@ -93,25 +93,25 @@ struct BinarySquareMatrix : BinaryMatrix<N, N>
         }
     }
 
-    void squareBlock(const base_t& src, buffer_t& colBuffer, std::atomic<size_t>& nextJobIndex, const base_t* target)
+    void squareBlock(const base_t& src, buffer_t& colBuffer, std::atomic<size_t>& nextJobIndex)
     {
         while (true) {
             const size_t curJobIndex = nextJobIndex++;
             const size_t colBitIndex = curJobIndex * s_nBitColsPerBlk;
             if (curJobIndex < s_nColBlks) {
-                multiplyBlock<s_nBitColsPerBlk>(colBuffer, src, colBitIndex, target);
+                multiplyBlock<s_nBitColsPerBlk>(colBuffer, src, colBitIndex);
             }
             else if (curJobIndex == s_nColBlks) { // in the last block we have less than s_nBitColsPerBlk columns to process
                 constexpr size_t nColumns = s_nBitCols % s_nBitColsPerBlk;
                 if constexpr (nColumns)
-                    multiplyBlock<nColumns>(colBuffer, src, colBitIndex, target);
+                    multiplyBlock<nColumns>(colBuffer, src, colBitIndex);
             }
             else
                 break;
         }
     }
 
-    void square(const base_t& src, std::vector<buffer_t>& buffers, const base_t* target)
+    void square(const base_t& src, std::vector<buffer_t>& buffers)
     {
         std::vector< std::shared_ptr<std::thread>> threads(buffers.size() - 1);
 
@@ -119,10 +119,10 @@ struct BinarySquareMatrix : BinaryMatrix<N, N>
 
         // launch participating threads
         for (size_t i = 0; i < threads.size(); ++i)
-            threads[i].reset(new std::thread(&BinarySquareMatrix::squareBlock, this, std::cref(src), std::ref(buffers[i]), std::ref(nextJobIndex), target));
+            threads[i].reset(new std::thread(&BinarySquareMatrix::squareBlock, this, std::cref(src), std::ref(buffers[i]), std::ref(nextJobIndex)));
 
         // main thread participate to the loop
-        squareBlock(src, buffers.back(), nextJobIndex, target);
+        squareBlock(src, buffers.back(), nextJobIndex);
 
         for (auto& th : threads)
             th->join();

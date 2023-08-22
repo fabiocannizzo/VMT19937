@@ -72,7 +72,7 @@ namespace Encoder {
 
     inline uint8_t hexToDec(char hex)
     {
-        int8_t h = hexCharToDec[hex];
+        int8_t h = hexCharToDec[(int)hex];
         MYASSERT(h != -1, "not a valid hex character: " << ((int)hex));
         return h;
         //if (hex >= '0' && hex <= '9')
@@ -87,7 +87,7 @@ namespace Encoder {
 
     inline uint8_t b64ToDec(char b64)
     {
-        int8_t h = b64CharToDec[b64];
+        int8_t h = b64CharToDec[(int)b64];
         MYASSERT(h != -1, "not a valid base64 character: " << ((int)b64));
         return h;
         //const size_t nAlpha = 'Z' - 'A' + 1;

@@ -42,7 +42,7 @@ private:
     const uint32_t* m_prnd;
 
 public:
-    const static size_t s_qryStateSize = sizeof(m_state) / (sizeof(uint32_t));
+    const static size_t s_n32InState = s_N * s_regLenBits / sizeof(uint32_t);
 
 private:
     class RefillCst
@@ -255,7 +255,8 @@ private:
         const size_t lag = 11;
         const size_t mid = (s_SFMT_N32 - lag) / 2;
 
-        memset(m_state, 0x8b, sizeof(m_state));
+        //memset(m_state, 0x8b, sizeof(m_state));
+        std::fill_n(m_state, s_N, XV(uint32_t(0x8b8b8b8b)));
         size_t count = (key_length + 1 > s_SFMT_N32) ? key_length + 1 : s_SFMT_N32;
         uint32_t r = func1(psfmt32[idxof(0)] ^ psfmt32[idxof(mid)] ^ psfmt32[idxof(s_SFMT_N32 - 1)]);
         psfmt32[idxof(mid)] += r;

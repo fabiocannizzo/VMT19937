@@ -45,7 +45,7 @@ private:
     const XV *m_pst, *m_pst_end;    // m_pos==m_pst_end means the state vector has been consumed and need to be regenerated
 
 public:
-    const static size_t s_qryStateSize = sizeof(m_state) / sizeof(uint32_t);
+    const static size_t s_n32InState = s_N * s_regLenBits / sizeof(uint32_t);
 
 private:
 
@@ -279,9 +279,9 @@ public:
 
     // constructors
     VMT19937Base()
-        : m_pst(nullptr)
+        : m_prnd(nullptr)
+        , m_pst(nullptr)
         , m_pst_end(m_state+s_N)
-        , m_prnd(nullptr)
     {}
 
     VMT19937Base(uint32_t seed, size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
@@ -367,7 +367,7 @@ public:
     {
         refill();
         const XV* pst = m_state;
-        for (size_t i = 0; i < sizeof(m_state) / sizeof(m_rnd); ++i, dst += s_rndBlockSize)
+        for (size_t i = 0; i < s_n32InState / s_rndBlockSize; ++i, dst += s_rndBlockSize)
             temperRefillBlock<false>(pst, dst);
     }
 };
