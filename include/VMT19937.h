@@ -250,7 +250,7 @@ private:
                 // copy state to the first row shifting all bits to the left by 31
                 stateToVector(0, (uint32_t*)tmp.rowBegin(0));
 
-                for (size_t s = 1; s < s_regLenWords; ++s) {
+                for (size_t s = 1; s < s_nStates; ++s) {
                     // multiply all rows by state s and store the result in pres
 
                     const uint8_t* psrc = (uint8_t*)tmp.rowBegin((s + 1) % 2);

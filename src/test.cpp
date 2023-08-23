@@ -138,46 +138,6 @@ void squareTests(std::index_sequence<NBits...>&&)
     (squareTest<NBits>(), ...);
 }
 
-template <typename Gen>
-void testEquivalence(size_t nCommonJumpRepeat, const typename Gen::matrix_t* commonJump, const typename Gen::matrix_t* seqJump, size_t commonJumpSize, size_t sequenceJumpSize)
-{
-    MYASSERT((commonJumpSize == 0 && nCommonJumpRepeat == 0) || (commonJumpSize > 0 && nCommonJumpRepeat > 0), "(nCommonJumpRepeat>0) <=> commonJumpSize>0 ");
-
-    const size_t VecLen = Gen::s_regLenBits;
-    const VRandGenQueryMode QryMode = Gen::s_queryMode;
-    const size_t BlkSize = QryMode == QM_Scalar ? 1 : QryMode == QM_Block16 ? 16 : Gen::s_n32InFullState;
-    const size_t s_nStates = Gen::s_nStates;
-    const size_t s_n32InOneWord = Gen::s_n32InOneWord;
-
-    std::cout << GenTraits<Gen>::name() << ": Testing equivalence of generators with SIMD length " << VecLen
-        << ", common jump ahead of " << commonJumpSize << " repeated " << nCommonJumpRepeat << " times, sequence jump size of " << sequenceJumpSize
-        << ", block size " << BlkSize << " ... ";
-
-    std::vector<uint32_t> aligneddst(nRandomTest);
-
-    Gen mt(seedinit, seedlength, nCommonJumpRepeat, commonJump, seqJump);
-    for (size_t i = 0; i < nRandomTest / BlkSize; ++i)
-        if constexpr (QryMode == QM_Scalar)
-            aligneddst[i] = mt.genrand_uint32();
-        else if constexpr (QryMode == QM_Block16)
-            mt.genrand_uint32_blk16(aligneddst.data() + i * BlkSize);
-        else if constexpr (QryMode == QM_StateSize)
-            mt.genrand_uint32_stateBlk(aligneddst.data() + i * BlkSize);
-        else
-            NOT_IMPLEMENTED;
-
-    for (size_t i = 0; i < nRandomTest; ++i) {
-        uint32_t r2 = aligneddst[i];
-        size_t genIndex = (i % (s_n32InOneWord * s_nStates)) / s_n32InOneWord;
-        size_t seqIndex = (i % s_n32InOneWord) + (i / (s_n32InOneWord * s_nStates)) * s_n32InOneWord;
-        size_t benchmarkindex = seqIndex + commonJumpSize * nCommonJumpRepeat + sequenceJumpSize * genIndex;
-        MYASSERT(benchmark[benchmarkindex] == r2, "FAILED!\n"
-                << "Difference found: out[" << i << "] = " << r2
-                << ", benchmark[" << benchmarkindex  << "] = " << benchmark[benchmarkindex]);
-    }
-
-    std::cout << "SUCCESS!\n";
-}
 
 void generateBenchmark_MT19937()
 {
@@ -228,6 +188,98 @@ void testSquareMatrix()
     squareTests(std::index_sequence<1, 5, 8, 13, 16, 20, 28, 32, 36, 60, 64, 68, 85, 126, 128, 150>{});
 }
 
+template <typename M>
+struct JumpMatrix
+{
+    JumpMatrix() : jumpSize(0) {}
+    JumpMatrix(const M* m, size_t jumpSize) : p(m), jumpSize(jumpSize) {}
+    std::unique_ptr<const M> p;
+    size_t jumpSize;  // jump size (i.e. number of elements skipped)
+};
+
+template <typename Gen, typename M>
+void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, const JumpMatrix<M>& seqJump)
+{
+    const size_t commonJumpSize = commonJump.p ? commonJump.jumpSize : 0;
+    const size_t sequenceJumpSize = seqJump.p ? seqJump.jumpSize : 0;
+
+    MYASSERT((!commonJump.p && nCommonJumpRepeat == 0) || (commonJump.p && nCommonJumpRepeat > 0), "(nCommonJumpRepeat>0) <=> commonJumpSize>0 ");
+
+    const size_t VecLen = Gen::s_regLenBits;
+    const VRandGenQueryMode QryMode = Gen::s_queryMode;
+    const size_t BlkSize = QryMode == QM_Scalar ? 1 : QryMode == QM_Block16 ? 16 : Gen::s_n32InFullState;
+    const size_t s_nStates = Gen::s_nStates;
+    const size_t s_n32InOneWord = Gen::s_n32InOneWord;
+
+
+    std::cout << GenTraits<Gen>::name() << ": Testing equivalence of generators with SIMD length " << VecLen
+        << ", common jump ahead of " << commonJumpSize << " repeated " << nCommonJumpRepeat << " times, sequence jump size of " << sequenceJumpSize
+        << ", block size " << BlkSize << " ... ";
+
+    std::vector<uint32_t> aligneddst(nRandomTest);
+
+    Gen mt(seedinit, seedlength, nCommonJumpRepeat, commonJump.p.get(), seqJump.p.get());
+    for (size_t i = 0; i < nRandomTest / BlkSize; ++i)
+        if constexpr (QryMode == QM_Scalar)
+            aligneddst[i] = mt.genrand_uint32();
+        else if constexpr (QryMode == QM_Block16)
+            mt.genrand_uint32_blk16(aligneddst.data() + i * BlkSize);
+        else if constexpr (QryMode == QM_StateSize)
+            mt.genrand_uint32_stateBlk(aligneddst.data() + i * BlkSize);
+        else
+            NOT_IMPLEMENTED;
+
+    for (size_t i = 0; i < nRandomTest; ++i) {
+        uint32_t r2 = aligneddst[i];
+        size_t genIndex = (i % (s_n32InOneWord * s_nStates)) / s_n32InOneWord;
+        size_t seqIndex = (i % s_n32InOneWord) + (i / (s_n32InOneWord * s_nStates)) * s_n32InOneWord;
+        size_t benchmarkindex = seqIndex + commonJumpSize * nCommonJumpRepeat + sequenceJumpSize * genIndex;
+        MYASSERT(benchmark[benchmarkindex] == r2, "FAILED!\n"
+                << "Difference found: out[" << i << "] = " << r2
+                << ", benchmark[" << benchmarkindex  << "] = " << benchmark[benchmarkindex]);
+    }
+
+    std::cout << "SUCCESS!\n";
+}
+
+template <typename M, size_t L, VRandGenQueryMode QM>
+struct GenFromMatrix;
+
+template <size_t L, VRandGenQueryMode QM>
+struct GenFromMatrix<MT19937Matrix, L, QM>
+{
+    typedef VMT19937<L, QM> gen_t;
+};
+
+template <size_t L, VRandGenQueryMode QM>
+struct GenFromMatrix<SFMT19937Matrix, L, QM>
+{
+    typedef VSFMT19937<L, QM> gen_t;
+};
+
+template <size_t L, typename M>
+void equivalenceTestsByMode(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, const JumpMatrix<M>& seqJump)
+{
+    testEquivalence<typename GenFromMatrix<M, L, QM_Scalar>::gen_t>(nCommonJumpRepeat, commonJump, seqJump);
+    testEquivalence<typename GenFromMatrix<M, L, QM_Block16>::gen_t>(nCommonJumpRepeat, commonJump, seqJump);
+    testEquivalence<typename GenFromMatrix<M, L, QM_StateSize>::gen_t>(nCommonJumpRepeat, commonJump, seqJump);
+}
+
+template <size_t L, bool testSeqJump, typename M>
+void equivalenceTests(const JumpMatrix<M>& jumpSmall, const JumpMatrix<M>& jumpBig)
+{
+    JumpMatrix<M> noJump{};
+    equivalenceTestsByMode<L>(0, noJump, noJump);
+    equivalenceTestsByMode<L>(1, jumpSmall, noJump);
+    equivalenceTestsByMode<L>(2, jumpSmall, noJump);
+    equivalenceTestsByMode<L>(1, jumpBig, noJump);
+    if constexpr (testSeqJump) {
+        equivalenceTestsByMode<L>(1, jumpBig, jumpBig);
+        equivalenceTestsByMode<L>(2, jumpBig, jumpBig);
+        equivalenceTestsByMode<L>(0, noJump, jumpBig);
+    }
+}
+
 void test_VMT19937()
 {
     startTest("VMT19937");
@@ -235,69 +287,21 @@ void test_VMT19937()
     generateBenchmark_MT19937();
 
     typedef MT19937Matrix matrix_t;
-    typedef std::unique_ptr<MT19937Matrix> pmatrix_t;
+    typedef JumpMatrix<matrix_t> pmatrix_t;
 
-    pmatrix_t jumpMatrix1(new matrix_t);                                         // jump ahead 1 element
-    pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/F00009.bits")));     // jump ahead 2^9 (512) elements
-    pmatrix_t jumpMatrix1024(new matrix_t(std::string("./dat/F00010.bits")));    // jump ahead 2^10 (1024) elements
-    pmatrix_t jumpMatrixPeriod(new matrix_t(std::string("./dat/F19937.bits")));  // jump ahead 2^19937 elements
+    pmatrix_t noJump;
+    pmatrix_t jumpMatrix1(new matrix_t, 1);                                          // jump ahead 1 element
+    pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/F00009.bits")), 512);    // jump ahead 2^9 (512) elements
+    pmatrix_t jumpMatrixPeriod(new matrix_t(std::string("./dat/F19937.bits")), 1);   // jump ahead 2^19937 elements
 
-    testEquivalence<VMT19937<32, QM_Scalar>>(0, nullptr, nullptr, 0, 0);
-    testEquivalence<VMT19937<32, QM_Scalar>>(1, &*jumpMatrix1024, nullptr, 1024, 0);
-    // two jumps of 512 are equivalent to one jump of 1024
-    testEquivalence<VMT19937<32, QM_Scalar>>(2, &*jumpMatrix512, nullptr, 512, 0);
-    // since the period is 2^19937-1, after applying a jump matrix of 2^19937, we restart from the sequence from step 1
-    testEquivalence<VMT19937<32, QM_Scalar>>(1, &*jumpMatrixPeriod, nullptr, 1, 0);
+    equivalenceTests<32, false>(jumpMatrix1, jumpMatrix512);
+    equivalenceTests<128, true>(jumpMatrix1, jumpMatrix512);
+    equivalenceTests<256, true>(jumpMatrix1, jumpMatrix512);
+    equivalenceTests<512, true>(jumpMatrix1, jumpMatrix512);
 
-    testEquivalence<VMT19937<64, QM_Scalar>>(0, nullptr, nullptr, 0, 0);
-
-    testEquivalence<VMT19937<128, QM_Scalar>>(0, nullptr, nullptr, 0, 0);
-    testEquivalence<VMT19937<128, QM_Scalar>>(1, &*jumpMatrix1, nullptr, 1, 0);
-    testEquivalence<VMT19937<128, QM_Scalar>>(2, &*jumpMatrix1, nullptr, 1, 0);
-    testEquivalence<VMT19937<128, QM_Scalar>>(0, nullptr, &*jumpMatrix1, 0, 1);
-    testEquivalence<VMT19937<128, QM_Scalar>>(0, nullptr, &*jumpMatrix1024, 0, 1024);
-    testEquivalence<VMT19937<128, QM_Scalar>>(1, &*jumpMatrix1, &*jumpMatrix1, 1, 1);
-    testEquivalence<VMT19937<128, QM_Scalar>>(2, &*jumpMatrix1, &*jumpMatrix1024, 1, 1024);
-
-    testEquivalence<VMT19937<128, QM_Block16>>(0, nullptr, nullptr, 0, 0);
-    testEquivalence<VMT19937<128, QM_Block16>>(0, nullptr, &*jumpMatrix1, 0, 1);
-    testEquivalence<VMT19937<128, QM_Block16>>(0, nullptr, &*jumpMatrix1024, 0, 1024);
-
-    testEquivalence<VMT19937<128, QM_StateSize>>(0, nullptr, nullptr, 0, 0);
-    testEquivalence<VMT19937<128, QM_StateSize>>(0, nullptr, &*jumpMatrix1, 0, 1);
-    testEquivalence<VMT19937<128, QM_StateSize>>(0, nullptr, &*jumpMatrix1024, 0, 1024);
-
-    testEquivalence<VMT19937<256, QM_Scalar>>(0, nullptr, nullptr, 0, 0);
-    testEquivalence<VMT19937<256, QM_Scalar>>(1, &*jumpMatrix1, nullptr, 1, 0);
-    testEquivalence<VMT19937<256, QM_Scalar>>(2, &*jumpMatrix1, nullptr, 1, 0);
-    testEquivalence<VMT19937<256, QM_Scalar>>(0, nullptr, &*jumpMatrix1, 0, 1);
-    testEquivalence<VMT19937<256, QM_Scalar>>(0, nullptr, &*jumpMatrix1024, 0, 1024);
-    testEquivalence<VMT19937<256, QM_Scalar>>(1, &*jumpMatrix1, &*jumpMatrix1, 1, 1);
-    testEquivalence<VMT19937<256, QM_Scalar>>(2, &*jumpMatrix1, &*jumpMatrix1024, 1, 1024);
-
-    testEquivalence<VMT19937<256, QM_Block16>>(0, nullptr, nullptr, 0, 0);
-    testEquivalence<VMT19937<256, QM_Block16>>(0, nullptr, &*jumpMatrix1, 0, 1);
-    testEquivalence<VMT19937<256, QM_Block16>>(0, nullptr, &*jumpMatrix1024, 0, 1024);
-    
-    testEquivalence<VMT19937<256, QM_StateSize>>(0, nullptr, nullptr, 0, 0);
-    testEquivalence<VMT19937<256, QM_StateSize>>(0, nullptr, &*jumpMatrix1, 0, 1);
-    testEquivalence<VMT19937<256, QM_StateSize>>(0, nullptr, &*jumpMatrix1024, 0, 1024);
-
-    testEquivalence<VMT19937<512, QM_Scalar>>(0, nullptr, nullptr, 0, 0);
-    testEquivalence<VMT19937<512, QM_Scalar>>(0, nullptr, nullptr, 0, 0);
-    testEquivalence<VMT19937<512, QM_Scalar>>(1, &*jumpMatrix1, nullptr, 1, 0);
-    testEquivalence<VMT19937<512, QM_Scalar>>(0, nullptr, &*jumpMatrix1, 0, 1);
-    testEquivalence<VMT19937<512, QM_Scalar>>(0, nullptr, &*jumpMatrix1024, 0, 1024);
-    testEquivalence<VMT19937<512, QM_Scalar>>(1, &*jumpMatrix1, &*jumpMatrix1, 1, 1);
-    testEquivalence<VMT19937<512, QM_Scalar>>(2, &*jumpMatrix1, &*jumpMatrix1024, 1, 1024);
-
-    testEquivalence<VMT19937<512, QM_Block16>>(0, nullptr, nullptr, 0, 0);
-    testEquivalence<VMT19937<512, QM_Block16>>(0, nullptr, &*jumpMatrix1, 0, 1);
-    testEquivalence<VMT19937<512, QM_Block16>>(0, nullptr, &*jumpMatrix1024, 0, 1024);
-    
-    testEquivalence<VMT19937<512, QM_StateSize>>(0, nullptr, nullptr, 0, 0);
-    testEquivalence<VMT19937<512, QM_StateSize>>(0, nullptr, &*jumpMatrix1, 0, 1);
-    testEquivalence<VMT19937<512, QM_StateSize>>(0, nullptr, &*jumpMatrix1024, 0, 1024);
+    // since the period is 2^19937-1, after applying a jump matrix of 2^19937, we restart the sequence from step 1
+    std::cout << "VMT19937: a jump of size 2^19937 is equivalent to a jump of size 1\n";
+    testEquivalence<VMT19937<32, QM_Scalar>>(1, jumpMatrixPeriod, noJump);
 }
 
 void test_VSFMT19937()
@@ -306,42 +310,16 @@ void test_VSFMT19937()
 
     generateBenchmark_SFMT19937();
 
-    SFMT19937Matrix jumpMatrix4;                                          // jump ahead 4 element
-    //MT19937Matrix jumpMatrix512(std::string("./dat/F00009.bits"));      // jump ahead 2^9 (512) elements
-    //MT19937Matrix jumpMatrix1024(std::string("./dat/F00010.bits"));     // jump ahead 2^10 (1024) elements
-    //MT19937Matrix jumpMatrixPeriod(std::string("./dat/F19937.bits"));   // jump ahead 2^19937 elements
+    typedef SFMT19937Matrix matrix_t;
+    typedef JumpMatrix<matrix_t> pmatrix_t;
 
-    testEquivalence<VSFMT19937<128, QM_Scalar>>(0, nullptr, nullptr, 0, 0);
-    testEquivalence<VSFMT19937<128, QM_Scalar>>(1, &jumpMatrix4, nullptr, 4, 0);
-    testEquivalence<VSFMT19937<128, QM_Scalar>>(2, &jumpMatrix4, nullptr, 4, 0);
-    //testEquivalence<VSFMT19937<128, QM_Scalar>>(0, nullptr, &jumpMatrix4, 0, 1);
-    //testEquivalence<VSFMT19937<128, QM_Scalar>>(0, nullptr, &jumpMatrix1024, 0, 1024);
-    testEquivalence<VSFMT19937<128, QM_Block16>>(0, nullptr, nullptr, 0, 0);
-    //testEquivalence<VSFMT19937<128, QM_Block16>>(0, nullptr, &jumpMatrix4, 0, 1);
-    //testEquivalence<VSFMT19937<128, QM_Block16>>(0, nullptr, &jumpMatrix1024, 0, 1024);
-    testEquivalence<VSFMT19937<128, QM_StateSize>>(0, nullptr, nullptr, 0, 0);
-    //testEquivalence<VSFMT19937<128, QM_StateSize>>(0, nullptr, &jumpMatrix4, 0, 1);
-    //testEquivalence<VSFMT19937<128, QM_StateSize>>(0, nullptr, &jumpMatrix1024, 0, 1024);
+    pmatrix_t noJump;
+    pmatrix_t jumpMatrix4(new matrix_t, 4);                                              // jump ahead 1 element
+    pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/sfmt/F00009.bits")), 512);   // jump ahead 2^9 (1024) elements
 
-    testEquivalence<VSFMT19937<256, QM_Scalar>>(0, nullptr, nullptr, 0, 0);
-    //testEquivalence<VSFMT19937<256, QM_Scalar>>(0, nullptr, &jumpMatrix4, 0, 1);
-    //testEquivalence<VSFMT19937<256, QM_Scalar>>(0, nullptr, &jumpMatrix1024, 0, 1024);
-    testEquivalence<VSFMT19937<256, QM_Block16>>(0, nullptr, nullptr, 0, 0);
-    //testEquivalence<VSFMT19937<256, QM_Block16>>(0, nullptr, &jumpMatrix4, 0, 1);
-    //testEquivalence<VSFMT19937<256, QM_Block16>>(0, nullptr, &jumpMatrix1024, 0, 1024);
-    testEquivalence<VSFMT19937<256, QM_StateSize>>(0, nullptr, nullptr, 0, 0);
-    //testEquivalence<VSFMT19937<256, QM_StateSize>>(0, nullptr, &jumpMatrix4, 0, 1);
-    //testEquivalence<VSFMT19937<256, QM_StateSize>>(0, nullptr, &jumpMatrix1024, 0, 1024);
-
-    testEquivalence<VSFMT19937<512, QM_Scalar>>(0, nullptr, nullptr, 0, 0);
-    //testEquivalence<VSFMT19937<512, QM_Scalar>>(0, nullptr, &jumpMatrix4, 0, 1);
-    //testEquivalence<VSFMT19937<512, QM_Scalar>>(0, nullptr, &jumpMatrix1024, 0, 1024);
-    testEquivalence<VSFMT19937<512, QM_Block16>>(0, nullptr, nullptr, 0, 0);
-    //testEquivalence<VSFMT19937<512, QM_Block16>>(0, nullptr, &jumpMatrix4, 0, 1);
-    //testEquivalence<VSFMT19937<512, QM_Block16>>(0, nullptr, &jumpMatrix1024, 0, 1024);
-    testEquivalence<VSFMT19937<512, QM_StateSize>>(0, nullptr, nullptr, 0, 0);
-    //testEquivalence<VSFMT19937<512, QM_StateSize>>(0, nullptr, &jumpMatrix4, 0, 1);
-    //testEquivalence<VSFMT19937<512, QM_StateSize>>(0, nullptr, &jumpMatrix1024, 0, 1024);
+    equivalenceTests<128, false>(jumpMatrix4, jumpMatrix512);
+    equivalenceTests<256, true>(jumpMatrix4, jumpMatrix512);
+    equivalenceTests<512, true>(jumpMatrix4, jumpMatrix512);
 }
 
 int main()

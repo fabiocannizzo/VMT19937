@@ -244,7 +244,9 @@ private:
         const size_t lag = 11;
         const size_t mid = (s_n32InOneState - lag) / 2;
 
-        std::fill_n(m_state, s_n32InFullState, uint32_t(0x8b8b8b8b));
+        for (size_t w = 0; w < s_N; ++w)
+            for (size_t j = 0; j < s_n32InOneWord; ++j)
+                psfmt32[w * s_n32inReg + j] = uint32_t(0x8b8b8b8b);
         size_t count = (key_length + 1 > s_n32InOneState) ? key_length + 1 : s_n32InOneState;
         uint32_t r = func1(psfmt32[w32AbsIndex(0)] ^ psfmt32[w32AbsIndex(mid)] ^ psfmt32[w32AbsIndex(s_n32InOneState - 1)]);
         psfmt32[w32AbsIndex(mid)] += r;
@@ -304,17 +306,16 @@ private:
 
         if constexpr (s_nStates > 1) {
             if (sequentialJump) {
-#if 0
                 // perform jump ahead of the s_regLenWords states
                 // State_0 = State_0
                 // State_1 = Jump x State_0
                 // State_2 = Jump x State_1
                 // ...
 
-                // copy state to the first row shifting all bits to the left by 31
+                // copy state 0 to the first row
                 stateToVector(0, (uint32_t*)tmp.rowBegin(0));
 
-                for (size_t s = 1; s < s_regLenWords; ++s) {
+                for (size_t s = 1; s < s_nStates; ++s) {
                     // multiply all rows by state s and store the result in pres
 
                     const uint8_t* psrc = (uint8_t*)tmp.rowBegin((s + 1) % 2);
@@ -322,10 +323,9 @@ private:
 
                     sequentialJump->multiplyByColumn(pdst, psrc);
 
-                    // copy to the state vector shifting all bits to the right by 31
+                    // copy to the state vector s
                     vectorToState(s, (const uint32_t*)pdst);
                 }
-#endif
             }
             else {
                 for (size_t w = 0; w < s_N; ++w)
