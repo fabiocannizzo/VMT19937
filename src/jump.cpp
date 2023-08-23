@@ -90,8 +90,8 @@ void run(const std::string& filepath, size_t nThreads, size_t saveFrequency, siz
     else {
         std::string fn = mkFileName(filepath, lastComputed);
         std::cout << "initializing F^(2 ^ " << lastComputed << ") from file " << fn << "\n";
-        std::ifstream is(fn);
-        f[lastComputed % 2].fromBase64(is);
+        std::ifstream is(fn, ios::binary);
+        f[lastComputed % 2].fromBin(is);
     }
 
     std::cout << "  ";
@@ -111,7 +111,7 @@ void run(const std::string& filepath, size_t nThreads, size_t saveFrequency, siz
         if ((i % saveFrequency) == 0 || i > 19930) {
             std::string fn = mkFileName(filepath, i);
             std::cout << "  saving file: " << fn << " ... ";
-            std::ofstream of(fn);
+            std::ofstream of(fn, ios::binary);
             f[out].toBin(of);
             of.close();
             std::cout << "saved\n";
