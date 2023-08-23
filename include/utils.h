@@ -60,3 +60,25 @@ public:
     T* data() { return m_data; }
     const T* data() const { return m_data; }
 };
+
+// Given a cube with dimension [outerDim][MidDim][InnerDim]
+// Extract values with midDim=midIndex and store in a matrix of dimensions [outerDim][InnerDim]
+template <size_t MidDim, size_t InnerDim, typename T>
+inline void cubeToMatrix(T* vec, const T* mat, size_t outerDim, size_t midIndex)
+{
+    mat += InnerDim * midIndex;
+    for (size_t w = 0; w < outerDim; ++w)
+        for (size_t i = 0; i < InnerDim; ++i)
+            vec[w * InnerDim + i] = mat[w * (MidDim * InnerDim) + i];
+}
+
+// Given a cube with dimension [outerDim][MidDim][InnerDim]
+// Copy a matrix of dimensions [outerDim][InnerDim] to the layer in the cube where midDim=midIndex
+template <size_t MidDim, size_t InnerDim, typename T>
+inline void matrixToCube(T* mat, const T* vec, size_t outerDim, size_t midIndex)
+{
+    mat += InnerDim * midIndex;
+    for (size_t w = 0; w < outerDim; ++w)
+        for (size_t i = 0; i < InnerDim; ++i)
+            mat[w * (MidDim * InnerDim) + i] = vec[w * InnerDim + i];
+}
