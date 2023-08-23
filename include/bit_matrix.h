@@ -344,15 +344,17 @@ public:
     {
         const uint8_t* rowptrs[8];
         size_t r;
-        for (r = 0; r + 8 < s_nBitRows; r += 8) {
+        for (r = 0; r + 7 < s_nBitRows; r += 8) {
             for (size_t h = 0; h < 8; ++h)
                 rowptrs[h] = rowBegin(r + h);
             pdst[r / 8] = BinaryVectorMultiplier<SIMD_N_BITS>::template multiply8<8, s_nBitCols, s_nBitColsPadded>(psrc, rowptrs);
         }
-        { // this takes care of the residual rows, because 19937 is not a multiple of 8
-            for (size_t h = 0; h < s_nBitRows % 8; ++h)
+        const size_t nResidualRows = s_nBitRows % 8;
+        if constexpr (nResidualRows)
+        { // this takes care of the residual rows, in case it is not a multiple of 8
+            for (size_t h = 0; h < nResidualRows; ++h)
                 rowptrs[h] = rowBegin(r + h);
-            pdst[r / 8] = BinaryVectorMultiplier<SIMD_N_BITS>::template multiply8<s_nBitRows % 8, s_nBitCols, s_nBitColsPadded>(psrc, rowptrs);
+            pdst[r / 8] = BinaryVectorMultiplier<SIMD_N_BITS>::template multiply8<nResidualRows, s_nBitCols, s_nBitColsPadded>(psrc, rowptrs);
         }
     }
 
@@ -380,7 +382,7 @@ public:
     void initRand()
     {
         for (size_t r = 0; r < s_nBitRows; ++r) {
-            uint8_t* pr = rowBegin(r);
+            //uint8_t* pr = rowBegin(r);
             size_t c = 0;
             {
                 typedef uint16_t word_t;
