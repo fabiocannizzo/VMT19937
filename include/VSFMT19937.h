@@ -155,19 +155,13 @@ private:
     // extract one of the interleaved state vectors and save it to dst
     void stateToVector(size_t stateIndex, uint32_t* pdst) const
     {
-        const uint32_t* pstate = m_state + s_n32InOneWord * stateIndex;
-        for (size_t i = 0; i < s_N; ++i)
-            for (size_t j = 0; j < s_n32InOneWord; ++j)
-                pdst[i * s_n32InOneWord + j] = pstate[i * s_n32inReg + j];
+        cubeToMatrix<s_nStates, s_n32InOneWord, uint32_t>(pdst, m_state, s_N, stateIndex);
     }
 
     // store vector into the interleaved elements of the state vector
     void vectorToState(size_t stateIndex, const uint32_t* psrc)
     {
-        uint32_t* pstate = m_state + s_n32InOneWord * stateIndex;
-        for (size_t i = 0; i < s_N; ++i)
-            for (size_t j = 0; j < s_n32InOneWord; ++j)
-                pstate[i * s_n32inReg + j] = psrc[i * s_n32InOneWord + j];
+        matrixToCube<s_nStates, s_n32InOneWord, uint32_t>(m_state, psrc, s_N, stateIndex);
     }
 
 
