@@ -480,7 +480,7 @@ int main(int argc, const char** argv)
         << std::setw(spacing[s++]) << std::right << "tmax"
         << std::setw(spacing[s++]) << std::right << "tavg"
         << std::setw(spacing[s++]) << std::right << "tdev"
-        << std::setw(1+spacing[s++]) << std::right << "tavg/tdev"
+        << std::setw(1+spacing[s++]) << std::right << "tdev/tavg"
         << std::setw(spacing[s++]) << std::right << "throughput"
         << "\n";
     for (auto& [k, v] : results) {

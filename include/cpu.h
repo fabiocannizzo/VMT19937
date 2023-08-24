@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <map>
 
 // -------------------------------------------------------------
 // CPUID-based info (x86/x64 only)
@@ -16,6 +17,8 @@ struct CpuInfo
     int l2_kb = 0;
     int l3_kb = 0;
     double mhz = 0.0;
+
+    std::map<std::string, size_t> cache;
 
     void print() const;
 };

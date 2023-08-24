@@ -130,6 +130,34 @@ CpuInfo detectCpuInfo()
         }
     }
 #endif
+
+    for (int i = 0; ; ++i) {
+        cpuid(regs, 4, i);;
+        unsigned cacheType = regs[0] & 0x1F;
+        if (cacheType == 0) break; // No more caches
+
+        unsigned level = (regs[0] >> 5) & 0x7;
+        unsigned sets = regs[2] + 1;
+        unsigned ways = ((regs[1] >> 22) & 0x3FF) + 1;
+        unsigned partitions = ((regs[1] >> 12) & 0x3FF) + 1;
+        unsigned lineSize = (regs[1] & 0xFFF) + 1;
+        unsigned cacheSize = sets * ways * partitions * lineSize;
+
+        // Determine cache type
+        const char* typeStr = nullptr;
+        switch (cacheType)
+        {
+            case 1: typeStr = "d"; break; // Data cache
+            case 2: typeStr = "i"; break; // Instruction cache
+            case 3: typeStr = "u"; break; // Unified cache
+            default: typeStr = "?"; break;
+        }
+
+        std::ostringstream key;
+        key << "L" << level << typeStr;
+        info.cache[key.str()] = cacheSize;
+    }
+
     return info;
 }
 
@@ -176,5 +204,7 @@ void CpuInfo::print() const
               << ", Stepping: " << stepping << "\n";
     std::cout << "SIMD   : " << simd << "\n";
     std::cout << "Clock  : " << mhz << " MHz\n";
+    for (auto&[k,s] : cache)
+        std::cout << k << " Cache : Level " << k << ", size: " << s / 1024 << " KB\n";
     std::cout << "=======================\n";
 }
