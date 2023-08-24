@@ -82,7 +82,7 @@ ifeq ($(IS_MSVC),1)
 else
     $(info Compiler: GCC/Clang)
     # Detect Architecture
-    ARCH := $(shell uname -m)
+    ARCH ?= $(shell uname -m)
     $(info Architecture: $(ARCH))
 
     COMMON_FLAGS := -O3 -pthread
@@ -98,7 +98,7 @@ else
     LFLAGS := -pthread
     ifeq ($(ARCH), aarch64)
         # Check if userland is 32-bit
-        USERLAND_BITS := $(shell getconf LONG_BIT)
+        USERLAND_BITS ?= $(shell getconf LONG_BIT)
         ifeq ($(USERLAND_BITS), 32)
             SIMD := -mfpu=neon -mfloat-abi=hard
         else
