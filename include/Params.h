@@ -43,5 +43,3 @@ struct SFMT19937Params
 };
 
 };
-
-enum VRandGenQueryMode { QM_Any, QM_Scalar, QM_Block16 };

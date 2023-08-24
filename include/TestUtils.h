@@ -3,7 +3,9 @@
 #include "VRandGen.h"
 #include "cpu.h"
 
-inline const char* queryModeName(VRandGenQueryMode qm)
+enum QryMode { QM_Scalar, QM_Block16, QM_Any };
+
+inline const char* queryModeName(QryMode qm)
 {
     switch (qm) {
         case QM_Any: return "AnySize";
@@ -12,3 +14,4 @@ inline const char* queryModeName(VRandGenQueryMode qm)
         default: THROW("how did we get here?")
     }
 }
+

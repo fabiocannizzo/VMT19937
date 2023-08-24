@@ -57,7 +57,7 @@ const char* modename[] = {"ORIG-MT19937", "ORIG-SFMT19937", "MKL-MT19937", "MKL-
 
 const size_t anySize[] = { 1, 4, 16, 64, 256, 624, 1024, 4096, 16384 };
 
-template <typename G>
+template <GenMode G>
 struct GenTraits;
 
 // for maximum period, we should select the file based on the number of states
@@ -68,38 +68,47 @@ const auto pmt = std::make_unique<MT19937Matrix>(dir + "/mt/F19933.bits");
 const auto psfmt = std::make_unique<SFMT19937Matrix>(dir + "/sfmt/F19935.bits");
 
 
-template <size_t RegBitLen, VRandGenQueryMode QueryMode, size_t RegBitLenHw>
-struct GenTraits<VMT19937<RegBitLen, QueryMode, RegBitLenHw>>
+template <>
+struct GenTraits<vmt>
 {
     static const GenMode mode = vmt;
     static const MT19937Matrix* jumpMatrix() { return pmt.get(); }
+
+    template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw>
+    using gen_t = VMT19937<RegBitLen, QM == QM_Block16, RegBitLenHw>;
 };
 
-template <size_t RegBitLen, VRandGenQueryMode QueryMode, size_t RegBitLenHw>
-struct GenTraits<XMT19937<RegBitLen, QueryMode, RegBitLenHw>>
+template <>
+struct GenTraits<xmt>
 {
     static const GenMode mode = xmt;
     static const MT19937Matrix* jumpMatrix() { return nullptr; }
+
+    template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw>
+    using gen_t = XMT19937<RegBitLen, QM == QM_Block16, RegBitLenHw>;
 };
 
-template <size_t RegBitLen, VRandGenQueryMode QueryMode, size_t RegBitLenHw>
-struct GenTraits<VSFMT19937<RegBitLen, QueryMode, RegBitLenHw>>
+template <>
+struct GenTraits<vsfmt>
 {
     static const GenMode mode = vsfmt;
     static const SFMT19937Matrix* jumpMatrix() { return psfmt.get(); }
+
+    template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw>
+    using gen_t = VSFMT19937<RegBitLen, QM == QM_Block16, RegBitLenHw>;
 };
 
 const size_t s_messageSpacing[] = { 15, 9, 8, 8, 12 };
 
 struct Results
 {
-    Results(GenMode _mode, size_t _nb, size_t _ib, size_t _blk, VRandGenQueryMode _qryMode)
+    Results(GenMode _mode, size_t _nb, size_t _ib, size_t _blk, QryMode _qryMode)
         : mode(_mode), nBits(_nb), nBitsHw(_ib), blkSize(_blk), qryMode(_qryMode), mi(0), ma(0), avg(0), stdev(0)
     {}
     GenMode mode;
     size_t nBits, nBitsHw;
     size_t blkSize;
-    VRandGenQueryMode qryMode;
+    QryMode qryMode;
 
     mutable std::vector<double> singleRuns;
     mutable double mi, ma, avg, stdev;
@@ -300,14 +309,12 @@ void mklPerformance(MKL_INT GenCode, MKL_INT BlkSize)
 }
 #endif
 
-template <typename Gen>
+template <GenMode Mode, size_t L, size_t I, QryMode QM>
 void vRandGenPerformance5(size_t blkSize)
 {
-    const GenMode mode = GenTraits<Gen>::mode;
-
     MYASSERT(((blkSize > 0) && ((g_nRandom % blkSize) == 0)), "invalid blkSize " << blkSize);
 
-    Results key(mode, Gen::s_regLenBits, Gen::s_regLenBitsHw, blkSize, Gen::s_queryMode);
+    Results key(Mode, L, I, blkSize, QM);
 
     key.print();
 
@@ -318,19 +325,21 @@ void vRandGenPerformance5(size_t blkSize)
 
     AlignedVector<uint32_t, 64> aligneddst(blkSize);
 
+    using Gen = typename GenTraits<Mode>::template gen_t<L, QM, I>;
+
     const typename Gen::matrix_t *jumpMatrixPtr = nullptr;
     if constexpr (Gen::s_nStates > 1)
-        jumpMatrixPtr = GenTraits<Gen>::jumpMatrix();
+        jumpMatrixPtr = GenTraits<Mode>::jumpMatrix();
     Gen mt(s_seedinit, s_seedlength, 0, nullptr, jumpMatrixPtr);
 
     auto start = std::chrono::system_clock::now();
 
     for (size_t i = 0, n = g_nRandom / blkSize; i < n; ++i) {
-        if constexpr (Gen::s_queryMode == QM_Scalar)
+        if constexpr (QM == QM_Scalar)
             aligneddst[0] = mt.genrand_uint32();
-        else if constexpr (Gen::s_queryMode == QM_Block16)
+        else if constexpr (QM == QM_Block16)
             mt.genrand_uint32_blk16(aligneddst.data());
-        else if constexpr (Gen::s_queryMode == QM_Any)
+        else if constexpr (QM == QM_Any)
             mt.genrand_uint32_anySize(aligneddst.data(), blkSize);
         else
             NOT_IMPLEMENTED;
@@ -346,44 +355,41 @@ void vRandGenPerformance5(size_t blkSize)
 }
 
 
-template <typename Gen>
+template <GenMode Mode, size_t L, size_t I, QryMode QM>
 void vRandGenPerformance4()
 {
-    size_t blkSize;
-    switch (Gen::s_queryMode) {
-        case QM_Scalar: blkSize = 1; break;
-        case QM_Block16: blkSize = 16; break;
-        case QM_Any: blkSize = 0; break;
-        default: THROW("how did we get here?");
-    }
-    bool fst = true;
-    for (auto sz : anySize) {
-        if (Gen::s_queryMode != QM_Any && !fst)
-            break;
-        fst = false;
-        vRandGenPerformance5<Gen>(Gen::s_queryMode != QM_Any?  blkSize: sz);
-    }
-}
-
-template <GenMode Mode, size_t L, size_t I, VRandGenQueryMode QM>
-void vRandGenPerformance3()
-{
-    if constexpr (Mode == vmt)
-        vRandGenPerformance4<VMT19937<L, QM, I>>();
-    else if constexpr (Mode == xmt)
-        vRandGenPerformance4<XMT19937<L, QM, I>>();
-    else if constexpr (Mode == vsfmt)
-        vRandGenPerformance4<VSFMT19937<L, QM, I>>();
+    if constexpr (QM == QM_Any)
+        for (auto sz : anySize)
+            vRandGenPerformance5<Mode, L, I, QM>(sz);
     else
-        static_assert(false, "not implemented");
+        vRandGenPerformance5<Mode, L, I, QM>(QM == QM_Block16 ? 16 : 1);
 }
 
-template <GenMode Mode, size_t L, size_t I, VRandGenQueryMode...QMs>
+//template <GenMode Mode, size_t L, size_t I, QryMode QM>
+//void vRandGenPerformance3()
+//{
+//    constexpr bool QryBlk16 = (QM == QM_Block16);
+//    if constexpr (Mode == vmt) {
+//        using gen_t = VMT19937<L, QryBlk16, I>;
+//        vRandGenPerformance4<gen_t, QM>();
+//    }
+//    else if constexpr (Mode == xmt) {
+//        using gen_t = XMT19937<L, QryBlk16, I>;
+//        vRandGenPerformance4<gen_t, QM>();
+//    }
+//    else if constexpr (Mode == vsfmt) {
+//        using gen_t = VSFMT19937<L, QryBlk16, I>;
+//        vRandGenPerformance4<gen_t, QM>();
+//    } else
+//        static_assert(false, "not implemented");
+//}
+
+template <GenMode Mode, size_t L, size_t I, QryMode...QMs>
 void vRandGenPerformance2()
 {
     constexpr size_t M = std::min<size_t>(L, SIMD_N_BITS);
     if constexpr (I <= M || (I == M && Mode != xmt))
-        (vRandGenPerformance3<Mode, L, I, QMs>(), ...);
+        (vRandGenPerformance4<Mode, L, I, QMs>(), ...);
 }
 
 template <GenMode Mode, size_t L, size_t...Is>

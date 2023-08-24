@@ -21,13 +21,13 @@ Remove jump matrix argument from XMT constructors
 Encapsulate in generators code which used generator constants
 Add support for Intel AVX-10 architecture
 Use SIMD-ISA ISA codes as a template argument in register classes
-Query1 should be used in tests, but it should not be an argument of the generator, as it is equivalent to AnySize
 Should we remove QryBlk16 ? Does it add value?
 Check if per test throughput are computed correctly (try with slow)
 Test impact of saving to files using DMA (e.g. __mm_stream_si128)
 Add test for non-trivial SIMD functions
 Simplify exposed templates
 Generate all jump matrices up to 2^64 for common jumps
+Add more examples in Demo
 
 
 

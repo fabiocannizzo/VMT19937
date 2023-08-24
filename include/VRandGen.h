@@ -6,7 +6,7 @@
 namespace Details
 {
 
-template <typename GenBase, VRandGenQueryMode QueryMode>
+template <typename GenBase, bool QryBlk16>
 class VRandGen : protected GenBase
 {
     using base_t = GenBase;
@@ -19,7 +19,6 @@ public:
     static constexpr size_t s_n32InOneWord = base_t::s_n32InOneWord;
     static constexpr size_t s_n32InFullState = base_t::s_n32InFullState;
     static constexpr size_t s_nStates = base_t::s_nStates;
-    static constexpr VRandGenQueryMode s_queryMode = QueryMode;
 
 private:
     void completeStateInitialization(size_t nCommonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
@@ -138,7 +137,7 @@ public:
     // generates a random number on [0,0xffffffff] interval
     FORCE_INLINE uint32_t genrand_uint32()
     {
-        static_assert(QueryMode == QM_Scalar || QueryMode == QM_Any, "This function can only be invoked when query mode is QM_Scalar or QM_Any");
+        static_assert(!QryBlk16, "This function can only be invoked when query mode is QM_Scalar or QM_Any");
         return base_t::genrand_uint32();
     }
 
@@ -146,7 +145,7 @@ public:
     // for optimal performance the vector dst should be aligned on a 64 byte boundary
     FORCE_INLINE void genrand_uint32_blk16(uint32_t* dst)
     {
-        static_assert(QueryMode == QM_Block16, "This function can only be invoked when query mode is QM_Block16");
+        static_assert(QryBlk16, "This function can only be invoked when query mode is QM_Block16");
         base_t::genrand_uint32_blk16(dst);
     }
 
@@ -154,7 +153,7 @@ public:
     // for optimal performance the vector dst should be aligned on a 64 byte boundary
     FORCE_INLINE void genrand_uint32_anySize(uint32_t* dst, size_t n)
     {
-        static_assert(QueryMode == QM_Any, "This function can only be invoked when query mode is QM_Any");
+        static_assert(!QryBlk16, "This function can only be invoked when query mode is QM_Any");
         base_t::genrand_uint32_anySize(dst, n);
     }
 };
@@ -162,31 +161,31 @@ public:
 } // namespace Details
 
 template < size_t RegisterBitLen = SIMD_N_BITS
-         , VRandGenQueryMode QueryMode = QM_Any
+         , bool QryBlk16 = false
          , size_t RegisterBitLenHw = std::min<size_t>(SIMD_N_BITS, RegisterBitLen)
          >
-struct VMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, false, QueryMode == QM_Block16>, QueryMode>
+struct VMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, false, QryBlk16>, QryBlk16>
 {
-    using base_t = Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, false, QueryMode == QM_Block16>, QueryMode>;
+    using base_t = Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, false, QryBlk16>, QryBlk16>;
     using base_t::VRandGen; // reuse constructors
 };
 
 template < size_t RegisterBitLen = SIMD_N_BITS
-         , VRandGenQueryMode QueryMode = QM_Any
+         , bool QryBlk16 = false
          , size_t RegisterBitLenHw = std::min<size_t>(SIMD_N_BITS, RegisterBitLen)
          >
-struct XMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, true, QueryMode == QM_Block16>, QueryMode>
+struct XMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, true, QryBlk16>, QryBlk16>
 {
-    using base_t = Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, true, QueryMode == QM_Block16>, QueryMode>;
+    using base_t = Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, true, QryBlk16>, QryBlk16>;
     using base_t::VRandGen; // reuse constructors
 };
 
 template < size_t RegisterBitLen = SIMD_N_BITS
-         , VRandGenQueryMode QueryMode = QM_Any
+         , bool QryBlk16 = false
          , size_t RegisterBitLenHw = std::min<size_t>(SIMD_N_BITS, RegisterBitLen)
          >
-struct VSFMT19937 : Details::VRandGen<Details::VSFMT19937Base<RegisterBitLen, RegisterBitLenHw>, QueryMode>
+struct VSFMT19937 : Details::VRandGen<Details::VSFMT19937Base<RegisterBitLen, RegisterBitLenHw>, QryBlk16>
 {
-    using base_t = Details::VRandGen<Details::VSFMT19937Base<RegisterBitLen, RegisterBitLenHw>, QueryMode>;
+    using base_t = Details::VRandGen<Details::VSFMT19937Base<RegisterBitLen, RegisterBitLenHw>, QryBlk16>;
     using base_t::VRandGen; // reuse constructors
 };

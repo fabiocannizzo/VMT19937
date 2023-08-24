@@ -21,25 +21,25 @@ extern "C" void init_by_array(unsigned long init_key[], int key_length);
 enum GenType { VSFMT, VMT, XMT };
 const char* genName[] = { "VSFMT", "VMT", "XMT" };
 
-template <GenType G, size_t L, size_t I, VRandGenQueryMode QM>
+template <GenType G, size_t L, size_t I, QryMode QM>
 struct GenTraits;
 
-template <size_t L, size_t I, VRandGenQueryMode QM>
+template <size_t L, size_t I, QryMode QM>
 struct GenTraits<VMT, L, I, QM>
 {
-    typedef VMT19937<L, QM, I> gen_t;
+    typedef VMT19937<L, QM == QM_Block16, I> gen_t;
 };
 
-template <size_t L, size_t I, VRandGenQueryMode QM>
+template <size_t L, size_t I, QryMode QM>
 struct GenTraits<XMT, L, I, QM>
 {
-    typedef XMT19937<L, QM, I> gen_t;
+    typedef XMT19937<L, QM == QM_Block16, I> gen_t;
 };
 
-template <size_t L, size_t I, VRandGenQueryMode QM>
+template <size_t L, size_t I, QryMode QM>
 struct GenTraits<VSFMT, L, I, QM>
 {
-    typedef VSFMT19937<L, QM, I> gen_t;
+    typedef VSFMT19937<L, QM == QM_Block16, I> gen_t;
 };
 
 std::vector<uint32_t> benchmark(nRandomTest + 10000);
@@ -211,7 +211,7 @@ struct JumpMatrix
     size_t jumpSize;  // jump size (i.e. number of elements skipped)
 };
 
-template <GenType G, size_t L, size_t I, VRandGenQueryMode QM, typename M>
+template <GenType G, size_t L, size_t I, QryMode QM, typename M>
 void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, const JumpMatrix<M>& seqJump)
 {
     using Gen = typename GenTraits<G, L, I, QM>::gen_t;
@@ -222,7 +222,7 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
     MYASSERT(((commonJump.p != nullptr) == (nCommonJumpRepeat > 0)), "commnJump matrix should be provided only if nCommonJumpRepeat>0");
 
     constexpr size_t VecLen = Gen::s_regLenBits;
-    constexpr VRandGenQueryMode QryMode = Gen::s_queryMode;
+    constexpr QryMode QryMode = QM;
     size_t blkSize;
     switch (QryMode) {
         case QM_Any: blkSize = 0; break;
@@ -296,7 +296,7 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
 }
 
 
-template <GenType G, size_t L, size_t I, VRandGenQueryMode QM, typename M>
+template <GenType G, size_t L, size_t I, QryMode QM, typename M>
 void equivalenceTests3(const JumpMatrix<M>& jumpSmall, const JumpMatrix<M>& jumpBig)
 {
     JumpMatrix<M> noJump{};
@@ -323,7 +323,7 @@ void equivalenceTests3(const JumpMatrix<M>& jumpSmall, const JumpMatrix<M>& jump
     }
 }
 
-template <GenType G, size_t L, size_t I, VRandGenQueryMode...QMs, typename M>
+template <GenType G, size_t L, size_t I, QryMode...QMs, typename M>
 void equivalenceTests2(const JumpMatrix<M>& jumpSmall, const JumpMatrix<M>& jumpBig)
 {
     (equivalenceTests3<G, L, I, QMs>(jumpSmall, jumpBig), ...);
