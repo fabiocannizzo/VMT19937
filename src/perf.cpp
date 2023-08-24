@@ -318,7 +318,7 @@ void vRandGenPerformance5(size_t blkSize)
 
     AlignedVector<uint32_t, 64> aligneddst(blkSize);
 
-    const Gen::matrix_t *jumpMatrixPtr = nullptr;
+    const typename Gen::matrix_t *jumpMatrixPtr = nullptr;
     if constexpr (Gen::s_nStates > 1)
         jumpMatrixPtr = GenTraits<Gen>::jumpMatrix();
     Gen mt(s_seedinit, s_seedlength, 0, nullptr, jumpMatrixPtr);

@@ -397,7 +397,7 @@ void printReg(std::string&& name, T v)
 template <size_t n32, typename T>
 void testAlignR32(const unsigned char *data, T a, T b)
 {
-    auto c = T::alignr32<n32>(a, b);
+    auto c = T::template alignr32<n32>(a, b);
     const unsigned char* got = (const unsigned char*)  &c;
     printReg(std::to_string(n32), c);
     for (size_t i = 0; i < sizeof(T); ++i) {

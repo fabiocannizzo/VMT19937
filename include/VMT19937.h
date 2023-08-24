@@ -136,8 +136,8 @@ private:
         XV x1(p + x1Offset);
         constexpr int xMOffset = ((JM / n32) + (JM > 0)) * n32;
         XV xMhi(p + xMOffset);
-        XV xP = XV::alignr32<1>(x0, x1);
-        XV xM = XV::alignr32<s_M % s_n32inReg>(xMlo, xMhi);
+        XV xP = XV::template alignr32<1>(x0, x1);
+        XV xM = XV::template alignr32<s_M % s_n32inReg>(xMlo, xMhi);
         XV r = advance1(x0, xP, xM, masks);
         r.template store<true>(p + J0 * s_n32inReg);
         x0 = x1;

@@ -378,7 +378,7 @@ struct SimdRegister<256, 256>
     SimdRegister() : m_v(_mm256_undefined_si256()) {}
     FORCE_INLINE SimdRegister(const void* p) : m_v(_mm256_load_si256((const __m256i*)p)) {}
     FORCE_INLINE SimdRegister(uint32_t v) : m_v(_mm256_set1_epi32(v)) {}
-    FORCE_INLINE FORCE_INLINE SimdRegister(uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3)
+    FORCE_INLINE SimdRegister(uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3)
     {
         __m128i tmp = _mm_setr_epi32(v0, v1, v2, v3);
         m_v = _mm256_set_m128i(tmp, tmp);
@@ -398,25 +398,25 @@ struct SimdRegister<256, 256>
     template <unsigned n32FromSecond>
     static FORCE_INLINE XV alignr32(const XV& a, const XV& b)
     {
-        static_assert(nBytesFromSecond <= 8, "n32FromSecond must be <= 8 for AVX2");
+        static_assert(n32FromSecond <= 8, "n32FromSecond must be <= 8 for AVX2");
 
-        if constexpr (nBytesFromSecond == 0)
+        if constexpr (n32FromSecond == 0)
             return a;
-        else if constexpr (nBytesFromSecond == 8)
+        else if constexpr (n32FromSecond == 8)
             return b;
         else {
             // Combine the high 128 bits of v0 with the low 128 bits of v1.
             __m256i aHibLo = _mm256_permute2x128_si256(a.m_v, b.m_v, 0x21);
 
-            if constexpr (nBytesFromSecond < 4) {
+            if constexpr (n32FromSecond < 4) {
                 // Align: take bytes from v0 and then from combined.
-                return _mm256_alignr_epi8(aHibLo, a.m_vv, 4*n32FromSecond);
+                return _mm256_alignr_epi8(aHibLo, a.m_v, 4*n32FromSecond);
             }
-            else if constexpr (nBytesFromSecond == 4) {
+            else if constexpr (n32FromSecond == 4) {
                 return aHibLo;
             }
             else {
-                // Need (nBytesFromSecond - 16) bytes into the concatenation (b || aHibLo)
+                // Need (n32FromSecond - 4) 32-bit words into the concatenation (b || aHibLo)
                 return _mm256_alignr_epi8(b.m_v, aHibLo, 4*n32FromSecond - 16);
             }
         }
