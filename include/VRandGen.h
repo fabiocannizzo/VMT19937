@@ -59,6 +59,8 @@ class VRandGen : public GenBase<RegisterBitLen>
 #if (VRANDGEN_TESTING!=1)
                 THROW("Having multiple states and no sequential jump matrix does not make sense");
 #endif
+                // Copy state 0 to all other states.
+                // Effectively the generator will produce s_nStates copies of each number
                 for (size_t w = 0; w < base_t::s_N; ++w)
                     for (size_t j = 0; j < base_t::s_n32InOneWord; ++j)
                         for (size_t s = 1; s < base_t::s_nStates; ++s)
