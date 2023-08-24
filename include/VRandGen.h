@@ -14,11 +14,12 @@ class VRandGen : public GenBase<RegisterBitLen>
     typedef GenBase<RegisterBitLen> base_t;
     typedef typename base_t::matrix_t matrix_t;
 
-    void fillOtherStates(size_t nCommonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
+    void completeStateInitialization(size_t nCommonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
     {
         // temporary workspace matrix
         BinaryMatrix<2, base_t::s_nMatrixBits> tmp;
 
+        // apply common jump to state-0
         if (nCommonJumpRepeat) {
             MYASSERT(commonJump, "commonJump is required when nCommonJumpRepeat>0");
 
@@ -32,6 +33,7 @@ class VRandGen : public GenBase<RegisterBitLen>
             base_t::vectorToState(0, (const uint32_t*)tmp.rowBegin(nCommonJumpRepeat % 2));
         }
 
+        // if there are multiple states, distance them using the sequentialJump matrix
         if constexpr (base_t::s_nStates > 1) {
             if (sequentialJump) {
                 // perform jump ahead of the s_regLenWords states
@@ -61,6 +63,7 @@ class VRandGen : public GenBase<RegisterBitLen>
 #endif
                 // Copy state 0 to all other states.
                 // Effectively the generator will produce s_nStates copies of each number
+                // This only make sense for debugging purpose
                 for (size_t w = 0; w < base_t::s_N; ++w)
                     for (size_t j = 0; j < base_t::s_n32InOneWord; ++j)
                         for (size_t s = 1; s < base_t::s_nStates; ++s)
@@ -89,7 +92,7 @@ public:
     void reinit(uint32_t s, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
     {
         base_t::reinitMainState(s);
-        fillOtherStates(commonJumpRepeat, commonJump, sequentialJump);
+        completeStateInitialization(commonJumpRepeat, commonJump, sequentialJump);
         base_t::reinitPointers();
     }
 
@@ -99,7 +102,7 @@ public:
     void reinit(const uint32_t* seeds, uint32_t nSeeds, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
     {
         base_t::reinitMainState(seeds, nSeeds);
-        fillOtherStates(commonJumpRepeat, commonJump, sequentialJump);
+        completeStateInitialization(commonJumpRepeat, commonJump, sequentialJump);
         base_t::reinitPointers();
     }
 
