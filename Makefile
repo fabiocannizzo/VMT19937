@@ -127,7 +127,11 @@ else
     ifneq ("$(wildcard $(MKLROOT)/include/mkl.h)","")
         MKL_AVAIL := 1
         MKL_INC := -I$(MKLROOT)/include
-        MKL_LIB_DIR := -L$(MKLROOT)/lib/intel64
+        ifneq ("$(wildcard $(MKLROOT)/lib/intel64)","")
+            MKL_LIB_DIR := -L$(MKLROOT)/lib/intel64
+        else
+            MKL_LIB_DIR := -L$(MKLROOT)/lib
+        endif
         MKL_LIBS := -lmkl_gf_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl
     endif
 endif

@@ -493,7 +493,7 @@ void parseCliArgs(int argc, const char** argv)
             else if (key == "--no-sfmt")
                 g_testSFMT = false;
             else if (key == "--no-xmt")
-                g_testVMT = false;
+                g_testXMT = false;
             else if (key == "--no-qry1")
                 g_testQry1 = false;
             else if (key == "--no-qry16")

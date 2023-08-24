@@ -616,9 +616,19 @@ struct SimdRegister<512, ISA::AVX512, void> : VirtualRegBase<512, ISA::AVX512>
 
     FORCE_INLINE XV ifOddCst32ElseZero(const XV& cst32) const
     {
-        const __m512i lowestBit = _mm512_slli_epi32(m_v, 31); // move least significant bit to most significant bit
-        const __mmask16 isOdd = _mm512_movepi32_mask(lowestBit);
+        const __mmask16 isOdd = _mm512_test_epi32_mask(m_v, _mm512_set1_epi32(1));
         return _mm512_maskz_mov_epi32(isOdd, cst32.m_v);
+    }
+
+    static FORCE_INLINE XV ternary(const XV& a, const XV& b, const XV& c, int imm)
+    {
+        return _mm512_ternarylogic_epi32(a.m_v, b.m_v, c.m_v, imm);
+    }
+
+    template <typename M>
+    FORCE_INLINE XV bitwiseAndMasked(const XV& a, const M& mask) const
+    {
+        return _mm512_maskz_mov_epi32(mask, a.m_v);
     }
 
     static FORCE_INLINE XV zero() { return _mm512_setzero_si512(); }
