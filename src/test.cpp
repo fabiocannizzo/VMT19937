@@ -525,13 +525,26 @@ void test_VMT19937_64()
     pmatrix_t noJump;
     pmatrix_t jumpMatrix1(new matrix_t, 1);                                              // jump ahead 1 element
     pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/mt64/F00009.bits")), 512);   // jump ahead 2^9 (512) elements
+    pmatrix_t jumpMatrixPeriod(new matrix_t(std::string("./dat/mt64/F19937.bits")), 1);  // jump ahead 2^19937 elements
 
     startTest(genName[VMT64]);
     equivalenceTests0<VMT64, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
     equivalenceTests1<VMT64, 64, 64>(jumpMatrix1, jumpMatrix512);
+    // since the period is 2^19937-1, after applying a jump matrix of 2^19937, we restart the sequence from step 1
+    std::cout << "VMT19937_64: a jump of size 2^19937 is equivalent to a jump of size 1\n";
+    testEquivalence<VMT64, 128, 128, QM_Scalar>(1, jumpMatrixPeriod, noJump);
 
     startTest(genName[XMT64]);
     equivalenceTests0<XMT64, 64, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
+    // since the period is 2^19937-1, after applying a jump matrix of 2^19937, we restart the sequence from step 1
+    std::cout << "XMT19937_64: a jump of size 2^19937 is equivalent to a jump of size 1\n";
+    testEquivalence<XMT64, 128, 128, QM_Scalar>(1, jumpMatrixPeriod, noJump);
+#if SIMD_N_BITS>=256
+    testEquivalence<XMT64, 256, 256, QM_Scalar>(1, jumpMatrixPeriod, noJump);
+#endif
+#if SIMD_N_BITS>=512
+    testEquivalence<XMT64, 512, 512, QM_Scalar>(1, jumpMatrixPeriod, noJump);
+#endif
 }
 
 template <typename T>
