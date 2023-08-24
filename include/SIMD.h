@@ -74,6 +74,7 @@ public:
 
     SimdRegister() {}
     FORCE_INLINE SimdRegister(uint32_t v) : m_v(v) {}
+    FORCE_INLINE SimdRegister(uint64_t v) : m_v(XVHw(v)) {}
     FORCE_INLINE SimdRegister(uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3)
     {
         if constexpr (HwBitLen == 32) {
@@ -123,6 +124,16 @@ public:
     friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < s_M; ++i) r.m_v[i] = a.m_v[i] | b.m_v[i]; return r; }
     friend FORCE_INLINE XV operator<<(const XV& a, const int n) { XV r; for (size_t i = 0; i < s_M; ++i) r.m_v[i] = a.m_v[i] << n; return r; }
     friend FORCE_INLINE XV operator>>(const XV& a, const int n) { XV r; for (size_t i = 0; i < s_M; ++i) r.m_v[i] = a.m_v[i] >> n; return r; }
+    friend FORCE_INLINE XV shl64(const XV& a, int n) { XV r; for (size_t i = 0; i < s_M; ++i) r.m_v[i] = shl64(a.m_v[i], n); return r; }
+    friend FORCE_INLINE XV shr64(const XV& a, int n) { XV r; for (size_t i = 0; i < s_M; ++i) r.m_v[i] = shr64(a.m_v[i], n); return r; }
+
+    FORCE_INLINE XV xorIfOddCst64(const XV& cond, const XV& cst) const
+    {
+        XV r;
+        for (size_t i = 0; i < s_M; ++i)
+            r.m_v[i] = m_v[i].xorIfOddCst64(cond.m_v[i], cst.m_v[i]);
+        return r;
+    }
 
     FORCE_INLINE static XV bitwiseSelect(const XV mask, const XV a, const XV b)
     {
@@ -371,6 +382,7 @@ struct SimdRegister<128, ISA::NEON, void> : VirtualRegBase<128, ISA::NEON>
 
     SimdRegister() {}
     FORCE_INLINE SimdRegister(uint32_t v) : m_v(vdupq_n_u32(v)) {}
+    FORCE_INLINE SimdRegister(uint64_t v) : m_v(vreinterpretq_u32_u64(vdupq_n_u64(v))) {}
     FORCE_INLINE SimdRegister(uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3)
     {
         alignas(16) uint32_t data[4] = { v0, v1, v2, v3 };
@@ -387,6 +399,8 @@ struct SimdRegister<128, ISA::NEON, void> : VirtualRegBase<128, ISA::NEON>
     friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { return vorrq_u32(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return vshlq_u32(a.m_v, vdupq_n_s32(n)); }
     friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return vshrq_n_u32(a.m_v, n); }
+    friend FORCE_INLINE XV shl64(const XV& a, int n) { return vreinterpretq_u32_u64(vshlq_u64(vreinterpretq_u64_u32(a.m_v), vdupq_n_s64( n))); }
+    friend FORCE_INLINE XV shr64(const XV& a, int n) { return vreinterpretq_u32_u64(vshlq_u64(vreinterpretq_u64_u32(a.m_v), vdupq_n_s64(-n))); }
 
     FORCE_INLINE bool eq(const XV& rhs) const
     {
@@ -440,6 +454,13 @@ struct SimdRegister<128, ISA::NEON, void> : VirtualRegBase<128, ISA::NEON>
         return *this ^ cond.ifOddCst32ElseZero(cst);
     }
 
+    FORCE_INLINE XV xorIfOddCst64(const XV& cond, const XV& cst) const
+    {
+        // sign-extend bit 0 of each 64-bit lane to a full-lane mask
+        int64x2_t mask = vshrq_n_s64(vreinterpretq_s64_u64(vshlq_n_u64(vreinterpretq_u64_u32(cond.m_v), 63)), 63);
+        return veorq_u32(m_v, vandq_u32(vreinterpretq_u32_s64(mask), cst.m_v));
+    }
+
     uint8_t parity() const
     {
         uint32_t d = vgetq_lane_u32(m_v, 0) ^ vgetq_lane_u32(m_v, 1) ^
@@ -457,6 +478,7 @@ struct SimdRegister<128, Isa, std::enable_if_t<Isa == ISA::SSE2 || Isa == ISA::S
 
     SimdRegister() : m_v(_mm_undefined_si128()) {}
     FORCE_INLINE SimdRegister(uint32_t v) : m_v(_mm_set1_epi32(v)) {}
+    FORCE_INLINE SimdRegister(uint64_t v) : m_v(_mm_set1_epi64x((long long)v)) {}
     FORCE_INLINE SimdRegister(uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3) : m_v(_mm_setr_epi32(v0, v1, v2, v3)) {}
     FORCE_INLINE SimdRegister(const void* p) : m_v(_mm_load_si128((const __m128i*)p)) {}
     FORCE_INLINE SimdRegister(__m128i v) : m_v(v) {}
@@ -470,6 +492,8 @@ struct SimdRegister<128, Isa, std::enable_if_t<Isa == ISA::SSE2 || Isa == ISA::S
     //friend FORCE_INLINE XV operator>(const XV& a, const XV& b) { return _mm_cmpgt_epi32(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return _mm_slli_epi32(a.m_v, n); }
     friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm_srli_epi32(a.m_v, n); }
+    friend FORCE_INLINE XV shl64(const XV& a, int n) { return _mm_slli_epi64(a.m_v, n); }
+    friend FORCE_INLINE XV shr64(const XV& a, int n) { return _mm_srli_epi64(a.m_v, n); }
 
     FORCE_INLINE bool eq(const XV& rhs) const { return _mm_test_all_ones(_mm_cmpeq_epi32(m_v, rhs.m_v)); }
 
@@ -521,6 +545,15 @@ struct SimdRegister<128, Isa, std::enable_if_t<Isa == ISA::SSE2 || Isa == ISA::S
         return *this ^ cond.ifOddCst32ElseZero(cst);
     }
 
+    FORCE_INLINE XV xorIfOddCst64(const XV& cond, const XV& cst) const
+    {
+        // sign-extend bit 0 of each 64-bit lane to a full-lane mask
+        __m128i lowestBit = _mm_slli_epi64(cond.m_v, 63);
+        __m128i hi   = _mm_shuffle_epi32(lowestBit, 0xF5);  // broadcast high-32 of each 64-bit lane
+        __m128i mask = _mm_srai_epi32(hi, 31);
+        return _mm_xor_si128(m_v, _mm_and_si128(mask, cst.m_v));
+    }
+
     uint8_t parity() const
     {
         __m128i hi(_mm_shuffle_epi32(m_v, 2 | (3 << 2)));
@@ -543,6 +576,7 @@ struct SimdRegister<256, ISA::AVX2, void> : VirtualRegBase<256, ISA::AVX2>
     SimdRegister() : m_v(_mm256_undefined_si256()) {}
     FORCE_INLINE SimdRegister(const void* p) : m_v(_mm256_load_si256((const __m256i*)p)) {}
     FORCE_INLINE SimdRegister(uint32_t v) : m_v(_mm256_set1_epi32(v)) {}
+    FORCE_INLINE SimdRegister(uint64_t v) : m_v(_mm256_set1_epi64x((long long)v)) {}
     FORCE_INLINE SimdRegister(uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3)
     {
         __m128i tmp = _mm_setr_epi32(v0, v1, v2, v3);
@@ -559,6 +593,16 @@ struct SimdRegister<256, ISA::AVX2, void> : VirtualRegBase<256, ISA::AVX2>
     //friend FORCE_INLINE XV operator>(const XV& a, const XV& b) { return _mm256_cmpgt_epi32(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return _mm256_slli_epi32(a.m_v, n); }
     friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm256_srli_epi32(a.m_v, n); }
+    friend FORCE_INLINE XV shl64(const XV& a, int n) { return _mm256_slli_epi64(a.m_v, n); }
+    friend FORCE_INLINE XV shr64(const XV& a, int n) { return _mm256_srli_epi64(a.m_v, n); }
+
+    FORCE_INLINE XV xorIfOddCst64(const XV& cond, const XV& cst) const
+    {
+        __m256i lowestBit = _mm256_slli_epi64(cond.m_v, 63);
+        __m256i hi   = _mm256_shuffle_epi32(lowestBit, 0xF5);
+        __m256i mask = _mm256_srai_epi32(hi, 31);
+        return _mm256_xor_si256(m_v, _mm256_and_si256(mask, cst.m_v));
+    }
 
     template <unsigned n32FromSecond>
     static FORCE_INLINE XV alignr32(const XV& a, const XV& b)
@@ -639,6 +683,7 @@ struct SimdRegister<512, ISA::AVX512, void> : VirtualRegBase<512, ISA::AVX512>
     SimdRegister() : m_v(_mm512_undefined_si512()) {}
     FORCE_INLINE SimdRegister(const void* p) : m_v(_mm512_load_si512((const __m512i*)p)) {}
     FORCE_INLINE SimdRegister(uint32_t v) : m_v(_mm512_set1_epi32(v)) {}
+    FORCE_INLINE SimdRegister(uint64_t v) : m_v(_mm512_set1_epi64((long long)v)) {}
     FORCE_INLINE SimdRegister(uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3) : m_v(_mm512_setr4_epi32(v0, v1, v2, v3)) {}
     FORCE_INLINE SimdRegister(__m512i v) : m_v(v) {}
 
@@ -652,6 +697,14 @@ struct SimdRegister<512, ISA::AVX512, void> : VirtualRegBase<512, ISA::AVX512>
     friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { return _mm512_or_si512(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return _mm512_slli_epi32(a.m_v, n); }
     friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm512_srli_epi32(a.m_v, n); }
+    friend FORCE_INLINE XV shl64(const XV& a, int n) { return _mm512_slli_epi64(a.m_v, n); }
+    friend FORCE_INLINE XV shr64(const XV& a, int n) { return _mm512_srli_epi64(a.m_v, n); }
+
+    FORCE_INLINE XV xorIfOddCst64(const XV& cond, const XV& cst) const
+    {
+        __mmask8 isOdd = _mm512_test_epi64_mask(cond.m_v, _mm512_set1_epi64(1LL));
+        return _mm512_mask_xor_epi64(m_v, isOdd, m_v, cst.m_v);
+    }
 
     template <unsigned n32FromSecond>
     static FORCE_INLINE XV alignr32(XV a, XV b)
