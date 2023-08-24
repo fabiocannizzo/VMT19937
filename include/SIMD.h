@@ -317,20 +317,20 @@ struct SimdRegister<128, 128>
     FORCE_INLINE bool eq(const XV& rhs) const { return _mm_test_all_ones(_mm_cmpeq_epi32(m_v, rhs.m_v)); }
 
     // combine: {x0, x1, x2, x3} -> {x4, x5, x6, x7} => {x1, x2, x3, x4}
-    template <unsigned nBytesFromSecond>
-    static FORCE_INLINE XV combine(const XV& a, const XV& b)
+    template <unsigned n32FromSecond>
+    static FORCE_INLINE XV alignr32(const XV& a, const XV& b)
     {
         // Use SSSE3/_mm_alignr_epi8 to concatenate (b | a) and extract starting at byte nBytesFromSecond
         // This drops the lowest nBytesFromSecond bytes from a and append the nBytesFromSecond bytes from b
         // For example, if nBytesFromSecond = 4
         // combine<4>: {x0, x1, x2, x3} -> {x4, x5, x6, x7} => {x1, x2, x3, x4}
-        static_assert(nBytesFromSecond <= 16);
-        if constexpr (nBytesFromSecond == 0)
+        static_assert(n32FromSecond <= 4, "n32FromSecond must be <=4 with SSE");
+        if constexpr (n32FromSecond == 0)
             return a;
-        else if constexpr (nBytesFromSecond == 16)
+        else if constexpr (n32FromSecond == 4)
             return b;
         else
-            return _mm_alignr_epi8(b.m_v, a.m_v, nBytesFromSecond);
+            return _mm_alignr_epi8(b.m_v, a.m_v, 4*n32FromSecond);
     }
 
     template <int n>
@@ -395,29 +395,29 @@ struct SimdRegister<256, 256>
     friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return _mm256_slli_epi32(a.m_v, n); }
     friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm256_srli_epi32(a.m_v, n); }
 
-    template <unsigned nBytesFromSecond>
-    static FORCE_INLINE XV combine(const XV& a, const XV& b)
+    template <unsigned n32FromSecond>
+    static FORCE_INLINE XV alignr32(const XV& a, const XV& b)
     {
-        static_assert(nBytesFromSecond <= 32, "nBytesFromSecond must be <= 32 for AVX2");
+        static_assert(nBytesFromSecond <= 8, "n32FromSecond must be <= 8 for AVX2");
 
         if constexpr (nBytesFromSecond == 0)
             return a;
-        else if constexpr (nBytesFromSecond == 32)
+        else if constexpr (nBytesFromSecond == 8)
             return b;
         else {
             // Combine the high 128 bits of v0 with the low 128 bits of v1.
             __m256i aHibLo = _mm256_permute2x128_si256(a.m_v, b.m_v, 0x21);
 
-            if constexpr (nBytesFromSecond < 16) {
+            if constexpr (nBytesFromSecond < 4) {
                 // Align: take bytes from v0 and then from combined.
-                return _mm256_alignr_epi8(aHibLo, a.m_vv, nBytesFromSecond);
+                return _mm256_alignr_epi8(aHibLo, a.m_vv, 4*n32FromSecond);
             }
-            else if constexpr (nBytesFromSecond == 16) {
+            else if constexpr (nBytesFromSecond == 4) {
                 return aHibLo;
             }
             else {
                 // Need (nBytesFromSecond - 16) bytes into the concatenation (b || aHibLo)
-                return _mm256_alignr_epi8(b.m_v, aHibLo, nBytesFromSecond - 16);
+                return _mm256_alignr_epi8(b.m_v, aHibLo, 4*n32FromSecond - 16);
             }
         }
     }
@@ -481,32 +481,18 @@ struct SimdRegister<512, 512>
     friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return _mm512_slli_epi32(a.m_v, n); }
     friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm512_srli_epi32(a.m_v, n); }
 
-    template <unsigned nBytesFromSecond>
-    static FORCE_INLINE XV combine(XV a, XV b)
+    template <unsigned n32FromSecond>
+    static FORCE_INLINE XV alignr32(XV a, XV b)
     {
-        static_assert(nBytesFromSecond <= 64, "nBytesFromSecond must be <= 64 for AVX512");
+        static_assert(n32FromSecond <= 16, "nBytesFromSecond must be <= 16 for AVX512");
 
-        if constexpr (nBytesFromSecond == 0)
+        if constexpr (n32FromSecond == 0)
             return a;
-        if constexpr (nBytesFromSecond == 64)
+        if constexpr (n32FromSecond == 16)
             return b;
         else {
             // Combine the high 256 bits of 'a' with the low 256 bits of 'b'
-            // imm8 = 0x21 => result = [a[1], b[0]]
-            __m512i aHibLo = _mm512_shuffle_i64x2(a.m_v, b.m_v, 0x21);
-
-            if constexpr (nBytesFromSecond < 32) {
-                // Cross within a
-                return _mm512_alignr_epi8(aHibLo, a.m_v, nBytesFromSecond);
-            }
-            else if constexpr (nBytesFromSecond == 32) {
-                // Exactly one 256-bit lane shift
-                return aHibLo;
-            }
-            else {
-                // Cross into b
-                return _mm512_alignr_epi8(b.m_v, aHibLo, nBytesFromSecond - 32);
-            }
+            return _mm512_alignr_epi32(b.m_v, a.m_v, n32FromSecond);
         }
     }
 

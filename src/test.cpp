@@ -394,23 +394,26 @@ void printReg(std::string&& name, T v)
     std::cout << '\n';
 }
 
-template <size_t I, typename T>
-void combineAndPrint(T a, T b)
+template <size_t n32, typename T>
+void testAlignR32(const unsigned char *data, T a, T b)
 {
-    auto c = T::combine<I>(a, b);
-    printReg(std::to_string(I), c);
+    auto c = T::alignr32<n32>(a, b);
+    const unsigned char* got = (const unsigned char*)  &c;
+    printReg(std::to_string(n32), c);
+    for (size_t i = 0; i < sizeof(T); ++i) {
+        size_t srcIndex = i + n32 * 4;
+        unsigned char expected = data[srcIndex];
+        MYASSERT(got[i] == expected, "error in alignR32<" << n32 << ">: got[" << i << "]=" << (int)got[i] << ", expected=" << (int)expected);
+    }
 }
 
-template <typename T, size_t...Is>
-void combineAndPrint(T a, T b, std::index_sequence<Is...>&&)
+template <size_t...n32s>
+void testSimdAlignR32(std::index_sequence<n32s...>&&)
 {
-    (combineAndPrint<Is>(a, b), ...);
-}
-
-template <typename T>
-void testSimdCombine()
-{
-    std::cout << "\nTest SimdRegister<" << T::s_nRegBits << ", " << T::s_nBitsHw << ">::combine\n";
+    constexpr size_t n32 = (sizeof...(n32s) - 1);
+    constexpr size_t nBits = n32 * 32;
+    using T = Details::SimdRegister<nBits, nBits>;
+    std::cout << "\nTest SimdRegister<" << nBits << ", " << nBits << ">::alignr32\n";
     alignas(64) unsigned char data[128];
     std::iota(data, data + 128, 0);
 
@@ -420,18 +423,18 @@ void testSimdCombine()
     printReg("v0", v0);
     printReg("v1", v1);
 
-    combineAndPrint(v0, v1, std::make_index_sequence<sizeof(T)+1>{});
+    (testAlignR32<n32s>(data, v0, v1), ...);
 }
 
 int main()
 {
     try {
-        testSimdCombine<Details::SimdRegister<128,128>>();
+        testSimdAlignR32(std::make_index_sequence<128 / 32 + 1>{});
 #if SIMD_N_BITS>=256
-        testSimdCombine<Details::SimdRegister<256, 256>>();
+        testSimdAlignR32(std::make_index_sequence<256 / 32 + 1>{});
 #endif
 #if SIMD_N_BITS>=512
-        testSimdCombine<Details::SimdRegister<512, 512>>();
+        testSimdAlignR32(std::make_index_sequence<512 / 32 + 1>{});
 #endif
         testEncoding();
         testSquareMatrix();
