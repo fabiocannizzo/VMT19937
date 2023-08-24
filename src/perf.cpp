@@ -325,17 +325,16 @@ void vRandGenPerformance5(size_t blkSize)
 
     auto start = std::chrono::system_clock::now();
 
-    for (size_t i = 0, n = g_nRandom / blkSize; i < n; ++i)
+    for (size_t i = 0, n = g_nRandom / blkSize; i < n; ++i) {
         if constexpr (Gen::s_queryMode == QM_Scalar)
             aligneddst[0] = mt.genrand_uint32();
         else if constexpr (Gen::s_queryMode == QM_Block16)
             mt.genrand_uint32_blk16(aligneddst.data());
-        else if constexpr (Gen::s_queryMode == QM_StateSize)
-            mt.genrand_uint32_stateBlk(aligneddst.data());
         else if constexpr (Gen::s_queryMode == QM_Any)
             mt.genrand_uint32_anySize(aligneddst.data(), blkSize);
         else
             NOT_IMPLEMENTED;
+    }
 
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
@@ -355,7 +354,6 @@ void vRandGenPerformance4()
         case QM_Scalar: blkSize = 1; break;
         case QM_Block16: blkSize = 16; break;
         case QM_Any: blkSize = 0; break;
-        case QM_StateSize: blkSize = Gen::s_n32InFullState; break;
         default: THROW("how did we get here?");
     }
     bool fst = true;
@@ -391,7 +389,7 @@ void vRandGenPerformance2()
 template <GenMode Mode, size_t L, size_t...Is>
 void vRandGenPerformance1()
 {
-    (vRandGenPerformance2<Mode, L, Is, QM_Scalar, QM_Block16, QM_StateSize, QM_Any>(), ...);
+    (vRandGenPerformance2<Mode, L, Is, QM_Scalar, QM_Block16, QM_Any>(), ...);
 }
 
 template <GenMode Mode, size_t...Ls>

@@ -8,12 +8,47 @@
 
 namespace Details {
 
+
+template <size_t N32>
+struct RndCache
+{
+    static constexpr bool s_enabled = true;
+
+    RndCache() { setEnd(); }
+
+    void setEnd() { m_cur = m_rnd + N32; }
+    void setBegin() { m_cur = begin(); }
+    void setAt(size_t pos) { m_cur = begin() + pos; }
+
+    uint32_t *begin() { return m_rnd; }
+    uint32_t* current() { return m_cur; }
+    const uint32_t* end() const { return m_rnd + N32; }
+    uint32_t operator*() const { return *m_cur; }
+    uint32_t& operator*() { return *m_cur; }
+    RndCache& operator+=(size_t n) { m_cur += n; return *this; }
+    RndCache& operator++() { ++m_cur; return *this; }
+    RndCache operator++(int) { RndCache tmp = *this; ++m_cur; return tmp; }
+    uint32_t operator[](size_t i) const { return m_rnd[i]; }
+
+    bool isAtEnd() const { return m_cur == end(); }
+    size_t nAvailable() const { return std::distance<const uint32_t*>(m_cur, end()); }
+
+    alignas(64) uint32_t m_rnd[N32]; // buffer of tempered numbers
+    uint32_t* m_cur;
+};
+
+template <>
+struct RndCache<0>
+{
+    void setEnd() {}
+};
+
 // Example: RegisterBitLen=512, RegisterBitLenHw=128
 // Supports the scenario where (RegisterBitLen > RegisterBitLenHw) to make the code more portable:
 // We can choose to choose a generator with a large RegisterBitLen (e.g., 512) to maximize the number of states,
 // however we may dispatch differently depending on the harware available (e.g., use 128-bit SIMD on older hardware,
 // 256-bit SIMD on newer hardware, etc.)
-template <size_t RegisterBitLen, size_t RegisterBitLenHw, bool MonoState>
+template <size_t RegisterBitLen, size_t RegisterBitLenHw, bool MonoState, bool QryBlk16>
 class MT19937Base : public MT19937Params
 {
     static_assert(RegisterBitLen >= s_wordSizeBits);
@@ -32,15 +67,14 @@ private:
     static constexpr size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
 
     static constexpr uint32_t s_cacheLineBytes = 64;
+    static_assert(s_cacheLineBytes * 8 >= RegisterBitLen, "Assume that the register size is <= than the cache line");
     static constexpr uint32_t s_n32InBlock = s_cacheLineBytes / sizeof(uint32_t); // 16
     static_assert(s_n32InFullState % s_n32InBlock == 0, "full state size not divisible by cache size");
 
     using XV = SimdRegister<s_regLenBits, RegisterBitLenHw>;
 
-private:
     // This data members is necessary only if QueryMode==QM_Scalar
-    alignas(64) uint32_t m_rnd[s_n32InBlock]; // buffer of tempered numbers
-    const uint32_t* m_prnd, * const m_prndEnd;
+    [[no_unique_address]] RndCache<QryBlk16 ? 0 : s_n32InBlock> m_rndCache; // buffer of tempered numbers
 
     // This data members are redundant if QueryMode==QM_StateSize
     const uint32_t*m_pst, * const m_pstEnd;    // m_pos==m_pstEnd means the state vector has been consumed and need to be regenerated
@@ -78,30 +112,21 @@ private:
     }
 
     template <bool Aligned>
-    static FORCE_INLINE void temperRefillBlock_(const uint32_t * __restrict st, uint32_t * __restrict dst)
+    FORCE_INLINE void temperBlock(uint32_t* dst)
     {
-        constexpr size_t LR = std::min<size_t>(s_regLenBitsHw * 4, s_n32InBlock * 32);
-        using XVmax = SimdRegister<LR, s_regLenBitsHw>;
-        constexpr size_t n32PerIteration = LR / 32;
-        static_assert(n32PerIteration <= s_n32InBlock);
-        static_assert(s_n32InBlock % n32PerIteration == 0);
-        constexpr size_t nIterations = s_n32InBlock / n32PerIteration;
+        static_assert(s_n32InBlock == 16);
 
-        const TemperCst<XVmax> cst{};
+        // a virtual register having the same size as a cache line
+        // this may be larger than what available in hardware
+        // it is implemented iteratin on the available hardware registers
+        using XVline = SimdRegister<s_n32InBlock * 32, s_regLenBitsHw>;
 
-        for (size_t i = 0; i < nIterations; ++i) {
-            XVmax tmp = temper(XVmax(st), cst);
-            tmp.template store<Aligned>(dst);
-            dst += n32PerIteration;
-            st += n32PerIteration;
-        }
-    }
+        const TemperCst<XVline> cst{};
 
-    template <bool Aligned>
-    static FORCE_INLINE void temperRefillBlock(const uint32_t*& st_, uint32_t* dst)
-    {
-        temperRefillBlock_<Aligned>(st_, dst);
-        st_ += s_n32InBlock;
+        XVline tmp = temper(XVline(m_pst), cst);
+        tmp.template store<Aligned>(dst);
+
+        m_pst += s_n32InBlock;
     }
 
     static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, const RefillCst& masks)
@@ -209,29 +234,9 @@ private:
             monoStateIteration<0, 1 - N, M - N>(stCur, x0, XMlo, masks);
         }
 
-        m_pst = begin();
+        m_pst = m_state;
+        m_rndCache.setEnd();
     }
-
-    const uint32_t* begin() const
-    {
-        return m_state;
-    }
-
-    const uint32_t* end() const
-    {
-        return m_pstEnd;
-    }
-
-    const uint32_t* beginRnd() const
-    {
-        return m_rnd;
-    }
-
-    const uint32_t* endRnd() const
-    {
-        return m_prndEnd;
-    }
-
 
     uint32_t& scalarState(uint32_t scalarIndex)
     {
@@ -250,13 +255,14 @@ private:
         uint32_t prev = scalarState(0) = s;
         for (uint32_t i = 1; i < s_N; i++)
             prev = scalarState(i) = (mask * (prev ^ (prev >> 30)) + i);
+        reinitPointers();
     }
 
 protected:
     void reinitPointers()
     {
         m_pst = m_pstEnd;
-        m_prnd = (const uint32_t*)(((uint8_t*)m_rnd) + sizeof(m_rnd));
+        m_rndCache.setEnd();
     }
 
     // extract one of the interleaved state vectors, shift it left by 31 bits and save it to dst
@@ -320,111 +326,62 @@ protected:
     }
 
     // generates a random number on [0,0xffffffff] interval
+    template <bool B = !QryBlk16, std::enable_if_t<B == !QryBlk16, int> = 0>
     FORCE_INLINE uint32_t genrand_uint32()
     {
-        if (m_prnd != endRnd())
-            return *m_prnd++;
+        static_assert(!QryBlk16);
+
+        if (!m_rndCache.isAtEnd())
+            return *m_rndCache++;
 
         if (m_pst == m_pstEnd) VM19937_UNLIKELY
             refill();
 
-        temperRefillBlock<true>(m_pst, m_rnd);
-        m_prnd = beginRnd() + 1;
+        temperBlock<true>(m_rndCache.begin());
+        m_rndCache.setBegin();
 
-        return m_rnd[0];
+        return *m_rndCache++;
     }
 
+private:
+    FORCE_INLINE void __genrand_uint32_blk16(uint32_t* dst)
+    {
+        if (m_pst == m_pstEnd) VM19937_UNLIKELY
+            refill();
+        temperBlock<false>(dst);
+    }
+
+protected:
     // generates 16 uniform discrete random numbers in [0,0xffffffff] interval
     // for optimal performance the vector dst should be aligned on a 64 byte boundary
-    FORCE_INLINE void genrand_uint32_blk16(uint32_t* dst)
+    template <bool B = QryBlk16, std::enable_if_t<B == QryBlk16, int> = 0>
+    void genrand_uint32_blk16(uint32_t* dst)
     {
-        if (m_pst == m_pstEnd) VM19937_UNLIKELY
-            refill();
-        temperRefillBlock<false>(m_pst, dst);
+        static_assert(QryBlk16);
+        __genrand_uint32_blk16(dst);
     }
 
-    // generates a block of the same size as the state vector of uniform discrete random numbers in [0,0xffffffff] interval
-    // for optimal performance the vector dst should be aligned on a 64 byte boundary
-    void genrand_uint32_stateBlk(uint32_t* dst)
-    {
-        refill();
-        const uint32_t* pst = m_state;
-        for (size_t i = 0; i < s_n32InFullState / s_n32InBlock; ++i, dst += s_n32InBlock)
-            temperRefillBlock<false>(pst, dst);
-    }
-
+    template <bool B = !QryBlk16, std::enable_if_t<B == !QryBlk16, int> = 0>
     void genrand_uint32_anySize(uint32_t* dst, size_t n)
     {
-        if (size_t nAvailInRnd = std::distance<const uint32_t*>(m_prnd, endRnd()); nAvailInRnd < n) {
-            std::copy_n(m_prnd, nAvailInRnd, dst);
-            n -= nAvailInRnd;
-            dst += nAvailInRnd;
-        }
-        else {
-            std::copy_n(m_prnd, n, dst);
-            m_prnd += n;
-            return;
-        }
+        static_assert(!QryBlk16);
 
-        // we are now aligned with rnd block
-        if (size_t nAvailInState = std::distance(m_pst, end()); nAvailInState < n) {
-            if (nAvailInState) {
-                n -= nAvailInState;
-                do {
-                    temperRefillBlock<false>(m_pst, dst);
-                    dst += s_n32InBlock;
-                    nAvailInState -= s_n32InBlock;
-                } while (nAvailInState);
-            }
-        }
-        else {
-            size_t nFullRndBlocks = n / s_n32InBlock;
-            for (size_t i = 0; i < nFullRndBlocks; ++i) {
-                temperRefillBlock<false>(m_pst, dst);
-                dst += s_n32InBlock;
-            }
-            n = n % s_n32InBlock;
-            if (n) {
-                temperRefillBlock<true>(m_pst, m_rnd);
-                std::copy_n(m_rnd, n, dst);
-                m_prnd = m_rnd + n;
-            }
-            else {
-                m_prnd = endRnd();
-            }
-            return;
-        }
+        size_t fromCache = std::min(n, m_rndCache.nAvailable());
+        std::copy_n(m_rndCache.current(), fromCache, dst);
+        dst += fromCache;
+        m_rndCache += fromCache;
+        n -= fromCache;
 
-        // we are now aligned with the state vector
-
-        size_t nFullStates = n / s_n32InFullState;
-        while (nFullStates--) {
-            genrand_uint32_stateBlk(dst);
-            dst += s_n32InFullState;
-            n -= s_n32InFullState;
+        while (n >= 16) {
+            __genrand_uint32_blk16(dst);
+            dst += 16;
+            n -= 16;
         }
-        m_pst = end();
 
         if (n > 0) {
-            refill();
-
-            while (n > s_n32InBlock) {
-                temperRefillBlock<false>(m_pst, dst);
-                n -= s_n32InBlock;
-                dst += s_n32InBlock;
-            }
-
-            if (n) {
-                temperRefillBlock<true>(m_pst, m_rnd);
-                std::copy_n(m_rnd, n, dst);
-                m_prnd = m_rnd + n;
-            }
-            else {
-                m_prnd = endRnd();
-            }
-        }
-        else {
-            m_prnd = endRnd();
+            __genrand_uint32_blk16(m_rndCache.begin());
+            std::copy_n(m_rndCache.begin(), n, dst);
+            m_rndCache.setAt(n);
         }
     }
 
@@ -432,9 +389,7 @@ public:
 
     // constructors
     MT19937Base()
-        : m_prnd(nullptr)
-        , m_prndEnd(m_rnd + s_n32InBlock)
-        , m_pst(nullptr)
+        : m_pst(nullptr)
         , m_pstEnd(m_state + s_N * s_n32inReg)
     {
     }

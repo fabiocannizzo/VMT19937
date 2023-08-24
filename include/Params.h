@@ -26,7 +26,7 @@ struct MT19937Params
 
 struct SFMT19937Params
 {
-    static constexpr size_t s_nBits = 19937;  // FIXME: confirm this value
+    static constexpr size_t s_nBits = 19937;
 
     static constexpr size_t s_wordSizeBits = 128;
     static constexpr int s_N = s_nBits / s_wordSizeBits + (s_nBits % s_wordSizeBits != 0);  // 156
@@ -43,3 +43,5 @@ struct SFMT19937Params
 };
 
 };
+
+enum VRandGenQueryMode { QM_Any, QM_Scalar, QM_Block16 };

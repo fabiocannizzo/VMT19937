@@ -215,7 +215,6 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
         case QM_Any: blkSize = 0; break;
         case QM_Scalar: blkSize = 1; break;
         case QM_Block16: blkSize = 16; break;
-        case QM_StateSize: blkSize = Gen::s_n32InFullState; break;
         default: THROW("how did we get here?");
     }
     const size_t s_nStates = Gen::s_nStates;
@@ -246,10 +245,6 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
                 *dst++ = mt->genrand_uint32();
             else if constexpr (QryMode == QM_Block16) {
                 mt->genrand_uint32_blk16(dst);
-                dst += blkSize;
-            }
-            else if constexpr (QryMode == QM_StateSize) {
-                mt->genrand_uint32_stateBlk(dst);
                 dst += blkSize;
             }
             else
@@ -336,7 +331,7 @@ void equivalenceTests2(const JumpMatrix<M>& commonJump, const JumpMatrix<M>& seq
 template <size_t L, size_t...Is, typename M>
 void equivalenceTests1(const JumpMatrix<M>& commonJump, const JumpMatrix<M>& seqJump)
 {
-    (equivalenceTests2<L, Is, QM_Scalar, QM_Block16, QM_StateSize, QM_Any>(commonJump, seqJump), ...);
+    (equivalenceTests2<L, Is, QM_Scalar, QM_Block16, QM_Any>(commonJump, seqJump), ...);
 }
 
 template <size_t...Ls, typename M>

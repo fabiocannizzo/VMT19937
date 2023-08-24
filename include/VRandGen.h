@@ -3,8 +3,6 @@
 #include "VMT19937.h"
 #include "VSFMT19937.h"
 
-enum VRandGenQueryMode { QM_Any, QM_Scalar, QM_Block16, QM_StateSize };
-
 namespace Details
 {
 
@@ -154,14 +152,6 @@ public:
 
     // generates a block of the same size as the state vector of uniform discrete random numbers in [0,0xffffffff] interval
     // for optimal performance the vector dst should be aligned on a 64 byte boundary
-    FORCE_INLINE void genrand_uint32_stateBlk(uint32_t* dst)
-    {
-        static_assert(QueryMode == QM_StateSize, "This function can only be invoked when query mode is QM_StateSize");
-        base_t::genrand_uint32_stateBlk(dst);
-    }
-
-    // generates a block of the same size as the state vector of uniform discrete random numbers in [0,0xffffffff] interval
-    // for optimal performance the vector dst should be aligned on a 64 byte boundary
     FORCE_INLINE void genrand_uint32_anySize(uint32_t* dst, size_t n)
     {
         static_assert(QueryMode == QM_Any, "This function can only be invoked when query mode is QM_Any");
@@ -175,9 +165,9 @@ template < size_t RegisterBitLen = SIMD_N_BITS
          , VRandGenQueryMode QueryMode = QM_Any
          , size_t RegisterBitLenHw = std::min<size_t>(SIMD_N_BITS, RegisterBitLen)
          >
-struct VMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, false>, QueryMode>
+struct VMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, false, QueryMode == QM_Block16>, QueryMode>
 {
-    using base_t = Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, false>, QueryMode>;
+    using base_t = Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, false, QueryMode == QM_Block16>, QueryMode>;
     using base_t::VRandGen; // reuse constructors
 };
 
@@ -185,9 +175,9 @@ template < size_t RegisterBitLen = SIMD_N_BITS
          , VRandGenQueryMode QueryMode = QM_Any
          , size_t RegisterBitLenHw = std::min<size_t>(SIMD_N_BITS, RegisterBitLen)
          >
-struct XMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, true>, QueryMode>
+struct XMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, true, QueryMode == QM_Block16>, QueryMode>
 {
-    using base_t = Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, true>, QueryMode>;
+    using base_t = Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, true, QueryMode == QM_Block16>, QueryMode>;
     using base_t::VRandGen; // reuse constructors
 };
 
