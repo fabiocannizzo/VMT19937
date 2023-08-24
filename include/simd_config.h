@@ -34,6 +34,23 @@ template <> struct BitLenToIsa<128> {
 template <> struct BitLenToIsa<256> { static constexpr ISA isa = ISA::AVX2; };
 template <> struct BitLenToIsa<512> { static constexpr ISA isa = ISA::AVX512; };
 
+namespace Details {
+    template <size_t Bits>
+    struct BestIsa {
+#if defined(__AVX512F__)
+        static constexpr ISA isa = (Bits >= 512) ? ISA::AVX512 : (Bits >= 256 ? ISA::AVX2 : ISA::SSE42);
+#elif defined(__AVX2__)
+        static constexpr ISA isa = (Bits >= 256) ? ISA::AVX2 : ISA::SSE42;
+#elif defined(__SSE4_2__)
+        static constexpr ISA isa = ISA::SSE42;
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__)
+        static constexpr ISA isa = ISA::NEON;
+#else
+        static constexpr ISA isa = ISA::Scalar;
+#endif
+    };
+}
+
 #if defined(_MSC_VER) && (_M_IX86_FP==2 || defined(_M_X64))
 #  define __SSE2__
 #  define __SSE4_1__

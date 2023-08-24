@@ -162,7 +162,7 @@ public:
 
 template < size_t RegisterBitLen = SIMD_N_BITS
          , bool QryBlk16 = false
-         , ISA RegisterIsa = (RegisterBitLen == 32 ? ISA::Scalar : SIMD_ISA)
+         , ISA RegisterIsa = Details::BestIsa<RegisterBitLen>::isa
          >
 struct VMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterIsa, false, QryBlk16>, QryBlk16>
 {
@@ -172,7 +172,7 @@ struct VMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, Registe
 
 template < size_t RegisterBitLen = SIMD_N_BITS
          , bool QryBlk16 = false
-         , ISA RegisterIsa = (RegisterBitLen == 32 ? ISA::Scalar : SIMD_ISA)
+         , ISA RegisterIsa = Details::BestIsa<RegisterBitLen>::isa
          >
 struct XMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterIsa, true, QryBlk16>, QryBlk16>
 {
@@ -182,7 +182,7 @@ struct XMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, Registe
 
 template < size_t RegisterBitLen = SIMD_N_BITS
          , bool QryBlk16 = false
-         , ISA RegisterIsa = (RegisterBitLen == 32 ? ISA::Scalar : SIMD_ISA)
+         , ISA RegisterIsa = Details::BestIsa<RegisterBitLen>::isa
          >
 struct VSFMT19937 : Details::VRandGen<Details::VSFMT19937Base<RegisterBitLen, RegisterIsa>, QryBlk16>
 {
