@@ -1,31 +1,55 @@
-Define static constant with the number of Bits in the jump matrix
-Review static const definitions and names
-Add comments for static constants definitions
-Add namespaces
-Add performnace tests for generators implemented with smaller registers
-Support Neon architecture
-Review file name: VMT19937 (also contains XMT19937)
-?MT19937: review static definitions and template arguments, e.g. s_n32InReg
-?MT19937: review static definitions and template arguments, what is the meaning of using as HWLen 32? Can it be extended to XMT?
+Should we extend the use of static constants also to the other constanst? Need to test performance.
+Test also with mingw-g++ to compare againts MKL.
+Run test in slow mode
+Support Neon architecture (we can test on a Raspberri Pi)
+Wrap classes in a namespace xvmt
+
+Review static const definitions and names:
+ - Add comments for static constants definitions
+ - ?MT19937: review static definitions and template arguments, e.g. s_n32InReg. Do names make sense? Are tehy all used?
+ - ?MT19937: review static definitions and template arguments, what is the meaning of using as HWLen 32? Can it be extended to XMT?
+ - rename repo?
+
+Define static constant with the number of Bits s_nBits in the jump matrix
+Review project file name: VMT19937 (change to XV-MT19937 (the prject also also contains XMT19937)
 review SFMT19937 matrix parameters
-matrices: review serialization (add metadata about geometry)
-Review README page
-Introduce dynamic dispatching
-Rename repo?
-Makefile add support for MSVC compiler: add cmake support ?
-Add GitHub actions for CI
+matrices: review serialization (add metadata about geometry). Load existing matrices and save them in the new format, commit--amend them to the umpfiles branch.
+
+Results
+- Generate results and save results in the log folder. For each set of results we save CPU features, OS, Compiler.
+- We will run on multiple confirguration to store multiple set of results
+- We run with the --slow option while the machine is not doing anythign else
+
 Review paper
+ - general readibilty and clarity
+ - show results in compact form and describe results.
+ - add proper conclusions
+ - any additional reference?
+
+Review README page
+
 Remove jump matrix argument from XMT constructors
-Encapsulate in generators code which used generator constants
-Add support for Intel AVX-10 architecture
+
+Encapsulate as methods generators classes code which used generator constants?
+
+Introduce dynamic dispatching?
+
+Add support for Intel AVX-10 architecture.
+
 Use SIMD-ISA ISA codes as a template argument in register classes
+
 Should we remove QryBlk16 ? Does it add value?
-Check if per test throughput are computed correctly (try with slow)
-Test impact of saving to files using DMA (e.g. __mm_stream_si128)
-Add test for non-trivial SIMD functions
+
+Check if per test throughput are computed correctly (try with slow). E.g. if we are doing the same number of repetatiions in the various cases for a faitr comparison.
+
+There are some non-trivial SIMD methods. Add tests for them.
+
 Simplify exposed templates
-Generate all jump matrices up to 2^64 for common jumps
+
 Add more examples in Demo
+
+Let's cosndier if to generate all jump matrices up to 2^64 for common jumps?
+
 
 
 
