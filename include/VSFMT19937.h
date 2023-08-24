@@ -14,16 +14,15 @@ class VSFMT19937Base
     static const size_t s_nBits = 19937;
     static const size_t s_wordSizeBits = 128;
 
-    static const int s_N = s_nBits / s_wordSizeBits + (s_nBits % s_wordSizeBits != 0);     // 156
-    static_assert(s_N == 156);
-    static const int s_M = 122;
-    static const size_t s_n32inReg = RegisterBitLen / 32;
-
     static_assert(RegisterBitLen >= s_wordSizeBits);
 
 public:
+    static const int s_N = s_nBits / s_wordSizeBits + (s_nBits % s_wordSizeBits != 0);     // 156
+    static_assert(s_N == 156);
+
     static const size_t s_regLenBits = RegisterBitLen;
     static const size_t s_nStates = RegisterBitLen / s_wordSizeBits;
+    static const size_t s_n32inReg = RegisterBitLen / 32;
     static const size_t s_n32InOneWord = s_wordSizeBits / 32;            // 4
     static const size_t s_n32InOneState = s_N * s_n32InOneWord;          // 624
     const static size_t s_n32InFullState = s_n32InOneState * s_nStates;  // 624 * nStates
@@ -34,12 +33,14 @@ public:
 private:
     const static size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
 
+    static const int s_M = 122;
+
     typedef SimdRegister<s_regLenBits> XV;
 
-    // Period parameters
-
+protected:
     alignas(64) uint32_t m_state[s_n32InFullState];    // the array of state vectors
 
+private:
     // This data members is necessary only if QueryMode!=QM_StateSize
     const uint32_t* m_prnd;
 
@@ -152,19 +153,6 @@ private:
         return w128RelIndex * s_n32inReg + s_n32InOneWord * stateIndex + w128RelOffset;
     }
 
-    // extract one of the interleaved state vectors and save it to dst
-    void stateToVector(size_t stateIndex, uint32_t* pdst) const
-    {
-        cubeToMatrix<s_nStates, s_n32InOneWord, uint32_t>(pdst, m_state, s_N, stateIndex);
-    }
-
-    // store vector into the interleaved elements of the state vector
-    void vectorToState(size_t stateIndex, const uint32_t* psrc)
-    {
-        matrixToCube<s_nStates, s_n32InOneWord, uint32_t>(m_state, psrc, s_N, stateIndex);
-    }
-
-
     // This function ensures the period of 2^{MEXP}
     void ensure_period()
     {
@@ -203,20 +191,6 @@ private:
         }
     }
 
-    // Initializes the internal state array with a 32-bit integer seed.
-    void init(uint32_t seed)
-    {
-        uint32_t* psfmt32 = begin();
-
-        psfmt32[0] = seed;
-        for (size_t i = 1; i < s_n32InOneState; i++) {
-            psfmt32[w32AbsIndex(i)] = 1812433253UL * (psfmt32[w32AbsIndex(i - 1)]
-                ^ (psfmt32[w32AbsIndex(i - 1)] >> 30))
-                + i;
-        }
-        ensure_period();
-    }
-
     // convenience used in the initialization
     static uint32_t func1(uint32_t x)
     {
@@ -229,8 +203,42 @@ private:
         return (x ^ (x >> 27)) * (uint32_t)1566083941UL;
     }
 
+    void getBlock16(uint32_t* dst)
+    {
+        std::copy(m_prnd, m_prnd + 16, dst);
+        m_prnd += 16;
+    }
+
+protected:
+
+    // extract one of the interleaved state vectors and save it to dst
+    void stateToVector(size_t stateIndex, uint32_t* pdst) const
+    {
+        cubeToMatrix<s_nStates, s_n32InOneWord, uint32_t>(pdst, m_state, s_N, stateIndex);
+    }
+
+    // store vector into the interleaved elements of the state vector
+    void vectorToState(size_t stateIndex, const uint32_t* psrc)
+    {
+        matrixToCube<s_nStates, s_n32InOneWord, uint32_t>(m_state, psrc, s_N, stateIndex);
+    }
+
+    // Initializes the internal state array with a 32-bit integer seed.
+    void reinitMainState(uint32_t seed)
+    {
+        uint32_t* psfmt32 = begin();
+
+        psfmt32[0] = seed;
+        for (size_t i = 1; i < s_n32InOneState; i++) {
+            psfmt32[w32AbsIndex(i)] = 1812433253UL * (psfmt32[w32AbsIndex(i - 1)]
+                ^ (psfmt32[w32AbsIndex(i - 1)] >> 30))
+                + i;
+        }
+        ensure_period();
+    }
+
     // Initializes the internal state array, with an array of 32-bit integers used as the seeds
-    void init(const uint32_t* init_key, uint32_t key_length)
+    void reinitMainState(const uint32_t* init_key, uint32_t key_length)
     {
         uint32_t i, j;
         uint32_t* psfmt32 = m_state;
@@ -277,69 +285,11 @@ private:
         ensure_period();
     }
 
-
-    void fillOtherStates(size_t nCommonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
+    void reinitPointers()
     {
-        //uint32_t* pstate = begin();
-
-        // temporary workspace matrix
-        BinaryMatrix<2, s_nMatrixBits> tmp;
-
-        if (nCommonJumpRepeat) {
-            MYASSERT(commonJump, "commonJump is required when nCommonJumpRepeat>0");
-
-            // extract state 0
-            stateToVector(0, (uint32_t*)tmp.rowBegin(0));
-
-            for (size_t i = 0; i < nCommonJumpRepeat; ++i)
-                commonJump->multiplyByColumn(tmp.rowBegin((i + 1) % 2), tmp.rowBegin(i % 2));
-
-            // copy to the state vector shifting all bits to the right by 31
-            vectorToState(0, (const uint32_t*)tmp.rowBegin(nCommonJumpRepeat % 2));
-        }
-
-        if constexpr (s_nStates > 1) {
-            if (sequentialJump) {
-                // perform jump ahead of the s_regLenWords states
-                // State_0 = State_0
-                // State_1 = Jump x State_0
-                // State_2 = Jump x State_1
-                // ...
-
-                // copy state 0 to the first row
-                stateToVector(0, (uint32_t*)tmp.rowBegin(0));
-
-                for (size_t s = 1; s < s_nStates; ++s) {
-                    // multiply all rows by state s and store the result in pres
-
-                    const uint8_t* psrc = (uint8_t*)tmp.rowBegin((s + 1) % 2);
-                    uint8_t* pdst = (uint8_t*)tmp.rowBegin(s % 2);
-
-                    sequentialJump->multiplyByColumn(pdst, psrc);
-
-                    // copy to the state vector s
-                    vectorToState(s, (const uint32_t*)pdst);
-                }
-            }
-            else {
-                for (size_t w = 0; w < s_N; ++w)
-                    for (size_t j = 0; j < s_n32InOneWord; ++j)
-                        for (size_t s = 1; s < s_nStates; ++s)
-                            m_state[w * s_n32inReg + s * s_n32InOneWord + j] = m_state[w * s_n32inReg + j];
-            }
-        }
-
         m_prnd = end();
     }
 
-
-    void getBlock16(uint32_t* dst)
-    {
-        std::copy(m_prnd, m_prnd + 16, dst);
-        m_prnd += 16;
-    }
-
-protected:
     // generates a random number on [0,0xffffffff] interval
     uint32_t FORCE_INLINE genrand_uint32()
     {
@@ -378,34 +328,6 @@ public:
     VSFMT19937Base()
         : m_prnd(nullptr)
     {}
-
-    VSFMT19937Base(uint32_t seed, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
-        : VSFMT19937Base()
-    {
-        reinit(seed, commonJumpRepeat, commonJump, sequentialJump);
-    }
-
-    VSFMT19937Base(const uint32_t seeds[], uint32_t n_seeds, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
-        : VSFMT19937Base()
-    {
-        reinit(seeds, n_seeds, commonJumpRepeat, commonJump, sequentialJump);
-    }
-
-    // initializes m_state[s_N] with a seed
-    void reinit(uint32_t s, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
-    {
-        init(s);
-        fillOtherStates(commonJumpRepeat, commonJump, sequentialJump);
-    }
-
-    // initialize by an array with array-length
-    // init_key is the array for initializing keys
-    // key_length is its length
-    void reinit(const uint32_t* seeds, uint32_t nSeeds, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
-    {
-        init(seeds, nSeeds);
-        fillOtherStates(commonJumpRepeat, commonJump, sequentialJump);
-    }
 
 }; // VSFMT19937Base
 

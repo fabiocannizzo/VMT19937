@@ -21,17 +21,18 @@ class VMT19937Base
 
     static_assert(RegisterBitLen >= s_wordSizeBits);
 
-    static const size_t s_n32inReg = RegisterBitLen / 32;
+public:
 
     static const int s_N = s_nBits / s_wordSizeBits + (s_nBits % s_wordSizeBits != 0);     // 624
     static_assert(s_N == 624);
 
-public:
     static const size_t s_regLenBits = RegisterBitLen;
     static const size_t s_nStates = RegisterBitLen / s_wordSizeBits;
+    static const size_t s_n32inReg = RegisterBitLen / 32;
     static const size_t s_n32InOneWord = s_wordSizeBits / 32;            // 4
     static const size_t s_n32InOneState = s_N * s_n32InOneWord;          // 624
     const static size_t s_n32InFullState = s_n32InOneState * s_nStates;  // 624 * nStates
+    const static size_t s_nMatrixBits = s_nBits;
 
     typedef MT19937Matrix matrix_t;
 
@@ -45,8 +46,10 @@ private:
 
     static const uint32_t s_rndBlockSize = 64 / sizeof(uint32_t); // exactly one cache line
 
+protected:
     alignas(64) uint32_t m_state[s_N * s_n32inReg];    // the array of state vectors
 
+private:
     // This data members is necessary only if QueryMode==QM_Scalar
     alignas(64) uint32_t m_rnd[s_rndBlockSize]; // buffer of tempered numbers with same size as a cache line
     const uint32_t* m_prnd;
@@ -194,8 +197,24 @@ private:
         return m_state[scalarIndex * s_regLenWords];
     }
 
+    // initializes the first state with a seed
+    void __reinit(uint32_t s)
+    {
+        const uint32_t mask = uint32_t(1812433253UL);
+        uint32_t prev = scalarState(0) = s;
+        for (uint32_t i = 1; i < s_N; i++)
+            prev = scalarState(i) = (mask * (prev ^ (prev >> 30)) + i);
+    }
+
+protected:
+    void reinitPointers()
+    {
+        m_pst = m_pst_end;
+        m_prnd = (const uint32_t*)(((uint8_t*)m_rnd) + sizeof(m_rnd));
+    }
+
     // extract one of the interleaved state vectors, shift it left by 31 bits and save it to dst
-    void stateToVector(size_t stateIndex, uint32_t *pdst) const
+    void stateToVector(size_t stateIndex, uint32_t* pdst) const
     {
         const uint32_t* pstate = m_state;
         pdst[0] = pstate[stateIndex] >> 31;
@@ -221,111 +240,22 @@ private:
         pstate[w * s_regLenWords + stateIndex] |= pw[w] << 31;
     }
 
-    void fillOtherStates(size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
-    {
-        uint32_t* pstate = m_state;
-
-        // temporary workspace matrix
-        BinaryMatrix<2, s_nBits> tmp;
-
-        if (commonJumpRepeat) {
-            MYASSERT(commonJump, "commonJump is required when commnJumpRepeat>0");
-
-            // copy state to the first row shifting all bits to the left by 31
-            stateToVector(0, (uint32_t*)tmp.rowBegin(0));
-
-            for (size_t i = 0; i < commonJumpRepeat; ++i)
-                commonJump->multiplyByColumn(tmp.rowBegin((i+1) % 2), tmp.rowBegin(i % 2));
-
-            // copy to the state vector shifting all bits to the right by 31
-            vectorToState(0, (const uint32_t*) tmp.rowBegin(commonJumpRepeat % 2));
-        }
-
-        if constexpr (s_regLenWords > 1) {
-            if (sequentialJump) {
-
-                // perform jump ahead of the s_regLenWords states
-                // State_0 = State_0
-                // State_1 = Jump x State_0
-                // State_2 = Jump x State_1
-                // ...
-
-                // copy state to the first row shifting all bits to the left by 31
-                stateToVector(0, (uint32_t*)tmp.rowBegin(0));
-
-                for (size_t s = 1; s < s_nStates; ++s) {
-                    // multiply all rows by state s and store the result in pres
-
-                    const uint8_t* psrc = (uint8_t*)tmp.rowBegin((s + 1) % 2);
-                    uint8_t* pdst = (uint8_t*)tmp.rowBegin(s % 2);
-
-                    sequentialJump->multiplyByColumn(pdst, psrc);
-
-                    // copy to the state vector shifting all bits to the right by 31
-                    vectorToState(s, (const uint32_t*)pdst);
-                }
-            }
-            else {
-#if (VRANDGEN_TESTING!=1)
-                THROW("Having multiple states and no sequential jump matrix does not make sense in normal use");
-#endif
-                for (size_t w = 0; w < s_N; ++w)
-                    for (size_t j = 1; j < s_regLenWords; ++j)
-                        pstate[w * s_regLenWords + j] = pstate[w * s_regLenWords];
-            }
-        }
-
-        m_pst = m_pst_end;
-        m_prnd = (const uint32_t *)(((uint8_t *) m_rnd) + sizeof(m_rnd));
-    }
-
-    // initializes the first state with a seed
-    void __reinit(uint32_t s)
-    {
-        const uint32_t mask = uint32_t(1812433253UL);
-        uint32_t prev = scalarState(0) = s;
-        for (uint32_t i = 1; i < s_N; i++)
-            prev = scalarState(i) = (mask * (prev ^ (prev >> 30)) + i);
-    }
-
-public:
-
-    // constructors
-    VMT19937Base()
-        : m_prnd(nullptr)
-        , m_pst(nullptr)
-        , m_pst_end(m_state + s_N * s_n32inReg)
-    {}
-
-    VMT19937Base(uint32_t seed, size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
-        : VMT19937Base()
-    {
-        reinit(seed, commonJumpRepeat, commonJump, sequentialJump);
-    }
-
-    VMT19937Base(const uint32_t *seeds, uint32_t nSeeds, size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
-        : VMT19937Base()
-    {
-        reinit(seeds, nSeeds, commonJumpRepeat, commonJump, sequentialJump);
-    }
-
     // initializes m_state[s_N] with a seed
-    void reinit(uint32_t s, size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
+    void reinitMainState(uint32_t s)
     {
         __reinit(s);
-        fillOtherStates(commonJumpRepeat, commonJump, sequentialJump);
     }
 
     // initialize by an array with array-length
     // init_key is the array for initializing keys
     // key_length is its length
-    void reinit(const uint32_t *seeds, uint32_t nSeeds, size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
+    void reinitMainState(const uint32_t* seeds, uint32_t nSeeds)
     {
         __reinit(uint32_t(19650218));
         uint32_t i = 1, j = 0;
         uint32_t k = (s_N > nSeeds ? s_N : nSeeds);
         for (; k; k--) {
-            scalarState(i) = (scalarState(i) ^ ((scalarState(i-1) ^ (scalarState(i-1) >> 30)) * uint32_t(1664525)))
+            scalarState(i) = (scalarState(i) ^ ((scalarState(i - 1) ^ (scalarState(i - 1) >> 30)) * uint32_t(1664525)))
                 + seeds[j] + j; // non linear
             //m_state[i] &= 0xffffffffUL; // for WORDSIZE > 32 machines
             i++; j++;
@@ -341,10 +271,7 @@ public:
         }
 
         scalarState(0) = uint32_t(0x80000000); // MSB is 1; assuring non-zero initial array
-
-        fillOtherStates(commonJumpRepeat, commonJump, sequentialJump);
     }
-
 
     // generates a random number on [0,0xffffffff] interval
     uint32_t FORCE_INLINE genrand_uint32()
@@ -383,6 +310,15 @@ public:
         for (size_t i = 0; i < s_n32InFullState / s_rndBlockSize; ++i, dst += s_rndBlockSize)
             temperRefillBlock<false>(pst, dst);
     }
+
+public:
+
+    // constructors
+    VMT19937Base()
+        : m_prnd(nullptr)
+        , m_pst(nullptr)
+        , m_pst_end(m_state + s_N * s_n32inReg)
+    {}
 };
 
 #if (VMT19937_STATIC_CONST==1)
