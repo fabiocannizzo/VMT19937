@@ -1,7 +1,7 @@
 # Examples:
 # - make NBITS=512  (default to 128)
 # - make TESTU01_DIR=/path/to/testu01/install (default to ../testu01/install)
-# - make MKLROOT=/path/to/mkl (default to /opt/intel/oneapi/mkl/latest/)
+# - make MKLROOT=/path/to/mkl (default to automatic discovery)
 
 ifndef NBITS
    $(info WARNING: NBITS not defined. Using default value: 128)
@@ -9,157 +9,207 @@ ifndef NBITS
 endif
 $(info NBITS: $(NBITS))
 
-ifndef MKLROOT
-   $(info WARNING: MKLROOT not defined: using default path.)
-   MKLROOT=/opt/intel/oneapi/mkl/latest/
+# Detect compiler
+ifeq ($(CXX),)
+    CXX := g++
+endif
+ifeq ($(CC),)
+    CC := gcc
+endif
+export CXX
+export CC
+
+# Check if we are using MSVC (cl.exe)
+IS_MSVC := $(findstring cl,$(CXX))
+ifeq ($(IS_MSVC),)
+    # Check if cl is available in path if CXX is just 'cl' or empty
+    ifeq ($(shell where cl.exe 2>NUL),)
+        IS_MSVC :=
+    else
+        IS_MSVC := 1
+        CXX := cl
+        CC := cl
+    endif
 endif
 
-# Check if the directory exists
-ifeq ($(wildcard $(MKLROOT)),)
-   # Code to run if the directory does NOT exist
-   $(info The MKL include directory was not found at $(MKLROOT). Disabling MKL.)
-   MKLROOT :=
+# --- Platform & Compiler Specific Flags ---
+ifeq ($(IS_MSVC),1)
+    $(info Compiler: MSVC)
+    COMMON_FLAGS := /O2 /MD /EHsc /Zi
+    CXX_ONLY_FLAGS := /std:c++20
+    C_FLAG := /c
+    I_FLAG := /I
+    D_FLAG := /D
+    OBJ_EXT := .obj
+    EXE_EXT := .exe
+    OUT_OBJ := /Fo:
+    OUT_EXE := /Fe:
+
+    ifeq ($(NBITS), 512)
+        SIMD := /arch:AVX512
+    else ifeq ($(NBITS), 256)
+        SIMD := /arch:AVX2
+    else ifeq ($(NBITS), 128)
+        SIMD :=
+    endif
+
+    # MKL Discovery for MSVC
+    ifndef MKLROOT
+        # Try to find mkl.h in INCLUDE path or common locations
+        MKL_H_FOUND := $(shell where mkl.h 2>NUL)
+        ifneq ($(MKL_H_FOUND),)
+            $(info MKL found in PATH/INCLUDE)
+            MKL_AVAIL := 1
+        else
+            # Try vcpkg default path if MKLROOT not set
+            VCPKG_MKL := <vcpkg-root>/installed/x64-windows
+            ifneq ("$(wildcard $(VCPKG_MKL)/include/mkl.h)","")
+                MKLROOT := $(VCPKG_MKL)
+                MKL_AVAIL := 1
+            endif
+        endif
+    endif
+
+    ifneq ($(MKLROOT),)
+        MKL_AVAIL := 1
+        MKL_INC := /I"$(MKLROOT)/include"
+        MKL_LIB_DIR := /LIBPATH:"$(MKLROOT)/lib"
+        MKL_LIBS := mkl_intel_lp64.lib mkl_sequential.lib mkl_core.lib Advapi32.lib
+    endif
+
+    LFLAGS := /link Advapi32.lib
+    SFMT_FLAGS := /D SFMT_MEXP=19937 /D HAVE_SSE2
 else
-   $(info MKLROOT: $(MKLROOT))
-   $(info NOTE: reemmber to export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(MKLROOT))
-endif
+    $(info Compiler: GCC/Clang)
+    # Detect Architecture
+    ARCH := $(shell uname -m)
+    $(info Architecture: $(ARCH))
 
+    COMMON_FLAGS := -O3 -pthread
+    CXX_ONLY_FLAGS := -std=c++20
+    C_FLAG := -c
+    I_FLAG := -I
+    D_FLAG := -D
+    OBJ_EXT := .o
+    EXE_EXT := .exe
+    OUT_OBJ := -o
+    OUT_EXE := -o
+
+    LFLAGS := -pthread
+    ifeq ($(ARCH), aarch64)
+        # Check if userland is 32-bit
+        USERLAND_BITS := $(shell getconf LONG_BIT)
+        ifeq ($(USERLAND_BITS), 32)
+            SIMD := -mfpu=neon -mfloat-abi=hard
+        else
+            SIMD := -march=armv8-a+simd
+        endif
+        SFMT_FLAGS := -DSFMT_MEXP=19937 -DHAVE_NEON
+    else ifeq ($(ARCH), armv7l)
+        SIMD := -mfpu=neon -mfloat-abi=hard
+        SFMT_FLAGS := -DSFMT_MEXP=19937 -DHAVE_NEON
+    else
+        ifeq ($(NBITS), 512)
+            SIMD := -mavx512f -mavx512bw -mavx512dq
+        else ifeq ($(NBITS), 256)
+            SIMD := -mavx2
+        else ifeq ($(NBITS), 128)
+            SIMD := -msse4.2
+        endif
+        SFMT_FLAGS := -DSFMT_MEXP=19937 -DHAVE_SSE2
+    endif
+
+    # MKL Discovery for GCC
+    ifndef MKLROOT
+        MKLROOT := /opt/intel/oneapi/mkl/latest
+    endif
+
+    ifneq ("$(wildcard $(MKLROOT)/include/mkl.h)","")
+        MKL_AVAIL := 1
+        MKL_INC := -I$(MKLROOT)/include
+        MKL_LIB_DIR := -L$(MKLROOT)/lib/intel64
+        MKL_LIBS := -lmkl_gf_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl
+    endif
+endif
+# --- TestU01 Discovery ---
 ifndef TESTU01_DIR
-   $(info WARNING: TESTU01_DIR not defined: using default path.)
-   TESTU01_DIR=../testu01/install
+   TESTU01_DIR := ../testu01/install
 endif
 
 ifneq ("$(wildcard $(TESTU01_DIR)/include/TestU01.h)","")
-    TESTU01_AVAIL = 1
-    $(info TESTU01_DIR: $(TESTU01_DIR))
-else
-    TESTU01_AVAIL = 0
-    $(info TestU01.h header file NOT found at $(TESTU01_DIR)/include/)
+    TESTU01_AVAIL := 1
+    ifeq ($(IS_MSVC),1)
+        TESTU01_INC := /I"$(TESTU01_DIR)/include"
+        TESTU01_LIB_DIR := /LIBPATH:"$(TESTU01_DIR)/lib"
+        TESTU01_LIBS := testu01.lib probdist.lib mylib.lib
+    else
+        TESTU01_INC := -I$(TESTU01_DIR)/include
+        TESTU01_LIB_DIR := -L$(TESTU01_DIR)/lib
+        TESTU01_LIBS := -ltestu01 -lprobdist -lmylib -lm
+    endif
 endif
 
-PLATFORM := $(shell uname -s)
-$(info PLATFORM: $(PLATFORM))
-
-CYGWIN := $(findstring CYGWIN,$(PLATFORM))
-
-CC:=gcc
-CXX:=g++
-
-$(info CXX: $(CXX))
-$(info CC: $(CC))
-
-ifeq ($(NBITS), 512)
-   SIMD=-mavx512f -mavx512bw -mavx512dq
-else ifeq ($(NBITS), 256)
-   SIMD=-mavx2
-else ifeq ($(NBITS), 128)
-   SIMD=-msse4.2
-endif
-
-BINDIR=bin-$(NBITS)-$(CC)
+# --- Paths & Files ---
+BINDIR := bin-$(NBITS)-$(notdir $(CXX))
 $(info BINDIR: $(BINDIR))
 
-LOGDIR=logs/testu01
+CPPFLAGS := $(I_FLAG)include
+CXXFLAGS := $(COMMON_FLAGS) $(CXX_ONLY_FLAGS) $(SIMD)
+CFLAGS := $(COMMON_FLAGS) $(SIMD)
 
-COMMONFLAGS = -c -O3 $(SIMD)
+CPP_SRC := $(wildcard src/*.cpp)
+# We identify files with main() to determine targets
+# On Windows/MSVC, grep might not be available, so we assume these files have main
+CPP_WITH_MAIN := src/perf.cpp src/test.cpp src/demo.cpp src/encoder.cpp src/jump.cpp src/testu01.cpp
+CPP_WITHOUT_MAIN := src/cpu.cpp
 
-SFMT_FLAGS = -DSFMT_MEXP=19937 -DHAVE_SSE2
+MT_OBJ := $(BINDIR)/mt19937ar$(OBJ_EXT)
+SFMT_OBJ := $(BINDIR)/SFMT$(OBJ_EXT)
+CPU_OBJ := $(BINDIR)/cpu$(OBJ_EXT)
 
-# clear flags
-CFLAGS :=
-CPPFLAGS :=
-
-CFLAGS += $(COMMONFLAGS)
-CPPFLAGS += $(COMMONFLAGS) -O3 -std=c++20 -Iinclude
-
-HEADERS := $(wildcard include/*.h)
-$(info HEADERS: $(HEADERS))
-
-
-CPP_SRC=$(wildcard src/*.cpp)
-$(info C++ files: $(CPP_SRC))
-
-CPP_WITH_MAIN=$(shell grep -l "int main" $(CPP_SRC))
-CPP_WITHOUT_MAIN=$(filter-out $(CPP_WITH_MAIN), $(CPP_SRC))
-
-CPP_OBJ=$(patsubst src/%.cpp,$(BINDIR)/%.cpp.obj,$(CPP_SRC))
-$(info C++ obj: $(CPP_OBJ))
-
-DATDIR=dat
-POWERS=00009 00100 19933 19934 19935 19936
-MT_JUMP_7Z=$(DATDIR)/mt/F19937.7z $(patsubst %,$(DATDIR)/mt/F%.7z,$(POWERS))
-SFMT_JUMP_7Z=$(patsubst %,$(DATDIR)/sfmt/F%.7z,$(POWERS))
-ALL_JUMP_7Z=$(MT_JUMP_7Z) $(SFMT_JUMP_7Z)
-JUMP_TARGETS=$(patsubst %.7z,%.bits,$(ALL_JUMP_7Z))
-$(info JUMP MATRIX FILES: $(JUMP_TARGETS))
-
-MT_OBJ = $(BINDIR)/mt19937ar.c.obj
-SFMT_OBJ = $(BINDIR)/SFMT.c.obj
-
-TARGETS := $(patsubst src/%.cpp,$(BINDIR)/%.exe,$(CPP_WITH_MAIN))
-ifeq ($(TESTU01_AVAIL), 0)
-    TARGETS := $(filter-out $(BINDIR)/testu01.exe, $(TARGETS))
+TARGETS := $(patsubst src/%.cpp,$(BINDIR)/%$(EXE_EXT),$(CPP_WITH_MAIN))
+ifneq ($(TESTU01_AVAIL), 1)
+    TARGETS := $(filter-out $(BINDIR)/testu01$(EXE_EXT), $(TARGETS))
 endif
-$(info TARGETS: $(TARGETS))
+
+# --- Rules ---
 
 all: $(TARGETS)
 
-matrix : $(JUMP_TARGETS)
+$(BINDIR):
+	mkdir -p $(BINDIR)
 
-%.bits : %.7z
-	7za e -o$(@D) -y $< > /dev/null
-	touch $@
+$(MT_OBJ): mt19937-original/mt19937ar.c | $(BINDIR)
+	$(CC) $(CFLAGS) $(C_FLAG) $(OUT_OBJ)$@ $<
 
-#dat/%.hmat : dat/%.bits $(BINDIR)/encoder.exe
-#	$(BINDIR)/encoder.exe -i $< -o $@
+$(SFMT_OBJ): SFMT-src-1.5.1/SFMT.c | $(BINDIR)
+	$(CC) $(CFLAGS) $(SFMT_FLAGS) $(C_FLAG) $(OUT_OBJ)$@ $<
 
-# extra compilation flags specific files
-$(BINDIR)/perf.cpp.obj $(BINDIR)/test.cpp.obj : CPPFLAGS += $(SFMT_FLAGS)
-ifneq ($(MKLROOT),)
-     $(BINDIR)/perf.cpp.obj : CPPFLAGS += -I$(MKLROOT)/include/
+$(BINDIR)/%$(OBJ_EXT): src/%.cpp | $(BINDIR)
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(C_FLAG) $(OUT_OBJ)$@ $<
+
+# Specific flags for objects
+$(BINDIR)/perf$(OBJ_EXT) $(BINDIR)/test$(OBJ_EXT): CPPFLAGS += $(SFMT_FLAGS)
+ifeq ($(MKL_AVAIL),1)
+    $(BINDIR)/perf$(OBJ_EXT): CPPFLAGS += $(MKL_INC)
 endif
-$(BINDIR)/testu01.cpp.obj : CPPFLAGS += -I$(TESTU01_DIR)/include
-
-$(BINDIR)/%.cpp.obj : src/%.cpp $(HEADERS) Makefile | $(BINDIR)
-	$(CXX) $(CPPFLAGS) -o $@ $<
-
-$(MT_OBJ) : mt19937-original/mt19937ar.c Makefile | $(BINDIR)
-	$(CC) $(CFLAGS) -o $@ $<
-
-$(SFMT_OBJ) : SFMT-src-1.5.1/SFMT.c Makefile | $(BINDIR)
-	$(CC) $(CFLAGS) $(SFMT_FLAGS) -o $@ $<
-
-# extra dependencies and flags for specific executable
-$(BINDIR)/test.exe $(BINDIR)/perf.exe : $(MT_OBJ) $(SFMT_OBJ)
-$(BINDIR)/perf.exe : $(BINDIR)/cpu.cpp.obj
-$(BINDIR)/testu01.exe :	LFLAGS += -L$(TESTU01_DIR)/lib -ltestu01 -lprobdist -lmylib -lm
-ifneq ($(MKLROOT),)
-#    $(BINDIR)/perf.exe : LFLAGS += -L$(MKLROOT)/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl
-    $(BINDIR)/perf.exe : LFLAGS += -L$(MKLROOT)/lib/intel64 -lmkl_gf_lp64 -lmkl_sequential -lmkl_core
+ifeq ($(TESTU01_AVAIL),1)
+    $(BINDIR)/testu01$(OBJ_EXT): CPPFLAGS += $(TESTU01_INC)
 endif
 
-$(BINDIR)/%.exe : $(BINDIR)/%.cpp.obj
-	$(CXX) -o $@ $^ $(LFLAGS)
+# Executables
+$(BINDIR)/test$(EXE_EXT): $(BINDIR)/test$(OBJ_EXT) $(MT_OBJ) $(SFMT_OBJ)
+	$(CXX) $(OUT_EXE)$@ $^ $(LFLAGS)
 
-BITS=32 128 256 512
-TESTLOGS=$(patsubst %,$(LOGDIR)/SmallCrush-%.log,$(BITS)) $(patsubst %,$(LOGDIR)/Crush-%.log,$(BITS)) $(patsubst %,$(LOGDIR)/BigCrush-%.log,$(BITS))
-$(info TESTLOGS: $(TESTLOGS))
+$(BINDIR)/perf$(EXE_EXT): $(BINDIR)/perf$(OBJ_EXT) $(MT_OBJ) $(SFMT_OBJ) $(CPU_OBJ)
+	$(CXX) $(OUT_EXE)$@ $^ $(LFLAGS) $(MKL_LIB_DIR) $(MKL_LIBS)
 
-testu01logs: $(TESTLOGS)
+$(BINDIR)/testu01$(EXE_EXT): $(BINDIR)/testu01$(OBJ_EXT)
+	$(CXX) $(OUT_EXE)$@ $^ $(LFLAGS) $(TESTU01_LIB_DIR) $(TESTU01_LIBS)
 
-$(LOGDIR)/SmallCrush-%.log : | $(BINDIR)/testu01.exe
-	$(BINDIR)/testu01.exe -b $* -m 0 > $@
-
-$(LOGDIR)/Crush-%.log : | $(BINDIR)/testu01.exe
-	$(BINDIR)/testu01.exe -b $* -m 1 > $@
-
-$(LOGDIR)/BigCrush-%.log : | $(BINDIR)/testu01.exe
-	$(BINDIR)/testu01.exe -b $* -m 2 > $@
+$(BINDIR)/%$(EXE_EXT): $(BINDIR)/%$(OBJ_EXT)
+	$(CXX) $(OUT_EXE)$@ $^ $(LFLAGS)
 
 .PHONY: clean
 clean:
 	rm -rf bin-*
-
-# use -p for multithreading
-$(BINDIR):
-	mkdir -p $(BINDIR)

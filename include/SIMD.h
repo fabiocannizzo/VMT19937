@@ -13,10 +13,11 @@ namespace Details {
 // There are specialization for all cases where VirtualBitLen == HwBitLen
 template <
     size_t VirtualBitLen,  // length of virtual 32-bit packed register in bits
-    size_t HwBitLen        // length of hardware 32-bit packed registers in bits
+    ISA Isa                // instruction set architecture
 >
 struct VirtualRegBase
 {
+    static constexpr size_t HwBitLen = IsaTraits<Isa>::HwBitLen;
     static_assert(VirtualBitLen >= HwBitLen, "VirtualBitLen must be greater or equal than HwBitLen");
     static_assert(VirtualBitLen % HwBitLen == 0, "VirtualBitLen must be divisble by HwBitLen");
     static_assert(HwBitLen % 32 == 0, "HwBitLen must be divisble by 32");
@@ -24,6 +25,7 @@ struct VirtualRegBase
 
     static constexpr size_t s_virtualBitLen = VirtualBitLen;  // virtual register bit length in bits
     static constexpr size_t s_hwBitLen = HwBitLen;            // hardware register bit length in bits
+    static constexpr ISA s_isa = Isa;                        // instruction set architecture
 
 protected:
     static_assert(((VirtualBitLen / HwBitLen)& ((VirtualBitLen / HwBitLen)-1)) == 0, "VirtualBitLen / HwBitLen must be a power of 2");
@@ -32,21 +34,22 @@ protected:
 // SimdRegister template declaration
 template <
     size_t VirtualBitLen,  // length of an abstract virtual register in bits
-    size_t HwBitLen,       // length of available hardware resgisters in bits
+    ISA Isa,               // instruction set architecture
     typename Enable = void
 >
 struct SimdRegister;
 
 // SimdRegister: specialization for VirtualBitLen > HwBitLen and WordLen == 32
-template <size_t VirtualBitLen, size_t HwBitLen>
-struct SimdRegister<VirtualBitLen, HwBitLen, std::enable_if_t<(VirtualBitLen > HwBitLen), void>>
-    : VirtualRegBase<VirtualBitLen, HwBitLen>
+template <size_t VirtualBitLen, ISA Isa>
+struct SimdRegister<VirtualBitLen, Isa, std::enable_if_t<(VirtualBitLen > IsaTraits<Isa>::HwBitLen), void>>
+    : VirtualRegBase<VirtualBitLen, Isa>
 {
 private:
+    static constexpr size_t HwBitLen = VirtualRegBase<VirtualBitLen, Isa>::HwBitLen;
     static constexpr size_t s_M = VirtualBitLen / HwBitLen;
     static constexpr size_t N32 = VirtualBitLen / 32;
     static constexpr size_t N128 = VirtualBitLen / 128;
-    using  XVHw = SimdRegister<HwBitLen, HwBitLen>;
+    using  XVHw = SimdRegister<HwBitLen, Isa>;
 
     struct Aux
     {
@@ -66,7 +69,7 @@ private:
 public:
     Aux m_v;
 
-    using XV = SimdRegister<VirtualBitLen, HwBitLen>;
+    using XV = SimdRegister<VirtualBitLen, Isa>;
 
     SimdRegister() {}
     FORCE_INLINE SimdRegister(uint32_t v) : m_v(v) {}
@@ -216,15 +219,16 @@ public:
 };
 
 
-template <>
-struct SimdRegister<32, 32, void>
+template <ISA Isa>
+struct SimdRegister<32, Isa, void>
 {
     static const size_t s_virtualBitLen = 32;
     static const size_t s_hwBitLen = 32;
+    static const ISA s_isa = Isa;
 
     uint32_t m_v;
 
-    typedef SimdRegister<32, 32> XV;
+    typedef SimdRegister<32, Isa> XV;
 
     SimdRegister() : m_v(0) {}
     FORCE_INLINE SimdRegister(const void* p) : m_v(*(const uint32_t*)p) {}
@@ -328,11 +332,11 @@ struct MAY_ALIAS SimdRegister<64>
 #if SIMD_N_BITS>=128
 #if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__)
 template <>
-struct SimdRegister<128, 128, void> : VirtualRegBase<128, 128>
+struct SimdRegister<128, ISA::NEON, void> : VirtualRegBase<128, ISA::NEON>
 {
     uint32x4_t m_v;
 
-    typedef SimdRegister<128, 128> XV;
+    typedef SimdRegister<128, ISA::NEON> XV;
 
     SimdRegister() {}
     FORCE_INLINE SimdRegister(uint32_t v) : m_v(vdupq_n_u32(v)) {}
@@ -403,12 +407,12 @@ struct SimdRegister<128, 128, void> : VirtualRegBase<128, 128>
     }
 };
 #else
-template <>
-struct SimdRegister<128, 128, void> : VirtualRegBase<128, 128>
+template <ISA Isa>
+struct SimdRegister<128, Isa, std::enable_if_t<Isa == ISA::SSE2 || Isa == ISA::SSE42, void>> : VirtualRegBase<128, Isa>
 {
     __m128i m_v;
 
-    typedef SimdRegister<128, 128> XV;
+    typedef SimdRegister<128, Isa> XV;
 
     SimdRegister() : m_v(_mm_undefined_si128()) {}
     FORCE_INLINE SimdRegister(uint32_t v) : m_v(_mm_set1_epi32(v)) {}
@@ -479,11 +483,11 @@ struct SimdRegister<128, 128, void> : VirtualRegBase<128, 128>
 
 #if SIMD_N_BITS>=256
 template <>
-struct SimdRegister<256, 256, void> : VirtualRegBase<256, 256>
+struct SimdRegister<256, ISA::AVX2, void> : VirtualRegBase<256, ISA::AVX2>
 {
     __m256i m_v;
 
-    typedef SimdRegister<256, 256> XV;
+    typedef SimdRegister<256, ISA::AVX2> XV;
 
     SimdRegister() : m_v(_mm256_undefined_si256()) {}
     FORCE_INLINE SimdRegister(const void* p) : m_v(_mm256_load_si256((const __m256i*)p)) {}
@@ -558,18 +562,18 @@ struct SimdRegister<256, 256, void> : VirtualRegBase<256, 256>
     {
         __m128i hi(_mm256_extracti128_si256(m_v, 1));
         __m128i lo(_mm256_castsi256_si128(m_v));
-        return SimdRegister<128, 128>(_mm_xor_si128(lo, hi)).parity();
+        return SimdRegister<128, ISA::SSE2>(_mm_xor_si128(lo, hi)).parity();
     }
 };
 #endif
 
 #if SIMD_N_BITS>=512
 template <>
-struct SimdRegister<512, 512, void> : VirtualRegBase<512, 512>
+struct SimdRegister<512, ISA::AVX512, void> : VirtualRegBase<512, ISA::AVX512>
 {
     __m512i m_v;
 
-    typedef SimdRegister<512, 512> XV;
+    typedef SimdRegister<512, ISA::AVX512> XV;
 
     SimdRegister() : m_v(_mm512_undefined_si512()) {}
     FORCE_INLINE SimdRegister(const void* p) : m_v(_mm512_load_si512((const __m512i*)p)) {}
@@ -623,7 +627,7 @@ struct SimdRegister<512, 512, void> : VirtualRegBase<512, 512>
     {
         __m256i hi(_mm512_extracti64x4_epi64(m_v, 1));
         __m256i lo(_mm512_castsi512_si256(m_v));
-        return SimdRegister<256, 256>(_mm256_xor_si256(lo, hi)).parity();
+        return SimdRegister<256, ISA::AVX2>(_mm256_xor_si256(lo, hi)).parity();
     }
 };
 #endif

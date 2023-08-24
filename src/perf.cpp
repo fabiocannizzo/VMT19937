@@ -83,7 +83,7 @@ struct GenTraits<vmt>
     static const MT19937Matrix* jumpMatrix() { return pmt.get(); }
 
     template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw>
-    using gen_t = VMT19937<RegBitLen, QM == QM_Block16, RegBitLenHw>;
+    using gen_t = VMT19937<RegBitLen, QM == QM_Block16, BitLenToIsa<RegBitLenHw>::isa>;
 };
 
 template <>
@@ -93,7 +93,7 @@ struct GenTraits<xmt>
     static const MT19937Matrix* jumpMatrix() { return nullptr; }
 
     template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw, std::enable_if_t<RegBitLen == RegBitLenHw, int> = 0>
-    using gen_t = XMT19937<RegBitLen, QM == QM_Block16>;
+    using gen_t = XMT19937<RegBitLen, QM == QM_Block16, BitLenToIsa<RegBitLenHw>::isa>;
 };
 
 template <>
@@ -103,7 +103,7 @@ struct GenTraits<vsfmt>
     static const SFMT19937Matrix* jumpMatrix() { return psfmt.get(); }
 
     template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw>
-    using gen_t = VSFMT19937<RegBitLen, QM == QM_Block16, RegBitLenHw>;
+    using gen_t = VSFMT19937<RegBitLen, QM == QM_Block16, BitLenToIsa<RegBitLenHw>::isa>;
 };
 
 const size_t s_messageSpacing[] = { 15, 9, 8, 8, 12 };

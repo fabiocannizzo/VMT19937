@@ -48,15 +48,17 @@ struct RndCache<0>
 // We can choose to choose a generator with a large RegisterBitLen (e.g., 512) to maximize the number of states,
 // however we may dispatch differently depending on the harware available (e.g., use 128-bit SIMD on older hardware,
 // 256-bit SIMD on newer hardware, etc.)
-template <size_t RegisterBitLen, size_t RegisterBitLenHw, bool MonoState, bool QryBlk16>
+template <size_t RegisterBitLen, ISA Isa, bool MonoState, bool QryBlk16>
 class MT19937Base : public MT19937Params
 {
+    static constexpr size_t RegisterBitLenHw = IsaTraits<Isa>::HwBitLen;
     static_assert(RegisterBitLen >= s_wordSizeBits);
     static_assert(!MonoState || RegisterBitLen == RegisterBitLenHw);
 
 public:
     static constexpr size_t s_regLenBits = RegisterBitLen;
     static constexpr size_t s_regLenBitsHw = RegisterBitLenHw;
+    static constexpr ISA s_isa = Isa;
     static constexpr size_t s_nStates = MonoState ? 1 : RegisterBitLen / s_wordSizeBits;
     static constexpr size_t s_n32inReg = RegisterBitLen / 32;
     static constexpr size_t s_n32InFullState = s_n32InOneState * s_nStates;  // 624 * nStates
@@ -69,7 +71,7 @@ private:
     static constexpr uint32_t s_n32InBlock = s_cacheLineBytes / sizeof(uint32_t); // 16
     static_assert(s_n32InFullState % s_n32InBlock == 0, "full state size not divisible by cache size");
 
-    using XV = SimdRegister<s_regLenBits, RegisterBitLenHw>;
+    using XV = SimdRegister<s_regLenBits, Isa>;
 
     // This data members is necessary only if QueryMode==QM_Scalar
     [[no_unique_address]] RndCache<(QryBlk16 ? 0 : s_n32InBlock)> m_rndCache; // buffer of tempered numbers
@@ -92,14 +94,14 @@ private:
 
     struct RefillCst
     {
-        using XVI = SimdRegister<RegisterBitLenHw, RegisterBitLenHw>;
+        using XVI = SimdRegister<RegisterBitLenHw, Isa>;
         RefillCst() : m_upperMask(s_upperMask), m_lowerMask(s_lowerMask), m_matrixA(s_matrixA) {}
         const XVI m_upperMask;
         const XVI m_lowerMask;
         const XVI m_matrixA;
     };
 
-    alignas(64) inline static const TemperCst<SimdRegister<s_n32InBlock * 32, s_regLenBitsHw>> s_temperCst{};
+    alignas(64) inline static const TemperCst<SimdRegister<s_n32InBlock * 32, Isa>> s_temperCst{};
     alignas(64) inline static const RefillCst s_refillMasks{};
 
     template <typename XVI, typename M>
@@ -120,7 +122,7 @@ private:
         // a virtual register having the same size as a cache line
         // this may be larger than what available in hardware
         // it is implemented iteratin on the available hardware registers
-        using XVline = SimdRegister<s_n32InBlock * 32, s_regLenBitsHw>;
+        using XVline = SimdRegister<s_n32InBlock * 32, Isa>;
 
         XVline tmp = temper(XVline(m_pst), s_temperCst);
         tmp.template store<Aligned>(dst);

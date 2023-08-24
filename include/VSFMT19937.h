@@ -9,14 +9,16 @@
 
 namespace Details {
 
-template <size_t RegisterBitLen, size_t RegisterBitLenHw>
+template <size_t RegisterBitLen, ISA Isa>
 class VSFMT19937Base : public SFMT19937Params
 {
+    static constexpr size_t RegisterBitLenHw = IsaTraits<Isa>::HwBitLen;
     static_assert(RegisterBitLen >= s_wordSizeBits);
 
 public:
     static constexpr size_t s_regLenBits = RegisterBitLen;
     static constexpr size_t s_regLenBitsHw = RegisterBitLenHw;
+    static constexpr ISA s_isa = Isa;
     static constexpr size_t s_nStates = RegisterBitLen / s_wordSizeBits;
     static constexpr size_t s_n32inReg = RegisterBitLen / 32;
 
@@ -27,7 +29,7 @@ public:
 private:
     static constexpr size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
 
-    using XV = SimdRegister<s_regLenBits, RegisterBitLenHw>;
+    using XV = SimdRegister<s_regLenBits, Isa>;
 
 protected:
     alignas(64) uint32_t m_state[s_n32InFullState];    // the array of state vectors
@@ -37,7 +39,7 @@ private:
     const uint32_t* const m_state_end;
     const uint32_t* m_prnd;
 
-    using MaskType = SimdRegister<std::max<size_t>(128, s_regLenBitsHw), s_regLenBitsHw>;
+    using MaskType = SimdRegister<std::max<size_t>(128, RegisterBitLenHw), Isa>;
     alignas(64) inline static const MaskType s_bMask{SFMT19937Params::s_SFMT_MSK1, SFMT19937Params::s_SFMT_MSK2, SFMT19937Params::s_SFMT_MSK3, SFMT19937Params::s_SFMT_MSK4};
 
     template <typename XVCst>

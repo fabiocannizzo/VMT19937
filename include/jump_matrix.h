@@ -102,7 +102,7 @@ struct BinarySquareMatrix : BinaryMatrix<N, N>
 
         for (size_t r = 0; r < s_nBits; ++r) {
             auto pr = src.rowBegin(r);
-            uint8_t active = BinaryVectorMultiplier<SIMD_N_BITS>::multiply8<nColumns, base_t::s_nBitCols, base_t::s_nBitColsPadded>(pr, pcs);
+            uint8_t active = BinaryVectorMultiplier<SIMD_ISA>::multiply8<nColumns, base_t::s_nBitCols, base_t::s_nBitColsPadded>(pr, pcs);
             this->rowBegin(r)[colBitIndex / 8] = active;
         }
     }

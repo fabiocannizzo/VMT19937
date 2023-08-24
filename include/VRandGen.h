@@ -162,29 +162,30 @@ public:
 
 template < size_t RegisterBitLen = SIMD_N_BITS
          , bool QryBlk16 = false
-         , size_t RegisterBitLenHw = std::min<size_t>(SIMD_N_BITS, RegisterBitLen)
+         , ISA RegisterIsa = (RegisterBitLen == 32 ? ISA::Scalar : SIMD_ISA)
          >
-struct VMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, false, QryBlk16>, QryBlk16>
+struct VMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterIsa, false, QryBlk16>, QryBlk16>
 {
-    using base_t = Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, false, QryBlk16>, QryBlk16>;
+    using base_t = Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterIsa, false, QryBlk16>, QryBlk16>;
     using base_t::VRandGen; // reuse constructors
 };
 
 template < size_t RegisterBitLen = SIMD_N_BITS
          , bool QryBlk16 = false
+         , ISA RegisterIsa = (RegisterBitLen == 32 ? ISA::Scalar : SIMD_ISA)
          >
-struct XMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLen, true, QryBlk16>, QryBlk16>
+struct XMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterIsa, true, QryBlk16>, QryBlk16>
 {
-    using base_t = Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLen, true, QryBlk16>, QryBlk16>;
+    using base_t = Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterIsa, true, QryBlk16>, QryBlk16>;
     using base_t::VRandGen; // reuse constructors
 };
 
 template < size_t RegisterBitLen = SIMD_N_BITS
          , bool QryBlk16 = false
-         , size_t RegisterBitLenHw = std::min<size_t>(SIMD_N_BITS, RegisterBitLen)
+         , ISA RegisterIsa = (RegisterBitLen == 32 ? ISA::Scalar : SIMD_ISA)
          >
-struct VSFMT19937 : Details::VRandGen<Details::VSFMT19937Base<RegisterBitLen, RegisterBitLenHw>, QryBlk16>
+struct VSFMT19937 : Details::VRandGen<Details::VSFMT19937Base<RegisterBitLen, RegisterIsa>, QryBlk16>
 {
-    using base_t = Details::VRandGen<Details::VSFMT19937Base<RegisterBitLen, RegisterBitLenHw>, QryBlk16>;
+    using base_t = Details::VRandGen<Details::VSFMT19937Base<RegisterBitLen, RegisterIsa>, QryBlk16>;
     using base_t::VRandGen; // reuse constructors
 };

@@ -17,15 +17,16 @@ inline constexpr uint8_t bitmask(size_t b)
 }
 
 // simd implementation
-template <size_t SimdBits>
+template <ISA SimdIsa>
 struct BinaryVectorMultiplier
 {
+    static constexpr size_t SimdBits = IsaTraits<SimdIsa>::HwBitLen;
     // multiply the row pointed by pr by all the nRows pointed by pc
     // all rows must have size nBitCols and be padded to the next multiple of the simd vector length
     template <size_t nRows, size_t nBitCols, size_t nBitColsPadded>
     static uint8_t multiply8(const uint8_t* _pr, const uint8_t** _pc)
     {
-        typedef Details::SimdRegister<SimdBits, SimdBits> simd_t;
+        typedef Details::SimdRegister<SimdBits, SimdIsa> simd_t;
 
         const size_t nSimdBytes = sizeof(simd_t);
         const size_t nSimdBits = 8 * nSimdBytes;
@@ -346,14 +347,14 @@ public:
         for (r = 0; r + 7 < s_nBitRows; r += 8) {
             for (size_t h = 0; h < 8; ++h)
                 rowptrs[h] = rowBegin(r + h);
-            pdst[r / 8] = BinaryVectorMultiplier<SIMD_N_BITS>::template multiply8<8, s_nBitCols, s_nBitColsPadded>(psrc, rowptrs);
+            pdst[r / 8] = BinaryVectorMultiplier<SIMD_ISA>::template multiply8<8, s_nBitCols, s_nBitColsPadded>(psrc, rowptrs);
         }
         const size_t nResidualRows = s_nBitRows % 8;
         if constexpr (nResidualRows)
         { // this takes care of the residual rows, in case it is not a multiple of 8
             for (size_t h = 0; h < nResidualRows; ++h)
                 rowptrs[h] = rowBegin(r + h);
-            pdst[r / 8] = BinaryVectorMultiplier<SIMD_N_BITS>::template multiply8<nResidualRows, s_nBitCols, s_nBitColsPadded>(psrc, rowptrs);
+            pdst[r / 8] = BinaryVectorMultiplier<SIMD_ISA>::template multiply8<nResidualRows, s_nBitCols, s_nBitColsPadded>(psrc, rowptrs);
         }
     }
 

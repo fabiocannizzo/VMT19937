@@ -43,3 +43,7 @@ You can customize the build using `-DVAR=VALUE`:
   MKLROOT      Path to Intel MKL root. Set empty to disable.
   TESTU01_DIR  Path to TestU01 install. Default: empty (disabled).
 
+
+Known Issues
+------------
+MinGW Cross-Compilation: Attempting to link MinGW-GCC with Intel MKL provided by vcpkg (x64-windows) fails due to binary incompatibility. The vcpkg MKL libraries are built with MSVC and reference MSVC-specific symbols (like `__security_cookie`) missing from MinGW. Use MSVC (cl.exe) for MKL on Windows.

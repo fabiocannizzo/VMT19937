@@ -1,4 +1,3 @@
-Should we extend the use of static constants also to the other constanst? Need to test performance.
 Test also with mingw-g++ to compare againts MKL.
 Run test in slow mode
 Support Neon architecture (we can test on a Raspberri Pi)

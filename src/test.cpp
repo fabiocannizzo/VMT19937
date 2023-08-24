@@ -26,20 +26,20 @@ struct GenTraits;
 template <size_t L, size_t I, QryMode QM>
 struct GenTraits<VMT, L, I, QM>
 {
-    typedef VMT19937<L, QM == QM_Block16, I> gen_t;
+    typedef VMT19937<L, QM == QM_Block16, BitLenToIsa<I>::isa> gen_t;
 };
 
 template <size_t L, size_t I, QryMode QM>
 struct GenTraits<XMT, L, I, QM>
 {
     static_assert(L == I);
-    typedef XMT19937<L, QM == QM_Block16> gen_t;
+    typedef XMT19937<L, QM == QM_Block16, BitLenToIsa<I>::isa> gen_t;
 };
 
 template <size_t L, size_t I, QryMode QM>
 struct GenTraits<VSFMT, L, I, QM>
 {
-    typedef VSFMT19937<L, QM == QM_Block16, I> gen_t;
+    typedef VSFMT19937<L, QM == QM_Block16, BitLenToIsa<I>::isa> gen_t;
 };
 
 std::vector<uint32_t> benchmark(nRandomTest + 10000);
@@ -426,8 +426,8 @@ void testSimdAlignR32(std::index_sequence<n32s...>&&)
 {
     constexpr size_t n32 = (sizeof...(n32s) - 1);
     constexpr size_t nBits = n32 * 32;
-    using T = Details::SimdRegister<nBits, nBits>;
-    std::cout << "\nTest SimdRegister<" << nBits << ", " << nBits << ">::alignr32\n";
+    using T = Details::SimdRegister<nBits, BitLenToIsa<nBits>::isa>;
+    std::cout << "\nTest SimdRegister<" << nBits << ", " << (int)BitLenToIsa<nBits>::isa << ">::alignr32\n";
     alignas(64) unsigned char data[128];
     std::iota(data, data + 128, 0);
 
@@ -444,7 +444,7 @@ void test_SIMD_special_methods()
 {
     std::cout << "\n--- SIMD special methods tests ---\n";
 
-    using XV = Details::SimdRegister<128, 128>;
+    using XV = Details::SimdRegister<128, BitLenToIsa<128>::isa>;
 
     // Test alignr32
     {
