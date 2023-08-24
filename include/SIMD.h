@@ -7,45 +7,72 @@
 
 namespace Details {
 
-// SimdRegister is an abstraction of a SIMD regsiter of length NumBits
-// If NumBits is larger than NumBitsHw, then every operation is emulated via iteration over registers of size NumBitsHw
-template <size_t NumBits, size_t NumBitsHw>
-struct SimdRegister
+
+// SimdRegister is an abstraction of a packed SIMD register of length VirtualBitLen bits containing words of length 32 bits
+// If VirtualBitLen is larger than HwBitLen, then every operation is emulated via iteration over registers of size HwBitLen
+// There are specialization for all cases where VirtualBitLen == HwBitLen
+template <
+    size_t VirtualBitLen,  // length of virtual 32-bit packed register in bits
+    size_t HwBitLen        // length of hardware 32-bit packed registers in bits
+>
+struct VirtualRegBase
 {
-    static constexpr size_t s_nRegBits = NumBits;
-    static constexpr size_t s_nBitsHw = NumBitsHw;
+    static_assert(VirtualBitLen >= HwBitLen, "VirtualBitLen must be greater or equal than HwBitLen");
+    static_assert(VirtualBitLen % HwBitLen == 0, "VirtualBitLen must be divisble by HwBitLen");
+    static_assert(HwBitLen % 32 == 0, "HwBitLen must be divisble by 32");
+    static_assert(((HwBitLen/32)& ((HwBitLen/32)-1)) == 0, "HwBitLen/32 must be a power of 2");
+
+    static constexpr size_t s_virtualBitLen = VirtualBitLen;  // virtual register bit length in bits
+    static constexpr size_t s_hwBitLen = HwBitLen;            // hardware register bit length in bits
+
+protected:
+    static_assert(((VirtualBitLen / HwBitLen)& ((VirtualBitLen / HwBitLen)-1)) == 0, "VirtualBitLen / HwBitLen must be a power of 2");
+};
+
+// SimdRegister template declaration
+template <
+    size_t VirtualBitLen,  // length of an abstract virtual register in bits
+    size_t HwBitLen,       // length of available hardware resgisters in bits
+    typename Enable = void
+>
+struct SimdRegister;
+
+// SimdRegister: specialization for VirtualBitLen > HwBitLen and WordLen == 32
+template <size_t VirtualBitLen, size_t HwBitLen>
+struct SimdRegister<VirtualBitLen, HwBitLen, std::enable_if_t<(VirtualBitLen > HwBitLen), void>>
+    : VirtualRegBase<VirtualBitLen, HwBitLen>
+{
 private:
-    static_assert((NumBits / NumBitsHw > 1) && (NumBits % NumBitsHw == 0), "NumBits must be a multiple of NumBitsHw");
-    static constexpr size_t M = NumBits / NumBitsHw;
-    static constexpr size_t N32 = NumBits / 32;
-    static constexpr size_t N128 = NumBits / 128;
-    using  XVHw = SimdRegister<NumBitsHw, NumBitsHw>;
+    static constexpr size_t s_M = VirtualBitLen / HwBitLen;
+    static constexpr size_t N32 = VirtualBitLen / 32;
+    static constexpr size_t N128 = VirtualBitLen / 128;
+    using  XVHw = SimdRegister<HwBitLen, HwBitLen>;
 
     struct Aux
     {
         Aux() : ar{ {} } {}
-        Aux(XVHw v) { std::fill_n(ar, M, v); }
+        Aux(XVHw v) { std::fill_n(ar, s_M, v); }
         Aux(uint32_t v) : Aux(XVHw(v)) {}
         XVHw& operator[](size_t i) { return ar[i]; }
         const XVHw& operator[](size_t i) const { return ar[i]; }
         const XVHw* begin() const { return ar; }
         XVHw* begin() { return ar; }
-        const XVHw* end() const { return ar + M; }
-        XVHw* end() { return ar + M; }
+        const XVHw* end() const { return ar + s_M; }
+        XVHw* end() { return ar + s_M; }
     private:
-        XVHw ar[M];
+        XVHw ar[s_M];
     };
 
 public:
     Aux m_v;
 
-    using XV = SimdRegister<NumBits, NumBitsHw>;
+    using XV = SimdRegister<VirtualBitLen, HwBitLen>;
 
     SimdRegister() {}
     FORCE_INLINE SimdRegister(uint32_t v) : m_v(v) {}
     FORCE_INLINE SimdRegister(uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3)
     {
-        if constexpr (NumBitsHw == 32) {
+        if constexpr (HwBitLen == 32) {
             for (size_t i = 0; i < N128; ++i) {
                 m_v[0 + 4 * i] = v0;
                 m_v[1 + 4 * i] = v1;
@@ -59,7 +86,7 @@ public:
     }
     FORCE_INLINE SimdRegister(const uint32_t* p)
     {
-        for (size_t i = 0; i < M; ++i, p += sizeof(XVHw) / sizeof(uint32_t))
+        for (size_t i = 0; i < s_M; ++i, p += sizeof(XVHw) / sizeof(uint32_t))
             m_v[i] = XVHw(p);
     }
     FORCE_INLINE SimdRegister(const Aux& v) : m_v(v) {}
@@ -67,38 +94,38 @@ public:
     template <bool A = false>
     FORCE_INLINE void store(uint32_t* p)
     {
-        for (size_t i = 0; i < M; ++i, p += sizeof(XVHw) / sizeof(uint32_t))
+        for (size_t i = 0; i < s_M; ++i, p += sizeof(XVHw) / sizeof(uint32_t))
             m_v[i].template store<A>(p);
     }
 
-    friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v[i] = a.m_v[i] & b.m_v[i]; return r; }
+    friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < s_M; ++i) r.m_v[i] = a.m_v[i] & b.m_v[i]; return r; }
     template <typename XVI>
     friend FORCE_INLINE XV operator&(const XV& a, const XVI& b)
     {
         XV r;
-        if constexpr (XVI::s_nRegBits > XVI::s_nBitsHw) {
-            const size_t N = XVI::s_nRegBits / XVI::s_nBitsHw;
-            for (size_t i = 0; i < M / N; ++i)
+        if constexpr (XVI::s_virtualBitLen > XVI::s_hwBitLen) {
+            const size_t N = XVI::s_virtualBitLen / XVI::s_hwBitLen;
+            for (size_t i = 0; i < s_M / N; ++i)
                 for (size_t j = 0; j < N; ++j)
                     r.m_v[i * N + j] = a.m_v[i * N + j] & b.m_v[j];
         }
         else {
-            for (size_t i = 0; i < M; ++i)
+            for (size_t i = 0; i < s_M; ++i)
                 r.m_v[i] = a.m_v[i] & b;
         }
         return r;
     }
-    friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v[i] = a.m_v[i] ^ b.m_v[i]; return r; }
-    friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v[i] = a.m_v[i] | b.m_v[i]; return r; }
-    friend FORCE_INLINE XV operator<<(const XV& a, const int n) { XV r; for (size_t i = 0; i < M; ++i) r.m_v[i] = a.m_v[i] << n; return r; }
-    friend FORCE_INLINE XV operator>>(const XV& a, const int n) { XV r; for (size_t i = 0; i < M; ++i) r.m_v[i] = a.m_v[i] >> n; return r; }
+    friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < s_M; ++i) r.m_v[i] = a.m_v[i] ^ b.m_v[i]; return r; }
+    friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < s_M; ++i) r.m_v[i] = a.m_v[i] | b.m_v[i]; return r; }
+    friend FORCE_INLINE XV operator<<(const XV& a, const int n) { XV r; for (size_t i = 0; i < s_M; ++i) r.m_v[i] = a.m_v[i] << n; return r; }
+    friend FORCE_INLINE XV operator>>(const XV& a, const int n) { XV r; for (size_t i = 0; i < s_M; ++i) r.m_v[i] = a.m_v[i] >> n; return r; }
 
     template <int nBytes>
     FORCE_INLINE static XV shl128(const XV& a)
     {
         static_assert(N128 > 0);
         XV r;
-        if constexpr (NumBitsHw == 32) {
+        if constexpr (HwBitLen == 32) {
             for (size_t s = 0; s < N128; ++s) {
                 XVHw current = a.m_v[4 * s];
                 r.m_v[4 * s] = current << 8;
@@ -110,7 +137,7 @@ public:
             }
         }
         else {
-            for (size_t i = 0; i < M; ++i)
+            for (size_t i = 0; i < s_M; ++i)
                 r.m_v[i] = XVHw::template shl128<nBytes>(a.m_v[i]);
         }
         return r;
@@ -121,7 +148,7 @@ public:
     {
         static_assert(N128 > 0);
         XV r;
-        if constexpr (NumBitsHw == 32) {
+        if constexpr (HwBitLen == 32) {
             for (size_t s = 0; s < N128; ++s) {
                 XVHw current = a.m_v[4 * s];
                 for (size_t j = 0; j < 3; ++j) {
@@ -133,7 +160,7 @@ public:
             }
         }
         else {
-            for (size_t i = 0; i < M; ++i)
+            for (size_t i = 0; i < s_M; ++i)
                 r.m_v[i] = XVHw::template shr128<nBytes>(a.m_v[i]);
         }
         return r;
@@ -142,20 +169,20 @@ public:
     FORCE_INLINE void broadcastLo128()
     {
         static_assert(N128 > 0);
-        if constexpr (NumBitsHw == 32) {
+        if constexpr (HwBitLen == 32) {
             for (size_t i = 0; i < N128; ++i)
                 for (size_t j = 0; j < 4; ++j)
                     m_v[4 * i + j] = m_v[j];
         }
         else {
-            for (size_t i = 1; i < M; ++i)
+            for (size_t i = 1; i < s_M; ++i)
                 m_v[i] = m_v[0];
         }
     }
 
     bool eq(const XV& rhs) const
     {
-        for (size_t i = 0; i < M; ++i)
+        for (size_t i = 0; i < s_M; ++i)
             if (m_v[i] != rhs.m_v[i])
                 return false;
         return true;
@@ -174,7 +201,7 @@ public:
     FORCE_INLINE XV ifOddCst32ElseZero(const XVI& value) const
     {
         XV r;
-        for (size_t i = 0; i < M; ++i)
+        for (size_t i = 0; i < s_M; ++i)
             r.m_v[i] = m_v[i].ifOddCst32ElseZero(value);
         return r;
     }
@@ -182,7 +209,7 @@ public:
     FORCE_INLINE uint8_t parity() const
     {
         XVHw temp(m_v[0]);
-        for (size_t i = 1; i < M; ++i)
+        for (size_t i = 1; i < s_M; ++i)
             temp = temp ^ m_v[i];
         return temp.parity();
     }
@@ -190,10 +217,10 @@ public:
 
 
 template <>
-struct SimdRegister<32, 32>
+struct SimdRegister<32, 32, void>
 {
-    static const size_t s_nRegBits = 32;
-    static const size_t s_nBitsHw = 32;
+    static const size_t s_virtualBitLen = 32;
+    static const size_t s_hwBitLen = 32;
 
     uint32_t m_v;
 
@@ -237,6 +264,17 @@ struct SimdRegister<32, 32>
         const uint32_t lowestBit = m_v & 0x1;
         return x[lowestBit];
 #endif
+    }
+
+    // combine: {x0, x1, x2, x3} -> {x4, x5, x6, x7} => {x1, x2, x3, x4}
+    template <unsigned n32FromSecond>
+    static FORCE_INLINE XV alignr32(XV a, XV b)
+    {
+        static_assert(n32FromSecond <= 1, "n32FromSecond must be <=1 with 32-bit registers");
+        if constexpr (n32FromSecond == 0)
+            return a;
+        else if constexpr (n32FromSecond == 1)
+            return b;
     }
 
     static FORCE_INLINE XV zero() { return uint32_t(0); }
@@ -289,11 +327,8 @@ struct MAY_ALIAS SimdRegister<64>
 
 #if SIMD_N_BITS>=128
 template <>
-struct SimdRegister<128, 128>
+struct SimdRegister<128, 128, void> : VirtualRegBase<128, 128>
 {
-    static const size_t s_nRegBits = 128;
-    static const size_t s_nBitsHw = 128;
-
     __m128i m_v;
 
     typedef SimdRegister<128, 128> XV;
@@ -366,11 +401,8 @@ struct SimdRegister<128, 128>
 
 #if SIMD_N_BITS>=256
 template <>
-struct SimdRegister<256, 256>
+struct SimdRegister<256, 256, void> : VirtualRegBase<256, 256>
 {
-    static const size_t s_nRegBits = 256;
-    static const size_t s_nBitsHw = 256;
-
     __m256i m_v;
 
     typedef SimdRegister<256, 256> XV;
@@ -455,11 +487,8 @@ struct SimdRegister<256, 256>
 
 #if SIMD_N_BITS>=512
 template <>
-struct SimdRegister<512, 512>
+struct SimdRegister<512, 512, void> : VirtualRegBase<512, 512>
 {
-    static const size_t s_nRegBits = 512;
-    static const size_t s_nBitsHw = 512;
-
     __m512i m_v;
 
     typedef SimdRegister<512, 512> XV;
