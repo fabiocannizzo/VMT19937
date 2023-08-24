@@ -119,7 +119,7 @@ private:
         // it is implemented iteratin on the available hardware registers
         using XVline = SimdRegister<s_n32InBlock * 32, s_regLenBitsHw>;
 
-        const TemperCst<XVline> cst{};
+        alignas(16) static const TemperCst<XVline> cst{};
 
         XVline tmp = temper(XVline(m_pst), cst);
         tmp.template store<Aligned>(dst);
