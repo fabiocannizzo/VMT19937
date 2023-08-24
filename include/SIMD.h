@@ -22,6 +22,9 @@ struct SimdRegister<32>
     SimdRegister(const void* p) : m_v(*(const uint32_t*)p) {}
     SimdRegister(uint32_t v) : m_v(v) {}
 
+    template <bool A>
+    void store(uint32_t* dst) { *dst = m_v; }
+
     friend FORCE_INLINE XV operator&(const XV a, const XV b) { return a.m_v & b.m_v; }
     friend FORCE_INLINE XV operator^(const XV a, const XV b) { return a.m_v ^ b.m_v; }
     friend FORCE_INLINE XV operator|(const XV a, const XV b) { return a.m_v | b.m_v; }

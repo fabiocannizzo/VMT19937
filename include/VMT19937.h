@@ -380,8 +380,8 @@ public:
 };
 
 #if (VMT19937_STATIC_CONST==1)
-template <size_t RegisterBitLen, VRandGenQueryMode QueryMode>
-const typename VMT19937<RegisterBitLen, QueryMode>::RefillCst VMT19937<RegisterBitLen, QueryMode>::s_refillCst;
+template <size_t RegisterBitLen>
+const typename VMT19937Base<RegisterBitLen>::RefillCst VMT19937Base<RegisterBitLen>::s_refillCst;
 #endif
 
 } // namespace Details
