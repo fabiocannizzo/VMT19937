@@ -25,7 +25,7 @@ PLATFORM := $(shell uname -s)
 $(info PLATFORM: $(PLATFORM))
 
 ifeq ($(NBITS), 512)
-   SIMD=-mavx512f -mavx512bw
+   SIMD=-mavx512f -mavx512bw -mavx512dq
 else ifeq ($(NBITS), 256)
    SIMD=-mavx2
 else ifeq ($(NBITS), 128)
