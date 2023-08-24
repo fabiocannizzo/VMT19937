@@ -64,8 +64,6 @@ public:
     using matrix_t = MT19937Matrix;
 
 private:
-    static constexpr size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
-
     static constexpr uint32_t s_cacheLineBytes = 64;
     static_assert(s_cacheLineBytes * 8 >= RegisterBitLen, "Assume that the register size is <= than the cache line");
     static constexpr uint32_t s_n32InBlock = s_cacheLineBytes / sizeof(uint32_t); // 16
@@ -74,7 +72,7 @@ private:
     using XV = SimdRegister<s_regLenBits, RegisterBitLenHw>;
 
     // This data members is necessary only if QueryMode==QM_Scalar
-    [[no_unique_address]] RndCache<QryBlk16 ? 0 : s_n32InBlock> m_rndCache; // buffer of tempered numbers
+    [[no_unique_address]] RndCache<(QryBlk16 ? 0 : s_n32InBlock)> m_rndCache; // buffer of tempered numbers
 
     // This data members are redundant if QueryMode==QM_StateSize
     const uint32_t*m_pst, * const m_pstEnd;    // m_pos==m_pstEnd means the state vector has been consumed and need to be regenerated
@@ -238,12 +236,12 @@ private:
 
     uint32_t& scalarState(uint32_t scalarIndex)
     {
-        return m_state[scalarIndex * s_regLenWords];
+        return m_state[scalarIndex * s_nStates];
     }
 
     uint32_t scalarState(uint32_t scalarIndex) const
     {
-        return m_state[scalarIndex * s_regLenWords];
+        return m_state[scalarIndex * s_nStates];
     }
 
     // initializes the first state with a seed
@@ -269,7 +267,7 @@ protected:
         const uint32_t* pstate = m_state;
         pdst[0] = pstate[stateIndex] >> 31;
         for (size_t i = 1; i < s_N; ++i) {
-            uint32_t word = pstate[i * s_regLenWords + stateIndex];
+            uint32_t word = pstate[i * s_nStates + stateIndex];
             pdst[i - 1] |= word << 1;
             pdst[i] = word >> 31;
         }
@@ -284,10 +282,10 @@ protected:
         size_t w;
         for (w = 0; w < s_N - 1; ++w) {
             uint32_t word = pw[w];
-            pstate[w * s_regLenWords + stateIndex] |= word << 31;
-            pstate[(w + 1) * s_regLenWords + stateIndex] = word >> 1;
+            pstate[w * s_nStates + stateIndex] |= word << 31;
+            pstate[(w + 1) * s_nStates + stateIndex] = word >> 1;
         }
-        pstate[w * s_regLenWords + stateIndex] |= pw[w] << 31;
+        pstate[w * s_nStates + stateIndex] |= pw[w] << 31;
     }
 
     // initializes m_state[s_N] with a seed
