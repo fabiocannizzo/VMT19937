@@ -190,7 +190,7 @@ struct MT19937Matrix : BinarySquareMatrix<19937>
         std::ifstream is(filename, std::ios::binary);
         MYASSERT(is.is_open(), "error opening binary file: " << filename);
         base_t::fromBin(is);
-#ifdef TESTING
+#if (VRANDGEN_TESTING==1)
         std::cout << "loaded matrix from file: " << filename << "\n";
         printSparsity();
 #endif
@@ -278,7 +278,7 @@ struct SFMT19937Matrix : BinarySquareMatrix<19968>
         std::ifstream is(filename, std::ios::binary);
         MYASSERT(is.is_open(), "error opening binary file: " << filename);
         base_t::fromBin(is);
-#ifdef TESTING
+#if (VRANDGEN_TESTING==1)
         std::cout << "loaded matrix from file: " << filename << "\n";
         printSparsity();
 #endif

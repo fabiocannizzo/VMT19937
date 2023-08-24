@@ -1,4 +1,4 @@
-#define TESTING
+#define VRANDGEN_TESTING 1
 #define SIMD_EMULATION
 
 #include "VRandGen.h"
@@ -325,10 +325,10 @@ void test_VSFMT19937()
 int main()
 {
     try {
-        test_VSFMT19937();
         testEncoding();
         testSquareMatrix();
         test_VMT19937();
+        test_VSFMT19937();
     }
     catch (const std::exception& e) {
         std::cout << e.what() << "\n";
