@@ -1,3 +1,7 @@
+# Examples:
+# make jumpmat
+# make NBITS=512
+
 ifndef NBITS
    $(info WARNING: NBITS not defined. Using default value: 128)
    NBITS=128
@@ -52,6 +56,14 @@ $(info C++ files: $(CPP_SRC))
 CPP_OBJ=$(patsubst src/%.cpp,$(BINDIR)/%.cpp.obj,$(CPP_SRC))
 $(info C++ obj: $(CPP_OBJ))
 
+DATDIR=dat
+POWERS=00009 00100 19933 19934 19935 19936
+MT_JUMP_7Z=$(DATDIR)/mt/F19937.7z $(patsubst %,$(DATDIR)/mt/F%.7z,$(POWERS))
+SFMT_JUMP_7Z=$(patsubst %,$(DATDIR)/sfmt/F%.7z,$(POWERS))
+ALL_JUMP_7Z=$(MT_JUMP_7Z) $(SFMT_JUMP_7Z)
+JUMP_TARGETS=$(patsubst %.7z,%.bits,$(ALL_JUMP_7Z))
+$(info JUMP MATRIX FILES: $(JUMP_TARGETS))
+
 MT_OBJ = $(BINDIR)/mt19937ar.c.obj
 SFMT_OBJ = $(BINDIR)/SFMT.c.obj
 
@@ -63,12 +75,14 @@ $(info TARGETS: $(TARGETS))
 
 all: $(TARGETS)
 
-dat/%.bits : dat/%.7z
-	7za e -odat -y $< > /dev/null
+matrix : $(JUMP_TARGETS)
+
+%.bits : %.7z
+	7za e -o$(@D) -y $< > /dev/null
 	touch $@
 
-dat/%.hmat : dat/%.bits $(BINDIR)/encoder.exe
-	$(BINDIR)/encoder.exe -i $< -o $@
+#dat/%.hmat : dat/%.bits $(BINDIR)/encoder.exe
+#	$(BINDIR)/encoder.exe -i $< -o $@
 
 # extra compilation flags specific files
 $(BINDIR)/perf.cpp.obj $(BINDIR)/test.cpp.obj : CPPFLAGS += $(SFMT_FLAGS)
@@ -88,9 +102,7 @@ $(SFMT_OBJ) : SFMT-src-1.5.1/SFMT.c Makefile | $(BINDIR)
 	gcc $(CFLAGS) $(SFMT_FLAGS) -o $@ $<
 
 # extra dependencies and flags for specific executable
-$(BINDIR)/test.exe $(BINDIR)/perf.exe : $(MT_OBJ) $(SFMT_OBJ) | dat/F00010.bits dat/F19937.bits
-$(BINDIR)/demo.exe : | dat/F19935.bits dat/F00100.bits
-$(BINDIR)/testu01.exe : | dat/F19933.bits dat/F19934.bits dat/F19935.bits
+$(BINDIR)/test.exe $(BINDIR)/perf.exe : $(MT_OBJ) $(SFMT_OBJ)
 $(BINDIR)/testu01.exe :	LFLAGS += -L$(TESTU01_DIR)/lib -ltestu01 -lprobdist -lmylib -lm
 ifdef MKLROOT
     $(BINDIR)/perf.exe : LFLAGS += -L$(MKLROOT)/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl
