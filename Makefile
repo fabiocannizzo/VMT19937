@@ -15,8 +15,15 @@ ifndef TESTU01_DIR
    TESTU01_DIR=../testu01/install
 endif
 
-ifdef MKLROOT
-    $(info MKLROOT: $(MKLROOT))
+MKLROOT ?= /opt/intel/oneapi/mkl/latest/
+# Check if the directory exists
+ifeq ($(wildcard $(MKLROOT)),)
+   # Code to run if the directory does NOT exist
+   $(info The MKL include directory was not found at $(MKLROOT))
+   MKLROOT :=
+else
+   $(info MKLROOT: $(MKLROOT))
+   $(info NOTE: reemmber to export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(MKLROOT))
 endif
 
 ifneq ("$(wildcard $(TESTU01_DIR)/include/TestU01.h)","")
@@ -56,7 +63,7 @@ COMMONFLAGS = -c -O3 $(SIMD)
 SFMT_FLAGS = -DSFMT_MEXP=19937 -DHAVE_SSE2
 
 CFLAGS += $(COMMONFLAGS)
-CPPFLAGS += $(COMMONFLAGS) -O3 -std=c++20 -Iinclude $(SIMD)
+CPPFLAGS += $(COMMONFLAGS) -O3 -std=c++20 -Iinclude
 
 HEADERS := $(wildcard include/*.h)
 $(info HEADERS: $(HEADERS))
@@ -101,8 +108,8 @@ matrix : $(JUMP_TARGETS)
 
 # extra compilation flags specific files
 $(BINDIR)/perf.cpp.obj $(BINDIR)/test.cpp.obj : CPPFLAGS += $(SFMT_FLAGS)
-ifdef MKLROOT
-    $(BINDIR)/perf.cpp.obj : CPPFLAGS += -I$(MKLROOT)/include
+ifneq ($(MKLROOT),)
+     $(BINDIR)/perf.cpp.obj : CPPFLAGS += -I$(MKLROOT)/include/
 endif
 $(BINDIR)/testu01.cpp.obj : CPPFLAGS += -I$(TESTU01_DIR)/include
 
@@ -112,7 +119,6 @@ $(BINDIR)/%.cpp.obj : src/%.cpp $(HEADERS) Makefile | $(BINDIR)
 $(MT_OBJ) : mt19937-original/mt19937ar.c Makefile | $(BINDIR)
 	$(CC) $(CFLAGS) -o $@ $<
 
-$(SFMT_OBJ) : CFLAGS += -DHAVE_SSE2
 $(SFMT_OBJ) : SFMT-src-1.5.1/SFMT.c Makefile | $(BINDIR)
 	$(CC) $(CFLAGS) $(SFMT_FLAGS) -o $@ $<
 
@@ -120,8 +126,9 @@ $(SFMT_OBJ) : SFMT-src-1.5.1/SFMT.c Makefile | $(BINDIR)
 $(BINDIR)/test.exe $(BINDIR)/perf.exe : $(MT_OBJ) $(SFMT_OBJ)
 $(BINDIR)/perf.exe : $(BINDIR)/cpu.cpp.obj
 $(BINDIR)/testu01.exe :	LFLAGS += -L$(TESTU01_DIR)/lib -ltestu01 -lprobdist -lmylib -lm
-ifdef MKLROOT
-    $(BINDIR)/perf.exe : LFLAGS += -L$(MKLROOT)/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl
+ifneq ($(MKLROOT),)
+#    $(BINDIR)/perf.exe : LFLAGS += -L$(MKLROOT)/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl
+    $(BINDIR)/perf.exe : LFLAGS += -L$(MKLROOT)/lib/intel64 -lmkl_gf_lp64 -lmkl_sequential -lmkl_core
 endif
 
 $(BINDIR)/%.exe : $(BINDIR)/%.cpp.obj

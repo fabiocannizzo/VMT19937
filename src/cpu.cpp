@@ -150,6 +150,7 @@ void setCpuAffinity(int cpu)
     ((unsigned long*)&cpuset)[0] |= 1UL << cpu;
     if (sched_setaffinity(0, sizeof(cpuset), &cpuset) != 0)
         std::cout << "WARNING: failure setting affinity\n";
+#else
 #error Unsupported platform
 #endif
     std::cout << "Set CPU affinity to CPU " << cpu << "\n";
