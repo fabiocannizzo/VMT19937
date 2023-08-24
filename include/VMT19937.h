@@ -199,16 +199,14 @@ private:
             XV XMlo(stCur + (s_M / s_n32inReg) * s_n32inReg);
             constexpr size_t nIter1 = (N - M) / s_n32inReg;
             auto* stEnd1 = stCur + nIter1 * s_n32inReg;
-            do {
-                monoStateIteration<0, 1, M>(stCur, x0, XMlo, masks);
-                stCur += s_n32inReg;
-            } while (stCur != stEnd1);
+            for (size_t i = 0; i < nIter1; ++i)
+                monoStateIteration<0, 1, M>(stCur + i * s_n32inReg, x0, XMlo, masks);
+            stCur += nIter1 * s_n32inReg;
             constexpr size_t nIter2 = (M - 1) / s_n32inReg;
             auto* stEnd2 = stCur + nIter2 * s_n32inReg;
-            do {
-                monoStateIteration<0, 1, M - N>(stCur, x0, XMlo, masks);
-                stCur += s_n32inReg;
-            } while (stCur != stEnd2);
+            for (size_t i = 0; i < nIter2; ++i)
+                monoStateIteration<0, 1, M - N>(stCur + i * s_n32inReg, x0, XMlo, masks);
+            stCur += nIter2 * s_n32inReg;
             monoStateIteration<0, 1 - N, M - N>(stCur, x0, XMlo, masks);
         }
 
