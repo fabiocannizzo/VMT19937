@@ -386,7 +386,7 @@ public:
     // constructors
     MT19937Base()
         : m_pst(nullptr)
-        , m_pstEnd(m_state + s_N * s_n32inReg)
+        , m_pstEnd(m_state + s_N * s_nStates)
     {
     }
 };
