@@ -266,6 +266,9 @@ private:
                 }
             }
             else {
+#if (VRANDGEN_TESTING!=1)
+                THROW("Having multiple states and no sequential jump matrix does not make sense in normal use");
+#endif
                 for (size_t w = 0; w < s_N; ++w)
                     for (size_t j = 1; j < s_regLenWords; ++j)
                         pstate[w * s_regLenWords + j] = pstate[w * s_regLenWords];
