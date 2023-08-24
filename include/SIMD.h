@@ -123,6 +123,14 @@ public:
     friend FORCE_INLINE XV operator<<(const XV& a, const int n) { XV r; for (size_t i = 0; i < s_M; ++i) r.m_v[i] = a.m_v[i] << n; return r; }
     friend FORCE_INLINE XV operator>>(const XV& a, const int n) { XV r; for (size_t i = 0; i < s_M; ++i) r.m_v[i] = a.m_v[i] >> n; return r; }
 
+    FORCE_INLINE static XV bitwiseSelect(const XV mask, const XV a, const XV b)
+    {
+        XV r;
+        for (size_t i = 0; i < s_M; ++i)
+            r.m_v[i] = XVHw::bitwiseSelect(mask.m_v[i], a.m_v[i], b.m_v[i]);
+        return r;
+    }
+
     template <int nBytes>
     FORCE_INLINE static XV shl128(const XV& a)
     {
@@ -201,11 +209,15 @@ public:
     }
 
     template <typename XVI>
-    FORCE_INLINE XV ifOddCst32ElseZero(const XVI& value) const
+    FORCE_INLINE XV ifOddCst32ElseZero(const XVI value) const
     {
         XV r;
-        for (size_t i = 0; i < s_M; ++i)
-            r.m_v[i] = m_v[i].ifOddCst32ElseZero(value);
+        for (size_t i = 0; i < s_M; ++i) {
+            if constexpr (XVI::s_virtualBitLen > HwBitLen)
+                r.m_v[i] = m_v[i].ifOddCst32ElseZero(value.m_v[i]);
+            else
+                r.m_v[i] = m_v[i].ifOddCst32ElseZero(value);
+        }
         return r;
     }
 
@@ -282,6 +294,11 @@ struct SimdRegister<32, Isa, void>
     }
 
     static FORCE_INLINE XV zero() { return uint32_t(0); }
+
+    FORCE_INLINE static XV bitwiseSelect(const XV mask, const XV a, const XV b)
+    {
+        return (mask.m_v & a.m_v) | (~mask.m_v & b.m_v);
+    }
 
     uint8_t parity() const { return popcnt(m_v) % 2; }
 };
@@ -393,7 +410,12 @@ struct SimdRegister<128, ISA::NEON, void> : VirtualRegBase<128, ISA::NEON>
 
     static FORCE_INLINE XV zero() { return vdupq_n_u32(0); }
 
-    FORCE_INLINE XV ifOddCst32ElseZero(const XV& cst32) const
+    FORCE_INLINE static XV bitwiseSelect(const XV mask, const XV a, const XV b)
+    {
+        return vbslq_u32(mask.m_v, a.m_v, b.m_v);
+    }
+
+    FORCE_INLINE XV ifOddCst32ElseZero(const XV cst32) const
     {
         int32x4_t mask = vshrq_n_s32(vreinterpretq_s32_u32(vshlq_n_u32(m_v, 31)), 31);
         return vandq_u32(vreinterpretq_u32_s32(mask), cst32.m_v);
@@ -456,7 +478,12 @@ struct SimdRegister<128, Isa, std::enable_if_t<Isa == ISA::SSE2 || Isa == ISA::S
 
     static FORCE_INLINE XV zero() { return _mm_setzero_si128(); }
 
-    FORCE_INLINE XV ifOddCst32ElseZero(const XV& cst32) const
+    FORCE_INLINE static XV bitwiseSelect(const XV mask, const XV a, const XV b)
+    {
+        return _mm_castps_si128(_mm_blendv_ps(_mm_castsi128_ps(b.m_v), _mm_castsi128_ps(a.m_v), _mm_castsi128_ps(mask.m_v)));
+    }
+
+    FORCE_INLINE XV ifOddCst32ElseZero(const XV cst32) const
     {
 #if 0
         const __m128 z = _mm_setzero_ps();
@@ -545,7 +572,12 @@ struct SimdRegister<256, ISA::AVX2, void> : VirtualRegBase<256, ISA::AVX2>
 
     static FORCE_INLINE XV zero() { return _mm256_setzero_si256(); }
 
-    FORCE_INLINE XV ifOddCst32ElseZero(const XV& cst32) const
+    FORCE_INLINE static XV bitwiseSelect(const XV mask, const XV a, const XV b)
+    {
+        return _mm256_castps_si256(_mm256_blendv_ps(_mm256_castsi256_ps(b.m_v), _mm256_castsi256_ps(a.m_v), _mm256_castsi256_ps(mask.m_v)));
+    }
+
+    FORCE_INLINE XV ifOddCst32ElseZero(const XV cst32) const
     {
         const __m256i z = zero().m_v;
         const __m256i lowestBit = _mm256_slli_epi32(m_v, 31); // move least significant bit to most significant bit
@@ -614,7 +646,7 @@ struct SimdRegister<512, ISA::AVX512, void> : VirtualRegBase<512, ISA::AVX512>
 
     void broadcastLo128() { m_v = _mm512_broadcast_i32x4(_mm512_castsi512_si128(m_v)); }
 
-    FORCE_INLINE XV ifOddCst32ElseZero(const XV& cst32) const
+    FORCE_INLINE XV ifOddCst32ElseZero(const XV cst32) const
     {
         const __mmask16 isOdd = _mm512_test_epi32_mask(m_v, _mm512_set1_epi32(1));
         return _mm512_maskz_mov_epi32(isOdd, cst32.m_v);
@@ -632,6 +664,11 @@ struct SimdRegister<512, ISA::AVX512, void> : VirtualRegBase<512, ISA::AVX512>
     }
 
     static FORCE_INLINE XV zero() { return _mm512_setzero_si512(); }
+
+    FORCE_INLINE static XV bitwiseSelect(const XV mask, const XV a, const XV b)
+    {
+        return _mm512_ternarylogic_epi32(mask.m_v, a.m_v, b.m_v, 0xCA);
+    }
 
     uint8_t parity() const
     {
