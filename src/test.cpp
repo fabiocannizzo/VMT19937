@@ -344,10 +344,8 @@ void equivalenceTests0(const JumpMatrix<M>& jumpSmall, const JumpMatrix<M>& jump
         (equivalenceTests1<G, Ls, 32, 128, 256, 512>(jumpSmall, jumpBig), ...);
 }
 
-void test_VMT19937()
+void test_XVMT19937()
 {
-    startTest(genName[VMT]);
-
     generateBenchmark_MT19937();
 
     typedef MT19937Matrix matrix_t;
@@ -358,32 +356,26 @@ void test_VMT19937()
     pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/mt/F00009.bits")), 512);    // jump ahead 2^9 (512) elements
     pmatrix_t jumpMatrixPeriod(new matrix_t(std::string("./dat/mt/F19937.bits")), 1);   // jump ahead 2^19937 elements
 
+    // test VMT generator
+    startTest(genName[VMT]);
     equivalenceTests0<VMT, 32, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
-
     // since the period is 2^19937-1, after applying a jump matrix of 2^19937, we restart the sequence from step 1
     std::cout << "VMT19937: a jump of size 2^19937 is equivalent to a jump of size 1\n";
     testEquivalence<VMT, 32, 32, QM_Scalar>(1, jumpMatrixPeriod, noJump);
-}
 
-void test_XMT19937()
-{
+    // test XMT generator
     startTest(genName[XMT]);
-
-    generateBenchmark_MT19937();
-
-    typedef MT19937Matrix matrix_t;
-    typedef JumpMatrix<matrix_t> pmatrix_t;
-
-    pmatrix_t noJump;
-    pmatrix_t jumpMatrix1(new matrix_t, 1);                                          // jump ahead 1 element
-    pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/mt/F00009.bits")), 512);    // jump ahead 2^9 (512) elements
-    pmatrix_t jumpMatrixPeriod(new matrix_t(std::string("./dat/mt/F19937.bits")), 1);   // jump ahead 2^19937 elements
-
-    equivalenceTests0<XMT, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
-
+    equivalenceTests0<XMT, 32, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
     // since the period is 2^19937-1, after applying a jump matrix of 2^19937, we restart the sequence from step 1
-    std::cout << "VMT19937: a jump of size 2^19937 is equivalent to a jump of size 1\n";
+    std::cout << "XMT19937: a jump of size 2^19937 is equivalent to a jump of size 1\n";
+    testEquivalence<XMT, 32, 32, QM_Scalar>(1, jumpMatrixPeriod, noJump);
     testEquivalence<XMT, 128, 128, QM_Scalar>(1, jumpMatrixPeriod, noJump);
+#if SIMD_N_BITS>=256
+    testEquivalence<XMT, 256, 256, QM_Scalar>(1, jumpMatrixPeriod, noJump);
+#endif
+#if SIMD_N_BITS>=512
+    testEquivalence<XMT, 512, 512, QM_Scalar>(1, jumpMatrixPeriod, noJump);
+#endif
 }
 
 void test_VSFMT19937()
@@ -460,8 +452,7 @@ int main()
         testEncoding();
         testSquareMatrix();
 #endif
-        test_XMT19937();
-        test_VMT19937();
+        test_XVMT19937();
         test_VSFMT19937();
     }
     catch (const std::exception& e) {
