@@ -105,9 +105,11 @@ else
             SIMD := -march=armv8-a+simd
         endif
         SFMT_FLAGS := -DSFMT_MEXP=19937 -DHAVE_NEON
+        CXXFLAGS += -Wno-psabi
     else ifeq ($(ARCH), armv7l)
         SIMD := -mfpu=neon -mfloat-abi=hard
         SFMT_FLAGS := -DSFMT_MEXP=19937 -DHAVE_NEON
+        CXXFLAGS += -Wno-psabi
     else
         ifeq ($(NBITS), 512)
             SIMD := -mavx512f -mavx512bw -mavx512dq

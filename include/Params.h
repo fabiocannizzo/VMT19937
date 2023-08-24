@@ -3,7 +3,8 @@
 #include <cstdint>
 #include <cstddef>
 
-namespace xvmt::details {
+namespace xvmt {
+namespace details {
 
 struct MT19937Params
 {
@@ -43,4 +44,5 @@ struct SFMT19937Params
     static constexpr uint32_t s_SFMT_MSK4 = 0xbffffff6U;
 };
 
-} // namespace xvmt::details
+} // namespace details
+} // namespace xvmt

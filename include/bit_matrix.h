@@ -129,7 +129,7 @@ public:
     {
         if (0 == memcmp(m_data.data(), rhs.m_data.data(), s_nUsedBytes))
             return true;
-#if (VRANDGEN_TESTING==1)
+#if (RANDGEN_TESTING==1)
         for (size_t i = 0; i < s_nBitRows; ++i) {
             for (size_t j = 0; j < s_nBitCols; ++j) {
                 if (getBit(i, j) != rhs.getBit(i, j)) {

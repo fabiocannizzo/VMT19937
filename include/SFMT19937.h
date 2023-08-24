@@ -7,20 +7,33 @@
 #include <cstdint>
 #include <cstddef>
 
-namespace xvmt::details {
+namespace xvmt {
+namespace details {
 
-template <size_t RegisterBitLen, ISA Isa>
+// VRegBitLen  - virtual (logical) SIMD register width in bits. Three constraints apply:
+//   (1) Must be a multiple of IsaTraits<Isa>::HwBitLen (enforced by SimdRegister asserts).
+//   (2) Must be a multiple of s_wordSizeBits (= 128 for SFMT).
+//   (3) Must correspond to the HwBitLen of a real ISA: one of 128, 256, or 512.
+//       This parameter exists for portability: VSFMT19937<256, ISA::SSE42> and
+//       VSFMT19937<256, ISA::AVX2> produce identical sequences. On SSE42 hardware,
+//       each logical 256-bit operation is emulated by two 128-bit hardware instructions.
+//       VRegBitLen > HwBitLen is valid; VRegBitLen < HwBitLen is not.
+// Isa         - target ISA; selects hardware intrinsics and determines HwBitLen.
+template <size_t VRegBitLen, ISA Isa>
 class SFMT19937Base : public SFMT19937Params
 {
-    static constexpr size_t RegisterBitLenHw = IsaTraits<Isa>::HwBitLen;
-    static_assert(RegisterBitLen >= s_wordSizeBits);
+    static constexpr size_t HwBitLen = IsaTraits<Isa>::HwBitLen;
+    static_assert(VRegBitLen == 128 || VRegBitLen == 256 || VRegBitLen == 512,
+        "VRegBitLen must be a valid SIMD hardware register width (128, 256, or 512)");
+    static_assert(VRegBitLen % s_wordSizeBits == 0,
+        "VRegBitLen must be a multiple of the SFMT word size (128)");
 
 public:
-    static constexpr size_t s_regLenBits = RegisterBitLen;                              // logical SIMD width driving vectorisation (may exceed hardware width)
-    static constexpr size_t s_regLenBitsHw = RegisterBitLenHw;                         // actual hardware SIMD register width in bits
+    static constexpr size_t s_regLenBits = VRegBitLen;                              // logical SIMD width driving vectorisation (may exceed hardware width)
+    static constexpr size_t s_regLenBitsHw = HwBitLen;                         // actual hardware SIMD register width in bits
     static constexpr ISA s_isa = Isa;                                                   // target ISA used for SIMD intrinsic selection
-    static constexpr size_t s_nStates = RegisterBitLen / s_wordSizeBits;               // parallel SFMT states packed per logical SIMD register
-    static constexpr size_t s_n32inReg = RegisterBitLen / 32;                          // uint32 lanes per logical SIMD register
+    static constexpr size_t s_nStates = VRegBitLen / s_wordSizeBits;               // parallel SFMT states packed per logical SIMD register
+    static constexpr size_t s_n32inReg = VRegBitLen / 32;                          // uint32 lanes per logical SIMD register
 
     static constexpr size_t s_n32InFullState = s_n32InOneState * s_nStates;            // 624 * nStates - total uint32 elements in the interleaved state array
 
@@ -39,7 +52,7 @@ private:
     const uint32_t* const m_state_end;
     const uint32_t* m_prnd;
 
-    using MaskType = SimdRegister<std::max<size_t>(128, RegisterBitLenHw), Isa>;
+    using MaskType = SimdRegister<std::max<size_t>(128, HwBitLen), Isa>;
     alignas(64) inline static const MaskType s_bMask{SFMT19937Params::s_SFMT_MSK1, SFMT19937Params::s_SFMT_MSK2, SFMT19937Params::s_SFMT_MSK3, SFMT19937Params::s_SFMT_MSK4};
 
     template <typename XVCst>
@@ -348,5 +361,6 @@ public:
 
 }; // SFMT19937Base
 
-} // namespace xvmt::details
+} // namespace details
+} // namespace xvmt
 

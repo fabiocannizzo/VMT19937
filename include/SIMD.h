@@ -5,7 +5,8 @@
 
 #include <algorithm>
 
-namespace xvmt::details {
+namespace xvmt {
+namespace details {
 
 
 // SimdRegister is an abstraction of a packed SIMD register of length VirtualBitLen bits containing words of length 32 bits
@@ -480,7 +481,7 @@ struct SimdRegister<128, Isa, std::enable_if_t<Isa == ISA::SSE2 || Isa == ISA::S
 
     FORCE_INLINE static XV bitwiseSelect(const XV mask, const XV a, const XV b)
     {
-        return _mm_castps_si128(_mm_blendv_ps(_mm_castsi128_ps(b.m_v), _mm_castsi128_ps(a.m_v), _mm_castsi128_ps(mask.m_v)));
+        return _mm_or_si128(_mm_and_si128(mask.m_v, a.m_v), _mm_andnot_si128(mask.m_v, b.m_v));
     }
 
     FORCE_INLINE XV ifOddCst32ElseZero(const XV cst32) const
@@ -679,5 +680,6 @@ struct SimdRegister<512, ISA::AVX512, void> : VirtualRegBase<512, ISA::AVX512>
 };
 #endif
 
-} // namespace xvmt::details
+} // namespace details
+} // namespace xvmt
 

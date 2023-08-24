@@ -1,6 +1,6 @@
 #pragma once
 
-#include "VRandGen.h"
+#include "RandGen.h"
 #include "cpu.h"
 
 enum QryMode { QM_Scalar, QM_Block16, QM_Any };

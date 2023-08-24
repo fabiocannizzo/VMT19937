@@ -1,4 +1,4 @@
-#include "VRandGen.h"
+#include "RandGen.h"
 
 using namespace xvmt;
 

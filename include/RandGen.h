@@ -3,11 +3,11 @@
 #include "MT19937.h"
 #include "SFMT19937.h"
 
-namespace xvmt::details
-{
+namespace xvmt {
+namespace details {
 
 template <typename GenBase, bool QryBlk16>
-class VRandGen : protected GenBase
+class RandGen : protected GenBase
 {
     using base_t = GenBase;
 public:
@@ -68,7 +68,7 @@ private:
                 }
             }
             else {
-#if (VRANDGEN_TESTING!=1)
+#if (RANDGEN_TESTING!=1)
                 THROW("Having multiple states and no sequential jump matrix does not make sense");
 #endif
                 // Copy state 0 to all other states.
@@ -86,14 +86,14 @@ private:
     }
 
 public:
-    VRandGen() {}
+    RandGen() {}
 
     // Initialize as follows:
     // 1) initialize state 0 with seed
     // 2) apply commonJump matrix nCommonJumpRepeat times to state 0
     // 3) if multiple states are present, apply sequentialJump matrix to initialize the other states
     // Note that the sequentialJump must be provided only for generators of the V-family, which have multiple states
-    VRandGen(uint32_t seed, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
+    RandGen(uint32_t seed, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
         : base_t()
     {
         reinit(seed, commonJumpRepeat, commonJump, sequentialJump);
@@ -104,7 +104,7 @@ public:
     // 2) apply commonJump matrix nCommonJumpRepeat times to state 0
     // 3) if multiple states are present, apply sequentialJump matrix to initialize the other states
     // Note that the sequentialJump must be provided only for generators of the V-family, which have multiple states
-    VRandGen(const uint32_t seeds[], uint32_t n_seeds, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
+    RandGen(const uint32_t seeds[], uint32_t n_seeds, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
         : base_t()
     {
         reinit(seeds, n_seeds, commonJumpRepeat, commonJump, sequentialJump);
@@ -158,38 +158,35 @@ public:
     }
 };
 
-} // namespace xvmt::details
+} // namespace details
 
-namespace xvmt {
-
-template < size_t RegisterBitLen = SIMD_N_BITS
+template < size_t VRegBitLen = SIMD_N_BITS
          , bool QryBlk16 = false
-         , ISA RegisterIsa = xvmt::details::BestIsa<RegisterBitLen>::isa
+         , ISA Isa = details::BestIsa<VRegBitLen>::isa
          >
-struct VMT19937 : xvmt::details::VRandGen<xvmt::details::MT19937Base<RegisterBitLen, RegisterIsa, false, QryBlk16>, QryBlk16>
+struct VMT19937 : details::RandGen<details::MT19937Base<VRegBitLen, Isa, false, QryBlk16>, QryBlk16>
 {
-    using base_t = xvmt::details::VRandGen<xvmt::details::MT19937Base<RegisterBitLen, RegisterIsa, false, QryBlk16>, QryBlk16>;
-    using base_t::VRandGen; // reuse constructors
+    using base_t = details::RandGen<details::MT19937Base<VRegBitLen, Isa, false, QryBlk16>, QryBlk16>;
+    using base_t::RandGen; // reuse constructors
 };
 
-template < size_t RegisterBitLen = SIMD_N_BITS
+template < ISA Isa = details::BestIsa<512>::isa
          , bool QryBlk16 = false
-         , ISA RegisterIsa = xvmt::details::BestIsa<RegisterBitLen>::isa
          >
-struct XMT19937 : xvmt::details::VRandGen<xvmt::details::MT19937Base<RegisterBitLen, RegisterIsa, true, QryBlk16>, QryBlk16>
+struct XMT19937 : details::RandGen<details::MT19937Base<IsaTraits<Isa>::HwBitLen, Isa, true, QryBlk16>, QryBlk16>
 {
-    using base_t = xvmt::details::VRandGen<xvmt::details::MT19937Base<RegisterBitLen, RegisterIsa, true, QryBlk16>, QryBlk16>;
-    using base_t::VRandGen; // reuse constructors
+    using base_t = details::RandGen<details::MT19937Base<IsaTraits<Isa>::HwBitLen, Isa, true, QryBlk16>, QryBlk16>;
+    using base_t::RandGen; // reuse constructors
 };
 
-template < size_t RegisterBitLen = SIMD_N_BITS
+template < size_t VRegBitLen = SIMD_N_BITS
          , bool QryBlk16 = false
-         , ISA RegisterIsa = xvmt::details::BestIsa<RegisterBitLen>::isa
+         , ISA Isa = details::BestIsa<VRegBitLen>::isa
          >
-struct VSFMT19937 : xvmt::details::VRandGen<xvmt::details::SFMT19937Base<RegisterBitLen, RegisterIsa>, QryBlk16>
+struct VSFMT19937 : details::RandGen<details::SFMT19937Base<VRegBitLen, Isa>, QryBlk16>
 {
-    using base_t = xvmt::details::VRandGen<xvmt::details::SFMT19937Base<RegisterBitLen, RegisterIsa>, QryBlk16>;
-    using base_t::VRandGen; // reuse constructors
+    using base_t = details::RandGen<details::SFMT19937Base<VRegBitLen, Isa>, QryBlk16>;
+    using base_t::RandGen; // reuse constructors
 };
 
 } // namespace xvmt

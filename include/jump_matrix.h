@@ -211,7 +211,7 @@ struct MT19937Matrix : BinarySquareMatrix<xvmt::details::MT19937Params::s_nMatri
         MYASSERT(size == expectedSize, "File size mismatch for " << filename << ". Expected " << expectedSize << " bytes, but got " << size << " bytes.");
 
         base_t::fromBin(is);
-#if (VRANDGEN_TESTING==1)
+#if (RANDGEN_TESTING==1)
         std::cout << "loaded matrix from file: " << filename << "\n";
         printSparsity();
 #endif
@@ -306,7 +306,7 @@ struct SFMT19937Matrix : BinarySquareMatrix<xvmt::details::SFMT19937Params::s_nM
         MYASSERT(size == expectedSize, "File size mismatch for " << filename << ". Expected " << expectedSize << " bytes, but got " << size << " bytes.");
 
         base_t::fromBin(is);
-#if (VRANDGEN_TESTING==1)
+#if (RANDGEN_TESTING==1)
         std::cout << "loaded matrix from file: " << filename << "\n";
         printSparsity();
 #endif

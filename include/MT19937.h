@@ -6,7 +6,8 @@
 #include <cstdint>
 #include <cstddef>
 
-namespace xvmt::details {
+namespace xvmt {
+namespace details {
 
 
 template <size_t N32>
@@ -43,31 +44,44 @@ struct RndCache<0>
     void setEnd() {}
 };
 
-// Example: RegisterBitLen=512, RegisterBitLenHw=128
-// Supports the scenario where (RegisterBitLen > RegisterBitLenHw) to make the code more portable:
-// We can choose to choose a generator with a large RegisterBitLen (e.g., 512) to maximize the number of states,
-// however we may dispatch differently depending on the harware available (e.g., use 128-bit SIMD on older hardware,
-// 256-bit SIMD on newer hardware, etc.)
-template <size_t RegisterBitLen, ISA Isa, bool MonoState, bool QryBlk16>
+// VRegBitLen  - virtual (logical) SIMD register width in bits. Three constraints apply:
+//   (1) Must be a multiple of IsaTraits<Isa>::HwBitLen (enforced by SimdRegister asserts).
+//   (2) Must be a multiple of s_wordSizeBits (= 32 for MT).
+//   (3) Must correspond to the HwBitLen of a real ISA: one of 32, 128, 256, or 512.
+//       This parameter exists for portability: VMT19937<256, ISA::SSE42> and
+//       VMT19937<256, ISA::AVX2> produce identical sequences. On SSE42 hardware,
+//       each logical 256-bit operation is emulated by two 128-bit hardware instructions.
+//       VRegBitLen > HwBitLen is valid; VRegBitLen < HwBitLen is not.
+//   For MonoState=true: VRegBitLen must equal HwBitLen (enforced by static_assert below).
+// Isa         - target ISA; selects hardware intrinsics and determines HwBitLen.
+// MonoState   - false: multi-state vectorized generator (VMT family, nStates > 1);
+//               true:  single-state generator using SIMD for intra-state speed (XMT).
+// QryBlk16    - false: scalar and any-size query interface enabled;
+//               true:  only genrand_uint32_blk16() is available.
+template <size_t VRegBitLen, ISA Isa, bool MonoState, bool QryBlk16>
 class MT19937Base : public MT19937Params
 {
-    static constexpr size_t RegisterBitLenHw = IsaTraits<Isa>::HwBitLen;
-    static_assert(RegisterBitLen >= s_wordSizeBits);
-    static_assert(!MonoState || RegisterBitLen == RegisterBitLenHw);
+    static constexpr size_t HwBitLen = IsaTraits<Isa>::HwBitLen;
+    static_assert(VRegBitLen == 32 || VRegBitLen == 128 || VRegBitLen == 256 || VRegBitLen == 512,
+        "VRegBitLen must be a valid SIMD hardware register width (32, 128, 256, or 512)");
+    static_assert(VRegBitLen % s_wordSizeBits == 0,
+        "VRegBitLen must be a multiple of the MT word size (32)");
+    static_assert(!MonoState || VRegBitLen == HwBitLen,
+        "MonoState=true requires VRegBitLen == HwBitLen");
 
 public:
-    static constexpr size_t s_regLenBits = RegisterBitLen;                              // logical SIMD width driving vectorisation (may exceed hardware width)
-    static constexpr size_t s_regLenBitsHw = RegisterBitLenHw;                         // actual hardware SIMD register width in bits
+    static constexpr size_t s_regLenBits = VRegBitLen;                              // logical SIMD width driving vectorisation (may exceed hardware width)
+    static constexpr size_t s_regLenBitsHw = HwBitLen;                         // actual hardware SIMD register width in bits
     static constexpr ISA s_isa = Isa;                                                   // target ISA used for SIMD intrinsic selection
-    static constexpr size_t s_nStates = MonoState ? 1 : RegisterBitLen / s_wordSizeBits; // parallel MT states packed per logical SIMD register
-    static constexpr size_t s_n32inReg = RegisterBitLen / 32;                          // uint32 lanes per logical SIMD register
+    static constexpr size_t s_nStates = MonoState ? 1 : VRegBitLen / s_wordSizeBits; // parallel MT states packed per logical SIMD register
+    static constexpr size_t s_n32inReg = VRegBitLen / 32;                          // uint32 lanes per logical SIMD register
     static constexpr size_t s_n32InFullState = s_n32InOneState * s_nStates;            // 624 * nStates - total uint32 elements in the interleaved state array
 
     using matrix_t = MT19937Matrix;
 
 private:
     static constexpr uint32_t s_cacheLineBytes = 64;                                    // assumed cache line size in bytes; state array is aligned to this
-    static_assert(s_cacheLineBytes * 8 >= RegisterBitLen, "Assume that the register size is <= than the cache line");
+    static_assert(s_cacheLineBytes * 8 >= VRegBitLen, "Assume that the register size is <= than the cache line");
     static constexpr uint32_t s_n32InBlock = s_cacheLineBytes / sizeof(uint32_t);      // 16 - uint32 elements per cache-line block (one temperBlock call)
     static_assert(s_n32InFullState % s_n32InBlock == 0, "full state size not divisible by cache size");
 
@@ -90,7 +104,7 @@ private:
         TemperCst() : m_mask1(s_temperMask1), m_mask2(s_temperMask2)
         {
 #if defined(__AVX512F__)
-            if constexpr (RegisterBitLenHw == 512) {
+            if constexpr (HwBitLen == 512) {
                 m_kmask1 = _mm512_test_epi32_mask(m_mask1.m_v, _mm512_set1_epi32(0xFFFFFFFF));
                 m_kmask2 = _mm512_test_epi32_mask(m_mask2.m_v, _mm512_set1_epi32(0xFFFFFFFF));
             }
@@ -106,7 +120,7 @@ private:
 
     struct RefillCst
     {
-        using XVI = SimdRegister<RegisterBitLen, Isa>;
+        using XVI = SimdRegister<VRegBitLen, Isa>;
         RefillCst() : m_upperMask(s_upperMask), m_lowerMask(s_lowerMask), m_matrixA(s_matrixA) {}
         const XVI m_upperMask;
         const XVI m_lowerMask;
@@ -120,7 +134,7 @@ private:
     static FORCE_INLINE XVI temper(XVI y, const M& masks)
     {
 #if defined(__AVX512F__)
-        if constexpr (RegisterBitLenHw == 512) {
+        if constexpr (HwBitLen == 512) {
             y = y ^ (y >> 11);
             y = y ^ _mm512_maskz_mov_epi32(masks.m_kmask1, (y << 7).m_v);
             y = y ^ _mm512_maskz_mov_epi32(masks.m_kmask2, (y << 15).m_v);
@@ -155,7 +169,7 @@ private:
     {
         XV y = XV::bitwiseSelect(masks.m_upperMask, s, sp);
 #if defined(__AVX512F__)
-        if constexpr (RegisterBitLenHw == 512) {
+        if constexpr (HwBitLen == 512) {
             __mmask16 isOdd = _mm512_test_epi32_mask(sp.m_v, _mm512_set1_epi32(1));
             XV r = sm ^ (y >> 1);
             return _mm512_mask_xor_epi32(r.m_v, isOdd, r.m_v, masks.m_matrixA.m_v);
@@ -429,4 +443,5 @@ public:
 };
 
 
-} // namespace xvmt::details
+} // namespace details
+} // namespace xvmt

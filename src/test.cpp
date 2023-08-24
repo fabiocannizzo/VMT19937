@@ -1,4 +1,4 @@
-#define VRANDGEN_TESTING 1
+#define RANDGEN_TESTING 1
 
 #include "TestUtils.h"
 #include "SIMD.h"
@@ -35,7 +35,7 @@ template <size_t L, size_t I, QryMode QM>
 struct GenTraits<XMT, L, I, QM>
 {
     static_assert(L == I);
-    typedef XMT19937<L, QM == QM_Block16, BitLenToIsa<I>::isa> gen_t;
+    typedef XMT19937<BitLenToIsa<I>::isa, QM == QM_Block16> gen_t;
 };
 
 template <size_t L, size_t I, QryMode QM>
@@ -358,19 +358,18 @@ void test_XVMT19937()
     pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/mt/F00009.bits")), 512);    // jump ahead 2^9 (512) elements
     pmatrix_t jumpMatrixPeriod(new matrix_t(std::string("./dat/mt/F19937.bits")), 1);   // jump ahead 2^19937 elements
 
-    // test VMT generator
+    // test VMT generator (VRegBitLen=32 is not supported for multi-state generators)
     startTest(genName[VMT]);
-    equivalenceTests0<VMT, 32, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
+    equivalenceTests0<VMT, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
     // since the period is 2^19937-1, after applying a jump matrix of 2^19937, we restart the sequence from step 1
     std::cout << "VMT19937: a jump of size 2^19937 is equivalent to a jump of size 1\n";
-    testEquivalence<VMT, 32, 32, QM_Scalar>(1, jumpMatrixPeriod, noJump);
+    testEquivalence<VMT, 128, 128, QM_Scalar>(1, jumpMatrixPeriod, noJump);
 
     // test XMT generator
     startTest(genName[XMT]);
-    equivalenceTests0<XMT, 32, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
+    equivalenceTests0<XMT, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
     // since the period is 2^19937-1, after applying a jump matrix of 2^19937, we restart the sequence from step 1
     std::cout << "XMT19937: a jump of size 2^19937 is equivalent to a jump of size 1\n";
-    testEquivalence<XMT, 32, 32, QM_Scalar>(1, jumpMatrixPeriod, noJump);
     testEquivalence<XMT, 128, 128, QM_Scalar>(1, jumpMatrixPeriod, noJump);
 #if SIMD_N_BITS>=256
     testEquivalence<XMT, 256, 256, QM_Scalar>(1, jumpMatrixPeriod, noJump);
