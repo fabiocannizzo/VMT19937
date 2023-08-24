@@ -45,14 +45,14 @@ private:
 
     static const uint32_t s_rndBlockSize = 64 / sizeof(uint32_t); // exactly one cache line
 
-    alignas(64) XV m_state[s_N];    // the array of state vectors
+    alignas(64) uint32_t m_state[s_N * s_n32inReg];    // the array of state vectors
 
     // This data members is necessary only if QueryMode==QM_Scalar
     alignas(64) uint32_t m_rnd[s_rndBlockSize]; // buffer of tempered numbers with same size as a cache line
     const uint32_t* m_prnd;
 
     // This data members are redundant if QueryMode==QM_StateSize
-    const XV *m_pst, *m_pst_end;    // m_pos==m_pst_end means the state vector has been consumed and need to be regenerated
+    const uint32_t*m_pst, *m_pst_end;    // m_pos==m_pst_end means the state vector has been consumed and need to be regenerated
 
 private:
 
@@ -82,29 +82,29 @@ private:
     const static RefillCst s_refillCst;
 #endif
 
-    template <typename U>
-    static FORCE_INLINE U temper(U y, U mask1, U mask2)
+    template <typename XVI>
+    static FORCE_INLINE XVI temper(XVI y, const TemperCst<XVI>& masks)
     {
         y = y ^ (y >> 11);
-        y = y ^ ((y << 7) & mask1);
-        y = y ^ ((y << 15) & mask2);
+        y = y ^ ((y << 7) & masks.m_mask1);
+        y = y ^ ((y << 15) & masks.m_mask2);
         y = y ^ (y >> 18);
         return y;
     }
 
     template <bool Aligned>
-    static FORCE_INLINE void temperRefillBlock(const XV *&st, uint32_t *dst)
+    static FORCE_INLINE void temperRefillBlock(const uint32_t *&st, uint32_t *dst)
     {
         typedef SimdRegister<SIMD_N_BITS> XVmax;
+        const size_t n32PerIteration = sizeof(XVmax) / sizeof(uint32_t);
 
         TemperCst<XVmax> cst{};
-        XVmax* prnd = (XVmax*)dst;
-        const XVMax* pst = (XVMax*)st;
         for (size_t i = 0; i < s_rndBlockSize * sizeof(uint32_t) / sizeof(XVmax); ++i) {
-            XVmax tmp = temper(*pst++, cst.m_mask1, cst.m_mask2);
-            tmp.template store<Aligned>((uint32_t*)(prnd++));
+            XVmax tmp = temper(XVmax(st), cst);
+            tmp.template store<Aligned>((uint32_t*)(dst));
+            dst += n32PerIteration;
+            st += n32PerIteration;
         }
-        st = (const XV*)(pst);
     }
 
     static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, const RefillCst& masks)
@@ -119,41 +119,44 @@ private:
     }
 
     template <int nIter, int J0, int J1, int JM>
-    static FORCE_INLINE void unroll(XV* p, XV& pJ0, const RefillCst& masks)
+    static FORCE_INLINE void unroll(uint32_t* p, XV& x0, const RefillCst& masks)
     {
         if constexpr (nIter > 0) {
 #ifdef DEBUG
             if (!pJ0.eq(p[J0]))
                 THROW("how did this happen?");
 #endif
-            XV pJ1(p[J1]);
-            p[J0] = advance1(pJ0, pJ1, p[JM], masks);
-            pJ0 = pJ1;
-            unroll<nIter - 1, J0 + 1, J1 + 1, JM + 1>(p, pJ0, masks);
+            XV x1(p + J1 * s_n32inReg);
+            XV xM(p + JM * s_n32inReg);
+            XV tmp = advance1(x0, x1, xM, masks);
+            tmp.template store<true>(p + J0 * s_n32inReg);
+            x0 = x1;
+            unroll<nIter - 1, J0 + 1, J1 + 1, JM + 1>(p, x0, masks);
         }
     }
 
     template <int nUnroll, int nIter, int J1, int JM>
-    static FORCE_INLINE void advanceLoop(XV*& p, XV& pJ0, const RefillCst& masks)
+    static FORCE_INLINE void advanceLoop(uint32_t*& p, XV& x0, const RefillCst& masks)
     {
-        if constexpr (nIter >= nUnroll) {
-            auto pend = p + (nIter / nUnroll) * nUnroll;
+         const size_t nBlockIter = nIter / nUnroll;
+         const size_t nResIter = nIter % nUnroll;
+        if constexpr (nBlockIter > 0) {
+            auto pend = p + nBlockIter * nUnroll * s_n32inReg;
             // unroll the loop in blocks of nUnroll
             do {
-                unroll<nUnroll, 0, J1, JM>(p, pJ0, masks);
-                p += nUnroll;
+                unroll<nUnroll, 0, J1, JM>(p, x0, masks);
+                p += nUnroll * s_n32inReg;
             } while (p != pend);
         }
-        const size_t nResIter = nIter % nUnroll;
         if constexpr (nResIter) {
-            unroll<nResIter, 0, J1, JM>(p, pJ0, masks);
-            p += nResIter;
+            unroll<nResIter, 0, J1, JM>(p, x0, masks);
+            p += nResIter * s_n32inReg;
         }
     }
 
     void NO_INLINE refill()
     {
-        XV* stCur = m_state;
+        uint32_t* stCur = m_state;
 
         static const int N = s_N;
         static const int M = s_M;
@@ -167,34 +170,34 @@ private:
 #else
         const RefillCst masks;  // use default constructor
 #endif
-        XV pJ0 = stCur[0];
+        XV x0(stCur);
 
         // unroll first part of the loop (N-M) iterations
-        advanceLoop<4, N - M, 1, M>(stCur, pJ0, masks);
+        advanceLoop<4, N - M, 1, M>(stCur, x0, masks);
 
         // unroll second part of the loop (M-1) iterations
-        advanceLoop<4, M - 1, 1, M - N>(stCur, pJ0, masks);
+        advanceLoop<4, M - 1, 1, M - N>(stCur, x0, masks);
 
         // last iteration
-        advanceLoop<1, 1, 1 - N, M - N>(stCur, pJ0, masks);
+        advanceLoop<1, 1, 1 - N, M - N>(stCur, x0, masks);
 
         m_pst = m_state;
     }
 
     uint32_t& scalarState(uint32_t scalarIndex)
     {
-        return ((uint32_t*)m_state)[scalarIndex * s_regLenWords];
+        return m_state[scalarIndex * s_regLenWords];
     }
 
     uint32_t scalarState(uint32_t scalarIndex) const
     {
-        return ((uint32_t*)m_state)[scalarIndex * s_regLenWords];
+        return m_state[scalarIndex * s_regLenWords];
     }
 
     // extract one of the interleaved state vectors, shift it left by 31 bits and save it to dst
     void stateToVector(size_t stateIndex, uint32_t *pdst) const
     {
-        const uint32_t* pstate = (const uint32_t*)m_state;
+        const uint32_t* pstate = m_state;
         pdst[0] = pstate[stateIndex] >> 31;
         for (size_t i = 1; i < s_N; ++i) {
             uint32_t word = pstate[i * s_regLenWords + stateIndex];
@@ -206,7 +209,7 @@ private:
     // shift vector psr to the right by 31 bit and store into the interleaved elements of the state vector
     void vectorToState(size_t stateIndex, const uint32_t* psrc)
     {
-        uint32_t* pstate = (uint32_t*)m_state;
+        uint32_t* pstate = m_state;
         const uint32_t* pw = (const uint32_t*)psrc;
         pstate[stateIndex] = 0;
         size_t w;
@@ -220,7 +223,7 @@ private:
 
     void fillOtherStates(size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
     {
-        uint32_t* pstate = (uint32_t*)m_state;
+        uint32_t* pstate = m_state;
 
         // temporary workspace matrix
         BinaryMatrix<2, s_nBits> tmp;
@@ -288,7 +291,7 @@ public:
     VMT19937Base()
         : m_prnd(nullptr)
         , m_pst(nullptr)
-        , m_pst_end(m_state+s_N)
+        , m_pst_end(m_state + s_N * s_n32inReg)
     {}
 
     VMT19937Base(uint32_t seed, size_t commonJumpRepeat, const BinaryMatrix<s_nBits>* commonJump, const BinaryMatrix<s_nBits>* sequentialJump)
@@ -373,7 +376,7 @@ public:
     void genrand_uint32_stateBlk(uint32_t* dst)
     {
         refill();
-        const XV* pst = m_state;
+        const uint32_t* pst = m_state;
         for (size_t i = 0; i < s_n32InFullState / s_rndBlockSize; ++i, dst += s_rndBlockSize)
             temperRefillBlock<false>(pst, dst);
     }
