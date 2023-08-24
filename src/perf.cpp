@@ -384,7 +384,7 @@ template <GenMode Mode, size_t L, size_t I, QryMode...QMs>
 void vRandGenPerformance2()
 {
     constexpr size_t M = std::min<size_t>(L, SIMD_N_BITS);
-    if constexpr (I <= M || (I == M && Mode != xmt))
+    if constexpr (I <= M && (Mode != xmt || I == L))
         (vRandGenPerformance4<Mode, L, I, QMs>(), ...);
 }
 

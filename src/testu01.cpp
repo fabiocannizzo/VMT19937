@@ -5,6 +5,7 @@ extern "C" {
 #define SIMD_EMULATION
 
 #include "VRandGen.h"
+#include "TestUtils.h"
 
 #include <cstdint>
 #include <functional>
