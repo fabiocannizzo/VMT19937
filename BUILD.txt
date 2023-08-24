@@ -1,78 +1,45 @@
 Building VMT19937
 =================
 
-CMake 3.20+ is required.  C++20 compiler.
+VMT19937 requires a C++20 compiler and CMake 3.20+.
 
 Jump matrices
 -------------
-The dat/ matrices live in the remote branch "jumpfiles", not on master.
-Fetch them once after cloning:
-
+The dat/ matrices live in the remote branch "jumpfiles". They have been restored and uncompressed in the dat/ folder.
+If you need to fetch them again:
     git checkout origin/jumpfiles -- dat/
+    # Then extract .7z files if needed, or sync from a known good source.
 
-CMake cache variables
----------------------
+Universal Build Instructions
+----------------------------
+The project uses a standard CMake build system. On all platforms, the basic commands are:
+
+    cmake -B build
+    cmake --build build
+
+### Linux / Remote Linux (Ubuntu/Debian)
+1.  Open a terminal.
+2.  Run:
+        cmake -B build
+        cmake --build build -j$(nproc)
+
+### Cygwin
+1.  Open a Cygwin terminal.
+2.  Run:
+        cmake -B build
+        cmake --build build -j3
+
+### Windows (MSVC)
+1.  Open the "x64 Native Tools Command Prompt for VS 2022" (or run `vcvars64.bat`).
+2.  Run:
+        cmake -B build
+        cmake --build build --config Release
+
+CMake Options
+-------------
+You can customize the build using `-DVAR=VALUE`:
+
   NBITS        SIMD width: 128 (SSE4.2) / 256 (AVX2) / 512 (AVX-512).  Default: 128
-  MKLROOT      Path to MKL root (must contain include/mkl.h).
-               Default on Windows: C:/Program Files (x86)/Intel/oneAPI/mkl/2023.2.0
-               Set empty to disable.  Auto-disabled on Cygwin/GCC.
-  TESTU01_DIR  Path to TestU01 install.  Default: empty (disabled).
+  MKLROOT      Path to Intel MKL root. Set empty to disable.
+  TESTU01_DIR  Path to TestU01 install. Default: empty (disabled).
 
-Build configurations
---------------------
-
-Cygwin / Linux  (GCC, no MKL on Cygwin)
-  # NOTE: When building with GCC on Windows, you must use a suitable shell (e.g., Cygwin or MSYS2).
-  # You can use approximately 75% of the available CPU for building (e.g., -j3 on a 4-core system).
-  cmake -B build-128 -G "Unix Makefiles" -DNBITS=128
-  cmake --build build-128 -j3
-
-  # Linux with MKL:
-  cmake -B build-128 -DNBITS=128 -DMKLROOT=/opt/intel/oneapi/mkl/latest
-  cmake --build build-128 -j$(nproc)
-
-Windows — MSVC via Visual Studio generator  (no vcvars needed)
-  cmake -B build-128-msvc -G "Visual Studio 17 2022" -A x64 -DNBITS=128
-  cmake --build build-128-msvc --config Release
-
-Windows — MSVC via NMake  (run from a vcvars64 Developer Command Prompt)
-  cmake -B build-128-nmake -G "NMake Makefiles" -DNBITS=128 -DCMAKE_BUILD_TYPE=Release
-  cmake --build build-128-nmake
-
-  Or from PowerShell without a pre-configured prompt:
-  cmd /c "\"C:\Program Files\Microsoft Visual Studio\...\vcvars64.bat\" && ^
-    cmake -B build-128-nmake -G \"NMake Makefiles\" -DNBITS=128 -DCMAKE_BUILD_TYPE=Release && ^
-    cmake --build build-128-nmake"
-
-Windows — MinGW  (from a MinGW shell with g++ in PATH)
-  cmake -B build-128-mingw -G "MinGW Makefiles" -DNBITS=128
-  cmake --build build-128-mingw -j$(nproc)
-
-Cygwin — MinGW cross-compiler with MKL  (produces native Windows binary)
-  Requires Cygwin packages: mingw64-x86_64-gcc-g++, mingw64-x86_64-gcc-core
-
-  cmake -B build-128-mingw \
-      -G "Unix Makefiles" \
-      -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc \
-      -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
-      -DNBITS=128 \
-      -DMKLROOT="C:/Program Files (x86)/Intel/oneAPI/mkl/2023.2.0"
-  cmake --build build-128-mingw -j$(nproc)
-
-  The resulting .exe files are native Windows binaries.  Run them from PowerShell
-  or cmd with the MKL DLLs in PATH:
-    $env:PATH += ";C:\Program Files (x86)\Intel\oneAPI\mkl\2023.2.0\redist\intel64"
-    .\build-128-mingw\perf.exe --dir dat
-
-Running tests and benchmarks
------------------------------
-  build-128/test.exe --dir dat     # correctness tests  (Cygwin/Windows)
-  build-128/perf.exe --dir dat     # throughput benchmark
-
-  ./runtests.sh                    # runs perf for all pre-built build-{128,256,512} dirs
-  ./runtestu01.sh                  # runs TestU01 (requires TESTU01_DIR build)
-
-MKL runtime DLLs (Windows)
----------------------------
-When perf.exe is linked against MKL, the MKL DLLs must be in PATH at runtime:
-  set PATH=C:\Program Files (x86)\Intel\oneAPI\mkl\2023.2.0\redist\intel64;%PATH%
