@@ -519,6 +519,7 @@ int main(int argc, const char** argv)
     parseCliArgs(argc, argv);
 
     // print some test information
+    std::cout << "Target hardware SIMD register size (bits): " << SIMD_N_BITS << "\n";
     std::cout << "nRepeat = " << g_nRepeat << "\n";
     std::cout << "nRandom = " << g_nRandom << "\n";
     std::cout << (g_testMkl ? "including" : "skipping") << " MKL tests\n";
