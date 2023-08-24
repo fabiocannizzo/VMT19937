@@ -122,11 +122,11 @@ struct Results
     }
 };
 
-struct FullCompare
+struct TableCompare
 {
     bool operator()(const Results& a, const Results& b) const
     {
-        return std::tuple(a.nBitsHw, (int)a.qryMode, a.blkSize, a.avg) < std::tuple(b.nBitsHw, (int)b.qryMode, b.blkSize, b.avg);
+        return std::tuple(a.nBitsHw, a.blkSize, a.avg) < std::tuple(b.nBitsHw, b.blkSize, b.avg);
     }
 };
 
@@ -572,7 +572,7 @@ int main(int argc, const char** argv)
 #endif
         }
 
-        std::set<Results, FullCompare> sortedResults(results.begin(), results.end());
+        std::set<Results, TableCompare> sortedResults(results.begin(), results.end());
 
         const size_t spacing[] = { 20, 8, 8, 8, 10, 6, 8, 8, 8, 8, 11, 12 };
         size_t s = 0;
