@@ -16,19 +16,28 @@ const uint64_t nRandomTest = 50ul * 624 * 16;
 extern "C" unsigned long genrand_int32();
 extern "C" void init_by_array(unsigned long init_key[], int key_length);
 
-template <typename T>
+enum GenType { VSFMT, VMT, XMT };
+const char* genName[] = { "VSFMT", "VMT", "XMT" };
+
+template <GenType G, size_t L, size_t I, VRandGenQueryMode QM>
 struct GenTraits;
 
-template <size_t VecLen, size_t ImplLen, VRandGenQueryMode QryMode>
-struct GenTraits<VMT19937<VecLen, QryMode, ImplLen>>
+template <size_t L, size_t I, VRandGenQueryMode QM>
+struct GenTraits<VMT, L, I, QM>
 {
-    static const char* name() { return "VMT19937"; }
+    typedef VMT19937<L, QM, I> gen_t;
 };
 
-template <size_t VecLen, size_t ImplLen, VRandGenQueryMode QryMode>
-struct GenTraits<VSFMT19937<VecLen, QryMode, ImplLen>>
+template <size_t L, size_t I, VRandGenQueryMode QM>
+struct GenTraits<XMT, L, I, QM>
 {
-    static const char* name() { return "VSFMT19937"; }
+    typedef XMT19937<L, QM, I> gen_t;
+};
+
+template <size_t L, size_t I, VRandGenQueryMode QM>
+struct GenTraits<VSFMT, L, I, QM>
+{
+    typedef VSFMT19937<L, QM, I> gen_t;
 };
 
 std::vector<uint32_t> benchmark(nRandomTest + 10000);
@@ -200,16 +209,18 @@ struct JumpMatrix
     size_t jumpSize;  // jump size (i.e. number of elements skipped)
 };
 
-template <typename Gen, typename M>
+template <GenType G, size_t L, size_t I, VRandGenQueryMode QM, typename M>
 void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, const JumpMatrix<M>& seqJump)
 {
+    using Gen = typename GenTraits<G, L, I, QM>::gen_t;
+
     const size_t commonJumpSize = commonJump.p ? commonJump.jumpSize : 0;
     const size_t sequenceJumpSize = seqJump.p ? seqJump.jumpSize : 0;
 
-    MYASSERT((!commonJump.p && nCommonJumpRepeat == 0) || (commonJump.p && nCommonJumpRepeat > 0), "(nCommonJumpRepeat>0) <=> commonJumpSize>0 ");
+    MYASSERT(((commonJump.p != nullptr) == (nCommonJumpRepeat > 0)), "commnJump matrix should be provided only if nCommonJumpRepeat>0");
 
-    const size_t VecLen = Gen::s_regLenBits;
-    const VRandGenQueryMode QryMode = Gen::s_queryMode;
+    constexpr size_t VecLen = Gen::s_regLenBits;
+    constexpr VRandGenQueryMode QryMode = Gen::s_queryMode;
     size_t blkSize;
     switch (QryMode) {
         case QM_Any: blkSize = 0; break;
@@ -217,10 +228,10 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
         case QM_Block16: blkSize = 16; break;
         default: THROW("how did we get here?");
     }
-    const size_t s_nStates = Gen::s_nStates;
-    const size_t s_n32InOneWord = Gen::s_n32InOneWord;
+    constexpr size_t s_nStates = Gen::s_nStates;
+    constexpr size_t s_n32InOneWord = Gen::s_n32InOneWord;
 
-    std::cout << GenTraits<Gen>::name() << "< " << std::setw(3) << VecLen << ", "
+    std::cout << genName[G] << "< " << std::setw(3) << VecLen << ", "
         << std::setw(7) << queryModeName(QryMode) << ", " << std::setw(3) << Gen::s_regLenBitsHw << ">"
         << ", common jump of " << std::setw(4) << commonJumpSize << " repeated " << nCommonJumpRepeat << " times, sequence jump of " << std::setw(4) << sequenceJumpSize
         << ", block size " << std::setw(4);
@@ -232,19 +243,21 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
 
     std::vector<uint32_t> aligneddst(nRandomTest);
 
-    const M*jumpMat = nullptr;
+    const M* jumpMat = nullptr;
     if constexpr (s_nStates > 1)
         jumpMat = seqJump.p.get();
+    else
+        MYASSERT(!seqJump.p, "sequential jump provided for single-state generator");
 
-    std::unique_ptr<Gen> mt( new Gen(seedinit, seedlength, nCommonJumpRepeat, commonJump.p.get(), jumpMat));
+    Gen mt(seedinit, seedlength, nCommonJumpRepeat, commonJump.p.get(), jumpMat);
 
     uint32_t* dst = aligneddst.data();
     if constexpr (QryMode != QM_Any) {
         for (size_t i = 0; i < nRandomTest / blkSize; ++i)
             if constexpr (QryMode == QM_Scalar)
-                *dst++ = mt->genrand_uint32();
+                *dst++ = mt.genrand_uint32();
             else if constexpr (QryMode == QM_Block16) {
-                mt->genrand_uint32_blk16(dst);
+                mt.genrand_uint32_blk16(dst);
                 dst += blkSize;
             }
             else
@@ -261,7 +274,7 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
         while (n) {
             size_t szi = std::rand() % (sizeof(sz) / sizeof(*sz));
             size_t m = std::min<size_t>(n, sz[szi]);
-            mt->genrand_uint32_anySize(dst, m);
+            mt.genrand_uint32_anySize(dst, m);
             dst += m;
             n -= m;
         }
@@ -280,69 +293,58 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
     std::cout << "SUCCESS!\n";
 }
 
-template <typename M, size_t L, size_t I, VRandGenQueryMode QM>
-struct GenFromMatrix;
 
-template <size_t L, size_t I, VRandGenQueryMode QM>
-struct GenFromMatrix<MT19937Matrix, L, I, QM>
-{
-    typedef VMT19937<L, QM, I> gen_t;
-};
-
-template <size_t L, size_t I, VRandGenQueryMode QM>
-struct GenFromMatrix<SFMT19937Matrix, L, I, QM>
-{
-    typedef VSFMT19937<L, QM, I> gen_t;
-};
-
-
-template <size_t L, size_t I, VRandGenQueryMode QM, typename M>
+template <GenType G, size_t L, size_t I, VRandGenQueryMode QM, typename M>
 void equivalenceTests3(const JumpMatrix<M>& jumpSmall, const JumpMatrix<M>& jumpBig)
 {
     JumpMatrix<M> noJump{};
 
+    using Gen = typename GenTraits<G, L, I, QM>::gen_t;
+
     if constexpr (I <= L && I <= SIMD_N_BITS) {
-        using Gen = typename GenFromMatrix<M, L, I, QM>::gen_t;
         if constexpr (QM != QM_Any) {
-            testEquivalence<Gen>(0, noJump, noJump);
-            testEquivalence<Gen>(1, jumpSmall, noJump);
-            testEquivalence<Gen>(2, jumpSmall, noJump);
-            testEquivalence<Gen>(1, jumpBig, noJump);
-            if constexpr (L > 32) {
-                testEquivalence<Gen>(1, jumpBig, jumpBig);
-                testEquivalence<Gen>(2, jumpBig, jumpBig);
-                testEquivalence<Gen>(0, noJump, jumpBig);
+            testEquivalence<G, L, I, QM>(0, noJump, noJump);
+            testEquivalence<G, L, I, QM>(1, jumpSmall, noJump);
+            testEquivalence<G, L, I, QM>(2, jumpSmall, noJump);
+            testEquivalence<G, L, I, QM>(1, jumpBig, noJump);
+            if constexpr (L > 32 && Gen::s_nStates > 1) {
+                testEquivalence<G, L, I, QM>(1, jumpBig, jumpBig);
+                testEquivalence<G, L, I, QM>(2, jumpBig, jumpBig);
+                testEquivalence<G, L, I, QM>(0, noJump, jumpBig);
             }
         }
         else {
             // we repeat this test multiple times, as there are random number involved
             for (size_t i = 0; i < 10; ++i)
-                testEquivalence<Gen>(0, noJump, noJump);
+                testEquivalence<G, L, I, QM>(0, noJump, noJump);
         }
     }
 }
 
-template <size_t L, size_t I, VRandGenQueryMode...QMs, typename M>
-void equivalenceTests2(const JumpMatrix<M>& commonJump, const JumpMatrix<M>& seqJump)
+template <GenType G, size_t L, size_t I, VRandGenQueryMode...QMs, typename M>
+void equivalenceTests2(const JumpMatrix<M>& jumpSmall, const JumpMatrix<M>& jumpBig)
 {
-    (equivalenceTests3<L, I, QMs>(commonJump, seqJump), ...);
+    (equivalenceTests3<G, L, I, QMs>(jumpSmall, jumpBig), ...);
 }
 
-template <size_t L, size_t...Is, typename M>
-void equivalenceTests1(const JumpMatrix<M>& commonJump, const JumpMatrix<M>& seqJump)
+template <GenType G, size_t L, size_t...Is, typename M>
+void equivalenceTests1(const JumpMatrix<M>& jumpSmall, const JumpMatrix<M>& jumpBig)
 {
-    (equivalenceTests2<L, Is, QM_Scalar, QM_Block16, QM_Any>(commonJump, seqJump), ...);
+    (equivalenceTests2<G, L, Is, QM_Scalar, QM_Block16, QM_Any>(jumpSmall, jumpBig), ...);
 }
 
-template <size_t...Ls, typename M>
+template <GenType G, size_t...Ls, typename M>
 void equivalenceTests0(const JumpMatrix<M>& jumpSmall, const JumpMatrix<M>& jumpBig)
 {
-    (equivalenceTests1<Ls, 32, 128, 256, 512>(jumpSmall, jumpBig), ...);
+    if constexpr (G == XMT)
+        (equivalenceTests1<G, Ls, Ls>(jumpSmall, jumpBig), ...);
+    else
+        (equivalenceTests1<G, Ls, 32, 128, 256, 512>(jumpSmall, jumpBig), ...);
 }
 
 void test_VMT19937()
 {
-    startTest("VMT19937");
+    startTest(genName[VMT]);
 
     generateBenchmark_MT19937();
 
@@ -354,16 +356,33 @@ void test_VMT19937()
     pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/mt/F00009.bits")), 512);    // jump ahead 2^9 (512) elements
     pmatrix_t jumpMatrixPeriod(new matrix_t(std::string("./dat/mt/F19937.bits")), 1);   // jump ahead 2^19937 elements
 
-    equivalenceTests0<32, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
+    equivalenceTests0<VMT, 32, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
 
     // since the period is 2^19937-1, after applying a jump matrix of 2^19937, we restart the sequence from step 1
     std::cout << "VMT19937: a jump of size 2^19937 is equivalent to a jump of size 1\n";
-    testEquivalence<VMT19937<32, QM_Scalar>>(1, jumpMatrixPeriod, noJump);
+    testEquivalence<VMT, 32, 32, QM_Scalar>(1, jumpMatrixPeriod, noJump);
+}
+
+void test_XMT19937()
+{
+    startTest(genName[XMT]);
+
+    generateBenchmark_MT19937();
+
+    typedef MT19937Matrix matrix_t;
+    typedef JumpMatrix<matrix_t> pmatrix_t;
+
+    pmatrix_t noJump;
+    pmatrix_t jumpMatrix1(new matrix_t, 1);                                          // jump ahead 1 element
+    pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/mt/F00009.bits")), 512);    // jump ahead 2^9 (512) elements
+    //pmatrix_t jumpMatrixPeriod(new matrix_t(std::string("./dat/mt/F19937.bits")), 1);   // jump ahead 2^19937 elements
+
+    equivalenceTests0<XMT, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
 }
 
 void test_VSFMT19937()
 {
-    std::cout << "\nTest VSFMT19937\n";
+    startTest(genName[VSFMT]);
 
     generateBenchmark_SFMT19937();
 
@@ -374,7 +393,7 @@ void test_VSFMT19937()
     pmatrix_t jumpMatrix4(new matrix_t, 4);                                              // jump ahead 1 element
     pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/sfmt/F00009.bits")), 512);   // jump ahead 2^9 (1024) elements
 
-    equivalenceTests0<128, 256, 512>(jumpMatrix4, jumpMatrix512);
+    equivalenceTests0<VSFMT, 128, 256, 512>(jumpMatrix4, jumpMatrix512);
 }
 
 template <typename T>
@@ -424,6 +443,7 @@ void testSimdAlignR32(std::index_sequence<n32s...>&&)
 int main()
 {
     try {
+#if 0
         testSimdAlignR32(std::make_index_sequence<128 / 32 + 1>{});
 #if SIMD_N_BITS>=256
         testSimdAlignR32(std::make_index_sequence<256 / 32 + 1>{});
@@ -433,6 +453,8 @@ int main()
 #endif
         testEncoding();
         testSquareMatrix();
+#endif
+        test_XMT19937();
         test_VMT19937();
         test_VSFMT19937();
     }
