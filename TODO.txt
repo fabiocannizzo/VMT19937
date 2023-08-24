@@ -1,0 +1,41 @@
+Define static constant with the number of Bits in the jump matrix
+Review static const definitions and names
+Add comments for static constants definitions
+Add namespaces
+Add performnace tests for generators implemented with smaller registers
+Support Neon architecture
+Review file name: VMT19937 (also contains XMT19937)
+?MT19937: review static definitions and template arguments, e.g. s_n32InReg
+?MT19937: review static definitions and template arguments, what is the meaning of using as HWLen 32? Can it be extended to XMT?
+test: can we merge tests for XMT and VMT
+review SFMT19937 matrix parameters
+matrices: review serialization (add metadata about geometry)
+Review README page
+Introduce dynamic dispatching
+Rename repo?
+Perf test: add flags to disable query modes
+Makefile add support for MSVC compiler: add cmake support ?
+Add GitHub actions for CI
+Review paper
+Remove jump matrix argument from XMT constructors
+Encapsulate in generators code which used generator constants
+Add support for Intel AVX-10 architecture
+Use SIMD-ISA ISA codes as a template argument in register classes
+Query1 should be used in tests, but it should not be an argument of the generator, as it is equivalent to AnySize
+Should we remove QryBlk16 ? Does it add value?
+Check if per test throughput are computed correctly (try with slow)
+Test impact of saving to files using DMA (e.g. __mm_stream_si128)
+Add test for non-trivial SIMD functions
+Simplify exposed templates
+Generate all jump matrices up to 2^64 for common jumps
+
+
+
+
+
+
+
+
+
+
+
