@@ -1,8 +1,7 @@
 # Examples:
-# make jumpmat
-# make NBITS=512
-# CPPFLAGS=-g make
-# CCPREFIX=x86_64-w64-mingw32- make
+# - make NBITS=512  (default to 128)
+# - make TESTU01_DIR=/path/to/testu01/install (default to ../testu01/install)
+# - make MKLROOT=/path/to/mkl (default to /opt/intel/oneapi/mkl/latest/)
 
 ifndef NBITS
    $(info WARNING: NBITS not defined. Using default value: 128)
@@ -10,20 +9,24 @@ ifndef NBITS
 endif
 $(info NBITS: $(NBITS))
 
-ifndef TESTU01_DIR
-   $(info WARNING: TESTU01_DIR not defined. Using default value: ../testu01/install)
-   TESTU01_DIR=../testu01/install
+ifndef MKLROOT
+   $(info WARNING: MKLROOT not defined: using default path.)
+   MKLROOT=/opt/intel/oneapi/mkl/latest/
 endif
 
-MKLROOT ?= /opt/intel/oneapi/mkl/latest/
 # Check if the directory exists
 ifeq ($(wildcard $(MKLROOT)),)
    # Code to run if the directory does NOT exist
-   $(info The MKL include directory was not found at $(MKLROOT))
+   $(info The MKL include directory was not found at $(MKLROOT). Disabling MKL.)
    MKLROOT :=
 else
    $(info MKLROOT: $(MKLROOT))
    $(info NOTE: reemmber to export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(MKLROOT))
+endif
+
+ifndef TESTU01_DIR
+   $(info WARNING: TESTU01_DIR not defined: using default path.)
+   TESTU01_DIR=../testu01/install
 endif
 
 ifneq ("$(wildcard $(TESTU01_DIR)/include/TestU01.h)","")
@@ -31,7 +34,7 @@ ifneq ("$(wildcard $(TESTU01_DIR)/include/TestU01.h)","")
     $(info TESTU01_DIR: $(TESTU01_DIR))
 else
     TESTU01_AVAIL = 0
-    $(info TestU01.h header file NOT found)
+    $(info TestU01.h header file NOT found at $(TESTU01_DIR)/include/)
 endif
 
 PLATFORM := $(shell uname -s)
@@ -61,6 +64,10 @@ LOGDIR=logs/testu01
 COMMONFLAGS = -c -O3 $(SIMD)
 
 SFMT_FLAGS = -DSFMT_MEXP=19937 -DHAVE_SSE2
+
+# clear flags
+CFLAGS :=
+CPPFLAGS :=
 
 CFLAGS += $(COMMONFLAGS)
 CPPFLAGS += $(COMMONFLAGS) -O3 -std=c++20 -Iinclude
