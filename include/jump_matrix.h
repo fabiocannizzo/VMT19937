@@ -201,8 +201,15 @@ struct MT19937Matrix : BinarySquareMatrix<Details::MT19937Params::s_nMatrixBits>
     // initialize from a binary file saved with the toBin method
     void fromBinaryFile(const std::string& filename)
     {
-        std::ifstream is(filename, std::ios::binary);
+        std::ifstream is(filename, std::ios::binary | std::ios::ate);
         MYASSERT(is.is_open(), "error opening binary file: " << filename);
+
+        // mild sanity check: verify that the file size matches the expected matrix dimensions
+        std::streamsize size = is.tellg();
+        is.seekg(0, std::ios::beg);
+        size_t expectedSize = base_t::s_binStreamSize;
+        MYASSERT(size == expectedSize, "File size mismatch for " << filename << ". Expected " << expectedSize << " bytes, but got " << size << " bytes.");
+
         base_t::fromBin(is);
 #if (VRANDGEN_TESTING==1)
         std::cout << "loaded matrix from file: " << filename << "\n";
@@ -289,8 +296,15 @@ struct SFMT19937Matrix : BinarySquareMatrix<Details::SFMT19937Params::s_nMatrixB
     // initialize from a binary file saved with the toBin method
     void fromBinaryFile(const std::string& filename)
     {
-        std::ifstream is(filename, std::ios::binary);
+        std::ifstream is(filename, std::ios::binary | std::ios::ate);
         MYASSERT(is.is_open(), "error opening binary file: " << filename);
+
+        // mild sanity check: verify that the file size matches the expected matrix dimensions
+        std::streamsize size = is.tellg();
+        is.seekg(0, std::ios::beg);
+        size_t expectedSize = base_t::s_binStreamSize;
+        MYASSERT(size == expectedSize, "File size mismatch for " << filename << ". Expected " << expectedSize << " bytes, but got " << size << " bytes.");
+
         base_t::fromBin(is);
 #if (VRANDGEN_TESTING==1)
         std::cout << "loaded matrix from file: " << filename << "\n";
