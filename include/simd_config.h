@@ -31,6 +31,7 @@ template <> struct BitLenToIsa<128> {
     static constexpr ISA isa = ISA::SSE42;
 #endif
 };
+template <> struct BitLenToIsa<64>  { static constexpr ISA isa = ISA::Scalar; };
 template <> struct BitLenToIsa<256> { static constexpr ISA isa = ISA::AVX2; };
 template <> struct BitLenToIsa<512> { static constexpr ISA isa = ISA::AVX512; };
 

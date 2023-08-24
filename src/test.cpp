@@ -479,16 +479,15 @@ void test_XVMT19937()
     pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/mt32/F00009.bits")), 512);    // jump ahead 2^9 (512) elements
     pmatrix_t jumpMatrixPeriod(new matrix_t(std::string("./dat/mt32/F19937.bits")), 1);   // jump ahead 2^19937 elements
 
-    // test VMT generator (VRegBitLen=32 is not supported for multi-state generators)
     startTest(genName[VMT]);
-    equivalenceTests0<VMT, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
+    equivalenceTests0<VMT, 32, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
     // since the period is 2^19937-1, after applying a jump matrix of 2^19937, we restart the sequence from step 1
     std::cout << "VMT19937: a jump of size 2^19937 is equivalent to a jump of size 1\n";
     testEquivalence<VMT, 128, 128, QM_Scalar>(1, jumpMatrixPeriod, noJump);
 
     // test XMT generator
     startTest(genName[XMT]);
-    equivalenceTests0<XMT, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
+    equivalenceTests0<XMT, 32, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
     // since the period is 2^19937-1, after applying a jump matrix of 2^19937, we restart the sequence from step 1
     std::cout << "XMT19937: a jump of size 2^19937 is equivalent to a jump of size 1\n";
     testEquivalence<XMT, 128, 128, QM_Scalar>(1, jumpMatrixPeriod, noJump);
@@ -529,9 +528,10 @@ void test_VMT19937_64()
 
     startTest(genName[VMT64]);
     equivalenceTests0<VMT64, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
+    equivalenceTests1<VMT64, 64, 64>(jumpMatrix1, jumpMatrix512);
 
     startTest(genName[XMT64]);
-    equivalenceTests0<XMT64, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
+    equivalenceTests0<XMT64, 64, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
 }
 
 template <typename T>

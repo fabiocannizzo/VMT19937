@@ -298,6 +298,31 @@ public:
 };
 
 
+template <>
+struct MT64TemperPolicy<ISA::Scalar>
+{
+    using Params = MT19937Params<64>;
+    static constexpr size_t s_n64InBlock = 64 / sizeof(uint64_t);  // 8
+
+    template <bool Aligned, typename Base>
+    static FORCE_INLINE void execute(Base& b, typename Base::output_word_t* dst)
+    {
+        static_assert(s_n64InBlock == 8);
+        const uint64_t* pst = reinterpret_cast<const uint64_t*>(b.m_pst);
+        uint64_t* d = reinterpret_cast<uint64_t*>(dst);
+        for (size_t k = 0; k < s_n64InBlock; ++k) {
+            uint64_t y = pst[k];
+            y ^= (y >> Params::s_u) & uint64_t(Params::s_d);
+            y ^= (y << Params::s_s) & uint64_t(Params::s_b);
+            y ^= (y << Params::s_t) & uint64_t(Params::s_c);
+            y ^= y >> Params::s_l;
+            d[k] = y;
+        }
+        b.m_pst += s_n64InBlock;
+    }
+};
+
+
 // ============================================================
 //  64-bit refill policy — SIMD multi-state / scalar mono-state
 // ============================================================
@@ -410,9 +435,9 @@ class MT19937BaseImpl
     friend Refiller;
     friend Temper;
 
-    static constexpr size_t HwBitLen = IsaTraits<Isa>::HwBitLen;
-    static_assert(VRegBitLen == 32 || VRegBitLen == 128 || VRegBitLen == 256 || VRegBitLen == 512,
-        "VRegBitLen must be a valid SIMD hardware register width (32, 128, 256, or 512)");
+    static constexpr size_t HwBitLen = SimdRegister<VRegBitLen, Isa>::s_hwBitLen;
+    static_assert(VRegBitLen == 32 || VRegBitLen == 64 || VRegBitLen == 128 || VRegBitLen == 256 || VRegBitLen == 512,
+        "VRegBitLen must be a valid SIMD hardware register width (32, 64, 128, 256, or 512)");
     static_assert(VRegBitLen % Params::s_stateWordBits == 0,
         "VRegBitLen must be a multiple of the MT word size");
     static_assert(!MonoState || VRegBitLen == HwBitLen,

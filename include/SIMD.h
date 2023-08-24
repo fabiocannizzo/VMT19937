@@ -40,9 +40,10 @@ template <
 >
 struct SimdRegister;
 
-// SimdRegister: specialization for VirtualBitLen > HwBitLen and WordLen == 32
+// SimdRegister: specialization for VirtualBitLen > HwBitLen (emulated via multiple HW registers)
+// Excluded: VirtualBitLen==64 is always handled by the explicit SimdRegister<64, Isa, void> below.
 template <size_t VirtualBitLen, ISA Isa>
-struct SimdRegister<VirtualBitLen, Isa, std::enable_if_t<(VirtualBitLen > IsaTraits<Isa>::HwBitLen), void>>
+struct SimdRegister<VirtualBitLen, Isa, std::enable_if_t<(VirtualBitLen > IsaTraits<Isa>::HwBitLen && VirtualBitLen != 64), void>>
     : VirtualRegBase<VirtualBitLen, Isa>
 {
 private:
@@ -329,47 +330,45 @@ struct SimdRegister<32, Isa, void>
 };
 
 
-/*
-template <>
-struct MAY_ALIAS SimdRegister<64>
+template <ISA Isa>
+struct SimdRegister<64, Isa, void>
 {
+    static const size_t s_virtualBitLen = 64;
+    static const size_t s_hwBitLen = 64;
+    static const ISA s_isa = Isa;
+
     uint64_t m_v;
 
-    typedef SimdRegister<64> XV;
+    typedef SimdRegister<64, Isa> XV;
 
     SimdRegister() : m_v(0) {}
-    SimdRegister(const void* p) : m_v(*(const uint64_t*)p) {}
-    SimdRegister(uint32_t v) : m_v(v | (uint64_t(v) << 32)) {}
-    SimdRegister(uint64_t v) : m_v(v) {}
+    FORCE_INLINE SimdRegister(const void* p) : m_v(*(const uint64_t*)p) {}
+    FORCE_INLINE SimdRegister(uint64_t v) : m_v(v) {}
 
-    friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { return a.m_v & b.m_v; }
-    friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { return a.m_v ^ b.m_v; }
-    friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { return a.m_v | b.m_v; }
-    friend FORCE_INLINE XV operator>>(const XV& a, int n)
-    {
-        uint64_t mask = (uint64_t(0xFFFFFFFF) << 32) | ((uint32_t(1) << (32 - n)) - 1);
-        return uint64_t(a.m_v >> n) & mask;
-    }
-    friend FORCE_INLINE XV operator<<(const XV& a, int n)
-    {
-        //uint64_t mask = uint64_t(-1) & ~(((uint64_t(1) << n) - 1) << 32);
-        return uint64_t(a.m_v << n);
-    }
+    template <bool A>
+    FORCE_INLINE void store(uint32_t* dst) { *(uint64_t*)dst = m_v; }
+
+    friend FORCE_INLINE XV operator&(const XV a, const XV b) { return a.m_v & b.m_v; }
+    friend FORCE_INLINE XV operator^(const XV a, const XV b) { return a.m_v ^ b.m_v; }
+    friend FORCE_INLINE XV operator|(const XV a, const XV b) { return a.m_v | b.m_v; }
+
+    friend FORCE_INLINE XV shr64(const XV a, int n) { return uint64_t(a.m_v >> n); }
+    friend FORCE_INLINE XV shl64(const XV a, int n) { return uint64_t(a.m_v << n); }
 
     FORCE_INLINE bool eq(const XV& rhs) const { return m_v == rhs.m_v; }
 
-    FORCE_INLINE XV ifOddCst32ElseZero(const XV& value) const
-    {
-        const uint64_t maskHi = m_v & (uint64_t(1) << 32) ? (uint64_t(0xFFFFFFFF) << 32) : 0;
-        const uint64_t maskLo = m_v & 0x1 ? uint64_t(0xFFFFFFFF) : 0;
-        return value.m_v & (maskHi | maskLo);
-    }
-
     static FORCE_INLINE XV zero() { return uint64_t(0); }
 
-    uint8_t parity() const { return popcnt(m_v) % 2; }
+    FORCE_INLINE static XV bitwiseSelect(const XV mask, const XV a, const XV b)
+    {
+        return (mask.m_v & a.m_v) | (~mask.m_v & b.m_v);
+    }
+
+    FORCE_INLINE XV xorIfOddCst64(const XV& cond, const XV& cst) const
+    {
+        return *this ^ XV(cond.m_v & 1 ? cst.m_v : uint64_t(0));
+    }
 };
-*/
 
 #if SIMD_N_BITS>=128
 #if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__)
