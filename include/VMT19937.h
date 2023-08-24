@@ -32,15 +32,14 @@ private:
     static constexpr size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
 
     static constexpr uint32_t s_cacheLineBytes = 64;
-    static constexpr uint32_t s_n32InRndCache = s_cacheLineBytes / sizeof(uint32_t);
-    static_assert(s_n32InFullState % s_n32InRndCache == 0, "full state size not divisible by cache size");
-    static_assert(s_n32InRndCache % (64/4) == 0, "cache size is not divisible by cache line size");
+    static constexpr uint32_t s_n32InBlock = s_cacheLineBytes / sizeof(uint32_t); // 16
+    static_assert(s_n32InFullState % s_n32InBlock == 0, "full state size not divisible by cache size");
 
     using XV = SimdRegister<s_regLenBits, RegisterBitLenHw>;
 
 private:
     // This data members is necessary only if QueryMode==QM_Scalar
-    alignas(64) uint32_t m_rnd[s_n32InRndCache]; // buffer of tempered numbers
+    alignas(64) uint32_t m_rnd[s_n32InBlock]; // buffer of tempered numbers
     const uint32_t* m_prnd, * const m_prndEnd;
 
     // This data members are redundant if QueryMode==QM_StateSize
@@ -81,12 +80,12 @@ private:
     template <bool Aligned>
     static FORCE_INLINE void temperRefillBlock_(const uint32_t * __restrict st, uint32_t * __restrict dst)
     {
-        constexpr size_t LR = std::min<size_t>(s_regLenBitsHw * 4, s_n32InRndCache * 32);
+        constexpr size_t LR = std::min<size_t>(s_regLenBitsHw * 4, s_n32InBlock * 32);
         using XVmax = SimdRegister<LR, s_regLenBitsHw>;
         constexpr size_t n32PerIteration = LR / 32;
-        static_assert(n32PerIteration <= s_n32InRndCache);
-        static_assert(s_n32InRndCache % n32PerIteration == 0);
-        constexpr size_t nIterations = s_n32InRndCache / n32PerIteration;
+        static_assert(n32PerIteration <= s_n32InBlock);
+        static_assert(s_n32InBlock % n32PerIteration == 0);
+        constexpr size_t nIterations = s_n32InBlock / n32PerIteration;
 
         const TemperCst<XVmax> cst{};
 
@@ -102,7 +101,7 @@ private:
     static FORCE_INLINE void temperRefillBlock(const uint32_t*& st_, uint32_t* dst)
     {
         temperRefillBlock_<Aligned>(st_, dst);
-        st_ += s_n32InRndCache;
+        st_ += s_n32InBlock;
     }
 
     static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, const RefillCst& masks)
@@ -341,7 +340,7 @@ protected:
     {
         if (m_pst == m_pstEnd) VM19937_UNLIKELY
             refill();
-        temperRefillBlock<true>(m_pst, dst);
+        temperRefillBlock<false>(m_pst, dst);
     }
 
     // generates a block of the same size as the state vector of uniform discrete random numbers in [0,0xffffffff] interval
@@ -350,7 +349,7 @@ protected:
     {
         refill();
         const uint32_t* pst = m_state;
-        for (size_t i = 0; i < s_n32InFullState / s_n32InRndCache; ++i, dst += s_n32InRndCache)
+        for (size_t i = 0; i < s_n32InFullState / s_n32InBlock; ++i, dst += s_n32InBlock)
             temperRefillBlock<false>(pst, dst);
     }
 
@@ -373,18 +372,18 @@ protected:
                 n -= nAvailInState;
                 do {
                     temperRefillBlock<false>(m_pst, dst);
-                    dst += s_n32InRndCache;
-                    nAvailInState -= s_n32InRndCache;
+                    dst += s_n32InBlock;
+                    nAvailInState -= s_n32InBlock;
                 } while (nAvailInState);
             }
         }
         else {
-            size_t nFullRndBlocks = n / s_n32InRndCache;
+            size_t nFullRndBlocks = n / s_n32InBlock;
             for (size_t i = 0; i < nFullRndBlocks; ++i) {
                 temperRefillBlock<false>(m_pst, dst);
-                dst += s_n32InRndCache;
+                dst += s_n32InBlock;
             }
-            n = n % s_n32InRndCache;
+            n = n % s_n32InBlock;
             if (n) {
                 temperRefillBlock<true>(m_pst, m_rnd);
                 std::copy_n(m_rnd, n, dst);
@@ -409,10 +408,10 @@ protected:
         if (n > 0) {
             refill();
 
-            while (n > s_n32InRndCache) {
+            while (n > s_n32InBlock) {
                 temperRefillBlock<false>(m_pst, dst);
-                n -= s_n32InRndCache;
-                dst += s_n32InRndCache;
+                n -= s_n32InBlock;
+                dst += s_n32InBlock;
             }
 
             if (n) {
@@ -434,7 +433,7 @@ public:
     // constructors
     MT19937Base()
         : m_prnd(nullptr)
-        , m_prndEnd(m_rnd + s_n32InRndCache)
+        , m_prndEnd(m_rnd + s_n32InBlock)
         , m_pst(nullptr)
         , m_pstEnd(m_state + s_N * s_n32inReg)
     {
