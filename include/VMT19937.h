@@ -31,8 +31,8 @@ public:
 private:
     static constexpr size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
 
-    static constexpr uint32_t s_cacheLineBits = 64*8;
-    static constexpr uint32_t s_n32InRndCache = std::max<uint32_t>(s_cacheLineBits, 4*RegisterBitLenHw) / 32;
+    static constexpr uint32_t s_cacheLineBytes = 64;
+    static constexpr uint32_t s_n32InRndCache = s_cacheLineBytes / sizeof(uint32_t);
     static_assert(s_n32InFullState % s_n32InRndCache == 0, "full state size not divisible by cache size");
     static_assert(s_n32InRndCache % (64/4) == 0, "cache size is not divisible by cache line size");
 
@@ -339,28 +339,9 @@ protected:
     // for optimal performance the vector dst should be aligned on a 64 byte boundary
     FORCE_INLINE void genrand_uint32_blk16(uint32_t* dst)
     {
-        if constexpr (s_n32InRndCache > 16) {
-            if (m_prnd != endRnd()) {
-                const uint32_t* b = m_prnd + 16;
-                const uint32_t* e = b + 16;
-                m_prnd = e;
-                std::copy(b, e, dst);
-                return;
-            }
-        }
-
         if (m_pst == m_pstEnd) VM19937_UNLIKELY
             refill();
-
-        if constexpr (s_n32InRndCache > 16) {
-            temperRefillBlock<true>(m_pst, m_rnd);
-            uint32_t* e = m_rnd + 16;
-            std::copy(m_rnd, e, dst);
-            m_prnd = e;
-        }
-        else {
-            temperRefillBlock<false>(m_pst, dst);
-        }
+        temperRefillBlock<true>(m_pst, dst);
     }
 
     // generates a block of the same size as the state vector of uniform discrete random numbers in [0,0xffffffff] interval
