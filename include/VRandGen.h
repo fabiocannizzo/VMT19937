@@ -25,7 +25,7 @@ private:
     void completeStateInitialization(size_t nCommonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
     {
         // temporary workspace matrix
-        BinaryMatrix<2, base_t::s_nMatrixBits> tmp;
+        BinaryMatrix<2, base_t::s_nMatrixBits> tmp(commonJump || sequentialJump);
 
         // apply common jump to state-0
         if (nCommonJumpRepeat) {
