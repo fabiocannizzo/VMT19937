@@ -1,6 +1,7 @@
 #pragma once
 
 #include "bit_matrix.h"
+#include "Params.h"
 
 #include <thread>
 #include <atomic>
@@ -135,9 +136,9 @@ struct BinarySquareMatrix : BinaryMatrix<N, N>
     }
 };
 
-struct MT19937Matrix : BinarySquareMatrix<19937>
+struct MT19937Matrix : BinarySquareMatrix<Details::MT19937Params::s_nMatrixBits>
 {
-    typedef BinarySquareMatrix<19937> base_t;
+    typedef BinarySquareMatrix<Details::MT19937Params::s_nMatrixBits> base_t;
 
     // Initialize the matrix as per MT19937 32 bit generator transition matrix
     // This is equivalent to a jump ahead of 1 random number
@@ -166,7 +167,7 @@ struct MT19937Matrix : BinarySquareMatrix<19937>
     {
         static const size_t s_nBits = base_t::s_nBitRows;
         static const size_t s_nWordBits = base_t::s_nWordBits;
-        static const uint32_t s_matA = 0x9908B0DF;
+        static const uint32_t s_matA = Details::MT19937Params::s_matrixA;
         static const uint32_t s_M = 397;
 
         // from row 0 to to row nBits - 32, state bits are just shifted left by 32 bits
@@ -203,9 +204,9 @@ struct MT19937Matrix : BinarySquareMatrix<19937>
     }
 };
 
-struct SFMT19937Matrix : BinarySquareMatrix<19968>
+struct SFMT19937Matrix : BinarySquareMatrix<Details::SFMT19937Params::s_nMatrixBits>
 {
-    typedef BinarySquareMatrix<19968> base_t;
+    typedef BinarySquareMatrix<Details::SFMT19937Params::s_nMatrixBits> base_t;
 
     // Initialize the matrix as per MT19937 32 bit generator transition matrix
     // This is equivalent to a jump ahead of 4 random numbers
@@ -221,18 +222,20 @@ struct SFMT19937Matrix : BinarySquareMatrix<19968>
 
     void init4()
     {
-        const uint32_t s_SFMT_MSK1 = 0xdfffffefU;
-        const uint32_t s_SFMT_MSK2 = 0xddfecb7fU;
-        const uint32_t s_SFMT_MSK3 = 0xbffaffffU;
-        const uint32_t s_SFMT_MSK4 = 0xbffffff6U;
-        const uint32_t masks[] = { s_SFMT_MSK1, s_SFMT_MSK2, s_SFMT_MSK3, s_SFMT_MSK4 };
+    	using namespace Details;
+    	
+        const uint32_t masks[] =
+            { SFMT19937Params::s_SFMT_MSK1
+            , SFMT19937Params::s_SFMT_MSK2
+            , SFMT19937Params::s_SFMT_MSK3
+            , SFMT19937Params::s_SFMT_MSK4
+            };
 
         auto K = [&masks](size_t i) -> bool { return masks[i / 32] & (1 << (i % 32)); };
 
         const size_t s_nBits = base_t::s_nBitRows;
-        const uint32_t s_matA = 0x9908B0DF;
-        const int s_N = 156;
-        const int s_M = 122;
+        const int s_N = SFMT19937Params::s_N;
+        const int s_M = SFMT19937Params::s_M;
 
         // from row 0 to to row nBits - 128, state bits are just shifted left by 128 bits
         for (uint32_t r = 0; r < s_nBits - 128; ++r)

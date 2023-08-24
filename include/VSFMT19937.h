@@ -2,6 +2,7 @@
 
 #include "SIMD.h"
 #include "jump_matrix.h"
+#include "Params.h"
 
 #include <cstdint>
 #include <cstddef>
@@ -11,13 +12,13 @@ namespace Details {
 template <size_t RegisterBitLen>
 class VSFMT19937Base
 {
-    static const size_t s_nBits = 19937;
-    static const size_t s_wordSizeBits = 128;
+    static const size_t s_nBits = SFMT19937Params::s_nBits;
+    static const size_t s_wordSizeBits = SFMT19937Params::s_wordSizeBits;
 
     static_assert(RegisterBitLen >= s_wordSizeBits);
 
 public:
-    static const int s_N = s_nBits / s_wordSizeBits + (s_nBits % s_wordSizeBits != 0);     // 156
+    static const int s_N = SFMT19937Params::s_N;     // 156
     static_assert(s_N == 156);
 
     static const size_t s_regLenBits = RegisterBitLen;
@@ -26,14 +27,12 @@ public:
     static const size_t s_n32InOneWord = s_wordSizeBits / 32;            // 4
     static const size_t s_n32InOneState = s_N * s_n32InOneWord;          // 624
     const static size_t s_n32InFullState = s_n32InOneState * s_nStates;  // 624 * nStates
-    const static size_t s_nMatrixBits = s_N * s_wordSizeBits;            // 19968
+    const static size_t s_nMatrixBits = SFMT19937Params::s_nMatrixBits;            // 19968
 
     typedef BinaryMatrix<s_nMatrixBits> matrix_t;
 
 private:
     const static size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
-
-    static const int s_M = 122;
 
     typedef SimdRegister<s_regLenBits> XV;
 
@@ -104,11 +103,9 @@ private:
         // Create local copy of the constants and pass them to the function as arguments.
         // Since all functions invoked from here are forced inline, the function arguments
         // will not be passed as arguments via the stack, but reside in CPU registers
-        const uint32_t s_SFMT_MSK1 = 0xdfffffefU;
-        const uint32_t s_SFMT_MSK2 = 0xddfecb7fU;
-        const uint32_t s_SFMT_MSK3 = 0xbffaffffU;
-        const uint32_t s_SFMT_MSK4 = 0xbffffff6U;
-        XV bMask(s_SFMT_MSK1, s_SFMT_MSK2, s_SFMT_MSK3, s_SFMT_MSK4);
+        XV bMask(SFMT19937Params::s_SFMT_MSK1, SFMT19937Params::s_SFMT_MSK2, SFMT19937Params::s_SFMT_MSK3, SFMT19937Params::s_SFMT_MSK4);
+
+        const int s_M = SFMT19937Params::s_M;
 
         // local variables
         uint32_t* stCur = m_state;

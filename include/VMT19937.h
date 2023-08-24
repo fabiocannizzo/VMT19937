@@ -16,23 +16,23 @@ template <size_t RegisterBitLen = SIMD_N_BITS>
 class VMT19937Base
 {
 
-    static const size_t s_nBits = 19937;
-    static const size_t s_wordSizeBits = 32;
+    static const size_t s_nBits = MT19937Params::s_nBits;
+    static const size_t s_wordSizeBits = MT19937Params::s_wordSizeBits;
 
     static_assert(RegisterBitLen >= s_wordSizeBits);
 
 public:
 
-    static const int s_N = s_nBits / s_wordSizeBits + (s_nBits % s_wordSizeBits != 0);     // 624
+    static const int s_N = MT19937Params::s_N;     // 624
     static_assert(s_N == 624);
 
     static const size_t s_regLenBits = RegisterBitLen;
     static const size_t s_nStates = RegisterBitLen / s_wordSizeBits;
     static const size_t s_n32inReg = RegisterBitLen / 32;
-    static const size_t s_n32InOneWord = s_wordSizeBits / 32;            // 4
+    static const size_t s_n32InOneWord = s_wordSizeBits / 32;            // 1
     static const size_t s_n32InOneState = s_N * s_n32InOneWord;          // 624
     const static size_t s_n32InFullState = s_n32InOneState * s_nStates;  // 624 * nStates
-    const static size_t s_nMatrixBits = s_nBits;
+    const static size_t s_nMatrixBits = MT19937Params::s_nMatrixBits;
 
     typedef MT19937Matrix matrix_t;
 
@@ -60,23 +60,16 @@ private:
 private:
 
     template <typename XVI>
-    class TemperCst
+    struct TemperCst
     {
-        static const uint32_t s_temperMask1 = 0x9d2c5680UL;
-        static const uint32_t s_temperMask2 = 0xefc60000UL;
-    public:
-        TemperCst() : m_mask1(s_temperMask1), m_mask2(s_temperMask2) {}
+        TemperCst() : m_mask1(MT19937Params::s_temperMask1), m_mask2(MT19937Params::s_temperMask2) {}
         const XVI m_mask1;
         const XVI m_mask2;
     };
 
-    class RefillCst
+    struct RefillCst
     {
-        static const uint32_t s_matrixA = 0x9908b0dfUL;   // constant vector a
-        static const uint32_t s_upperMask = 0x80000000UL; // most significant w-r bits
-        static const uint32_t s_lowerMask = 0x7fffffffUL; // least significant r bits
-    public:
-        RefillCst() : m_upperMask(s_upperMask), m_lowerMask(s_lowerMask), m_matrixA(s_matrixA) {}
+        RefillCst() : m_upperMask(MT19937Params::s_upperMask), m_lowerMask(MT19937Params::s_lowerMask), m_matrixA(MT19937Params::s_matrixA) {}
         const XV m_upperMask;
         const XV m_lowerMask;
         const XV m_matrixA;
