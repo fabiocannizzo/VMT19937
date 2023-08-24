@@ -15,9 +15,9 @@ extern "C" {
 using namespace std;
 //using namespace std::placeholders;
 
-MT19937Matrix j19933(std::string("./dat/F19933.bits"));
-MT19937Matrix j19934(std::string("./dat/F19934.bits"));
-MT19937Matrix j19935(std::string("./dat/F19935.bits"));
+MT19937Matrix j19933(std::string("./dat/mt/F19933.bits"));
+MT19937Matrix j19934(std::string("./dat/mt/F19934.bits"));
+MT19937Matrix j19935(std::string("./dat/mt/F19935.bits"));
 
 MT19937Matrix* pjump[4] = { nullptr, &j19935, &j19934, &j19933 };
 char genNames[4][64] = { "VMT19937 (M=1)", "VMT19937 (M=4)", "VMT19937 (M=8)", "VMT19937 (M=16)"};
