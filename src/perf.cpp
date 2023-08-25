@@ -1,5 +1,3 @@
-#define VRANDGEN_TESTING 1
-
 #include "VRandGen.h"
 
 #include "../SFMT-src-1.5.1/SFMT.h"
@@ -155,6 +153,23 @@ Result sfmtPerformance(size_t runId)
 
 #ifdef TEST_MKL
 
+template <int N>
+struct MKLTraits
+    ;
+template <>
+struct MKLTraits<VSL_BRNG_MT19937>
+{
+    static const Mode s_mode = mkl_mt;
+    static const size_t s_wordSize = 32;
+};
+
+template <>
+struct MKLTraits<VSL_BRNG_SFMT19937>
+{
+    static const Mode s_mode = mkl_sfmt;
+    static const size_t s_wordSize = 128;
+};
+
 template <MKL_INT GenCode, MKL_INT BlkSize>
 Result mklPerformance(size_t runId)
 {
@@ -178,7 +193,8 @@ Result mklPerformance(size_t runId)
     // Deleting the stream
     vslDeleteStream(&stream);
 
-    return Result((GenCode == VSL_BRNG_MT19937 ? mkl_mt : mkl_sfmt), 32, BlkSize, runId, nSeconds);
+    typedef MKLTraits<GenCode> traits;
+    return Result(traits::s_mode, traits::s_wordSize, BlkSize, runId, nSeconds);
 }
 #endif
 
@@ -233,9 +249,14 @@ int main(int argc, const char** argv)
         res.push_back(mklPerformance<VSL_BRNG_MT19937, 1>(i));
         res.push_back(mklPerformance<VSL_BRNG_MT19937, 16>(i));
         res.push_back(mklPerformance<VSL_BRNG_MT19937, 624>(i));
+        res.push_back(mklPerformance<VSL_BRNG_MT19937, 624 * 4>(i));
+        res.push_back(mklPerformance<VSL_BRNG_MT19937, 624 * 8>(i));
+        res.push_back(mklPerformance<VSL_BRNG_MT19937, 624 * 16>(i));
         res.push_back(mklPerformance<VSL_BRNG_SFMT19937, 1>(i));
         res.push_back(mklPerformance<VSL_BRNG_SFMT19937, 16>(i));
         res.push_back(mklPerformance<VSL_BRNG_SFMT19937, 624>(i));
+        res.push_back(mklPerformance<VSL_BRNG_SFMT19937, 624 * 2>(i));
+        res.push_back(mklPerformance<VSL_BRNG_SFMT19937, 624 * 4>(i));
 #endif
         res.push_back(testPerformance<VMT19937<32, QM_Scalar>>(i));
         res.push_back(testPerformance<VMT19937<32, QM_Block16>>(i));
