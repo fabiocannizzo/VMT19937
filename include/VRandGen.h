@@ -12,8 +12,9 @@ template < template <size_t L> class GenBase, size_t RegisterBitLen, VRandGenQue
 class VRandGen : public GenBase<RegisterBitLen>
 {
     typedef GenBase<RegisterBitLen> base_t;
+public:
     typedef typename base_t::matrix_t matrix_t;
-
+private:
     void completeStateInitialization(size_t nCommonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
     {
         // temporary workspace matrix

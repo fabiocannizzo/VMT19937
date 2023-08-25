@@ -1,4 +1,4 @@
-#define _CRT_SECURE_NO_WARNINGS
+#define VRANDGEN_TESTING 1
 
 #include "VRandGen.h"
 
@@ -37,6 +37,9 @@ struct GenTraits<VMT19937<VecLen, QryMode>>
 {
     static const Mode mode = vmt;
     static const char* name() { return "VMT19937"; }
+    // for maximum period, we should select the file based on the number of states
+    // but these periods are so large anyway that who do not care!
+    static const char* jumpFileName() { return "dat/mt/F19933.bits"; }
 };
 
 template <size_t VecLen, VRandGenQueryMode QryMode>
@@ -44,6 +47,9 @@ struct GenTraits<VSFMT19937<VecLen, QryMode>>
 {
     static const Mode mode = vsfmt;
     static const char* name() { return "VSFMT19937"; }
+    // for maximum period, we should select the file based on the number of states
+    // but these periods are so large that anyway we do not care!
+    static const char* jumpFileName() { return "dat/sfmt/F19935.bits"; }
 };
 
 struct Result
@@ -74,7 +80,10 @@ Result testPerformance(size_t runId)
 
     AlignedVector<uint32_t, 64> aligneddst(BlkSize);
 
-    Gen mt(seedinit, seedlength, 0, nullptr, nullptr);
+    typedef typename Gen::matrix_t matrix_t;
+    std::unique_ptr<matrix_t> pjump(new matrix_t(GenTraits<Gen>::jumpFileName()));    // load jump ahead matrix
+    Gen mt(seedinit, seedlength, 0, nullptr, pjump.get());
+    pjump.reset(nullptr);
 
     auto start = std::chrono::system_clock::now();
     for (size_t i = 0; i < nRandomPerf / BlkSize; ++i)
