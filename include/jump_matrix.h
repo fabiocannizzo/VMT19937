@@ -249,8 +249,6 @@ struct SFMT19937Matrix : BinarySquareMatrix<Details::SFMT19937Params::s_nMatrixB
 
         const size_t B = s_nBits - 128;
 
-        bool mask[128] = {};
-
         // w[0]
         for (size_t r = 0; r < 128; ++r)
             setBit(B + r, r);

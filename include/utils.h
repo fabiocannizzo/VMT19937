@@ -3,17 +3,17 @@
 #include <cstdint>
 
 // nAlign must be a multiple of 2 and no more than 64
-template <typename T, unsigned nAlign>
+template <typename T, size_t nAlign>
 inline T* myAlignedNew(size_t n)
 {
     // allocate memory
-    uint8_t *p = new uint8_t[n * sizeof(T) + nAlign];
+    char *p = new char[n * sizeof(T) + nAlign];
 
     // align pointer
     auto addr = reinterpret_cast<std::uintptr_t>(p);
-    uint8_t moveFwdBy = (nAlign - (addr % nAlign));
+    size_t moveFwdBy = (nAlign - (addr % nAlign));
     p += moveFwdBy;
-    p[-1] = moveFwdBy;
+    p[-1] = (char) moveFwdBy;
 
     return (T*)p;
 }
@@ -21,9 +21,9 @@ inline T* myAlignedNew(size_t n)
 inline void myAlignedDelete(void *p)
 {
     if (p) {
-        uint8_t* p8 = (uint8_t*)p;
-        p8 -= p8[-1];
-        delete p8;
+        char* p8 = (char*)p;
+        p8 -= (size_t)p8[-1];
+        delete [] p8;
     }
 }
 
