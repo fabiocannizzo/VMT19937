@@ -52,15 +52,16 @@ struct GenTraits<VSFMT19937<VecLen, QryMode>>
 
 struct Result
 {
-    Result(Mode _mode, size_t _nb, size_t _blk, size_t _id, double _dt)
-        : mode(_mode), nBits(_nb), blkSize(_blk), runId(_id), time(_dt) {}
+    Result(Mode _mode, size_t _nb, size_t _blk, size_t _qryMode, size_t _id, double _dt)
+        : mode(_mode), nBits(_nb), blkSize(_blk), qryMode(_qryMode), runId(_id), time(_dt) {}
     Mode mode;
     size_t nBits;
     size_t blkSize;
+    size_t qryMode;
     mutable size_t runId;
     mutable double time;
     bool operator<(const Result& rhs) const {
-        return std::tuple(mode, nBits, blkSize) < std::tuple(rhs.mode, rhs.nBits, rhs.blkSize);
+        return std::tuple(mode, nBits, blkSize, qryMode) < std::tuple(rhs.mode, rhs.nBits, rhs.blkSize, rhs.qryMode);
     }
 };
 
@@ -100,7 +101,7 @@ Result testPerformance(size_t runId)
 
     std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s" << std::endl;
 
-    return Result(mode, VecLen, BlkSize, runId, nSeconds);
+    return Result(mode, VecLen, BlkSize, BlkSize, runId, nSeconds);
 }
 
 
@@ -122,7 +123,7 @@ Result originalPerformance(size_t runId)
     double nSeconds = elapsed_seconds.count();
     std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s\n";
 
-    return Result(orig, 32, 1, runId, nSeconds);
+    return Result(orig, 32, 1, runId, 1, nSeconds);
 }
 
 template <size_t BlkSize>
@@ -148,7 +149,7 @@ Result sfmtPerformance(size_t runId)
     double nSeconds = elapsed_seconds.count();
     std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s\n";
 
-    return Result(sfmt, 128, BlkSize, runId, nSeconds);
+    return Result(sfmt, 128, BlkSize, BlkSize == 1 ? 1 : 0, runId, nSeconds);
 }
 
 #ifdef TEST_MKL
@@ -194,7 +195,7 @@ Result mklPerformance(size_t runId)
     vslDeleteStream(&stream);
 
     typedef MKLTraits<GenCode> traits;
-    return Result(traits::s_mode, traits::s_wordSize, BlkSize, runId, nSeconds);
+    return Result(traits::s_mode, traits::s_wordSize, BlkSize, 0, runId, nSeconds);
 }
 #endif
 
@@ -298,12 +299,14 @@ int main(int argc, const char** argv)
     std::cout << std::setw(12) << std::right << "prng"
         << std::setw(8) << std::right << "n-bits"
         << std::setw(8) << std::right << "blksize"
+        << std::setw(8) << std::right << "qrymode"
         << std::setw(8) << std::right << "time"
         << "\n";
     for (auto& r : avgresult) {
         std::cout << std::setw(12) << std::right << modename[r.mode]
             << std::setw(8) << std::right << r.nBits
             << std::setw(8) << std::right << r.blkSize
+            << std::setw(8) << std::right << r.qryMode
             << std::setw(8) << std::right << std::fixed << std::setprecision(2) << r.time / nRepeat
             << "\n";
     }
