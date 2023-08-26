@@ -8,10 +8,10 @@ enum VRandGenQueryMode { QM_Scalar, QM_Block16, QM_StateSize };
 namespace Details
 {
 
-template < template <size_t L> class GenBase, size_t RegisterBitLen, VRandGenQueryMode QueryMode>
-class VRandGen : public GenBase<RegisterBitLen>
+template <typename GenBase, VRandGenQueryMode QueryMode>
+class VRandGen : public GenBase
 {
-    typedef GenBase<RegisterBitLen> base_t;
+    typedef GenBase base_t;
 public:
     typedef typename base_t::matrix_t matrix_t;
 private:
@@ -77,6 +77,8 @@ private:
 public:
     static const VRandGenQueryMode s_queryMode = QueryMode;
 
+    VRandGen() {}
+
     VRandGen(uint32_t seed, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
         : base_t()
     {
@@ -133,8 +135,14 @@ public:
 
 } // namespace Details
 
-template <size_t RegisterBitLen = SIMD_N_BITS, VRandGenQueryMode QueryMode = QM_Scalar>
-using VMT19937 = Details::VRandGen<Details::VMT19937Base, RegisterBitLen, QueryMode>;
+template < size_t RegisterBitLen = SIMD_N_BITS
+         , VRandGenQueryMode QueryMode = QM_Scalar
+         , size_t RegisterBitLenImpl = std::min<size_t>(SIMD_N_BITS, RegisterBitLen)
+         >
+using VMT19937 = Details::VRandGen<Details::VMT19937Base<RegisterBitLen, RegisterBitLenImpl>, QueryMode>;
 
-template <size_t RegisterBitLen = SIMD_N_BITS, VRandGenQueryMode QueryMode = QM_Scalar>
-using VSFMT19937 = Details::VRandGen<Details::VSFMT19937Base, RegisterBitLen, QueryMode>;
+template < size_t RegisterBitLen = SIMD_N_BITS
+         , VRandGenQueryMode QueryMode = QM_Scalar
+         , size_t RegisterBitLenImpl = std::min<size_t>(SIMD_N_BITS, RegisterBitLen)
+         >
+using VSFMT19937 = Details::VRandGen<Details::VSFMT19937Base<RegisterBitLen, RegisterBitLenImpl>, QueryMode>;

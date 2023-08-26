@@ -168,7 +168,7 @@ struct MT19937Matrix : BinarySquareMatrix<Details::MT19937Params::s_nMatrixBits>
         static const size_t s_nBits = base_t::s_nBitRows;
         static const size_t s_nWordBits = base_t::s_nWordBits;
         static const uint32_t s_matA = Details::MT19937Params::s_matrixA;
-        static const uint32_t s_M = 397;
+        static const uint32_t s_M = Details::MT19937Params::s_M;
 
         // from row 0 to to row nBits - 32, state bits are just shifted left by 32 bits
         for (uint32_t r = 0; r < s_nBits - s_nWordBits; ++r)

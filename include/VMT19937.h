@@ -12,7 +12,7 @@
 
 namespace Details {
 
-template <size_t RegisterBitLen = SIMD_N_BITS>
+template <size_t RegisterBitLen, size_t RegisterBitLenImpl>
 class VMT19937Base
 {
 
@@ -27,6 +27,7 @@ public:
     static_assert(s_N == 624);
 
     static const size_t s_regLenBits = RegisterBitLen;
+    static const size_t s_regLenImplBits = RegisterBitLenImpl;
     static const size_t s_nStates = RegisterBitLen / s_wordSizeBits;
     static const size_t s_n32inReg = RegisterBitLen / 32;
     static const size_t s_n32InOneWord = s_wordSizeBits / 32;            // 1
@@ -38,11 +39,7 @@ public:
 
 private:
     const static size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
-    typedef SimdRegister<s_regLenBits> XV;
-    typedef SimdRegister<SIMD_N_BITS> XVMax;
-
-    // Period parameters
-    static const size_t s_M = 397;
+    typedef SimdRegister<s_regLenBits, RegisterBitLenImpl> XV;
 
     static const uint32_t s_rndBlockSize = 64 / sizeof(uint32_t); // exactly one cache line
 
@@ -89,9 +86,9 @@ private:
     }
 
     template <bool Aligned>
-    static FORCE_INLINE void temperRefillBlock(const uint32_t *&st, uint32_t *dst)
+    static FORCE_INLINE void temperRefillBlock(const uint32_t *st, uint32_t *dst)
     {
-        typedef SimdRegister<SIMD_N_BITS> XVmax;
+        typedef SimdRegister<SIMD_N_BITS, SIMD_N_BITS> XVmax;
         const size_t n32PerIteration = sizeof(XVmax) / sizeof(uint32_t);
 
         TemperCst<XVmax> cst{};
@@ -154,8 +151,8 @@ private:
     {
         uint32_t* stCur = m_state;
 
-        static const int N = s_N;
-        static const int M = s_M;
+        const int N = s_N;
+        const int M = Details::MT19937Params::s_M;
         static_assert(N == 624 && M == 397, "unrolling designed for these parameters");
 
         // Create local copy of the constants and pass them to the function as arguments.
@@ -274,10 +271,12 @@ protected:
 
         if (m_pst != m_pst_end)
             /* do nothing*/; // most likely case first
-        else
+        else {
             refill();
+        }
 
         temperRefillBlock<true>(m_pst, m_rnd);
+        m_pst += s_rndBlockSize;
         m_prnd = m_rnd;
 
         return *m_prnd++;
@@ -292,6 +291,7 @@ protected:
         else
             refill();
         temperRefillBlock<false>(m_pst, dst);
+        m_pst += s_rndBlockSize;
     }
 
     // generates a block of the same size as the state vector of uniform discrete random numbers in [0,0xffffffff] interval
@@ -300,8 +300,10 @@ protected:
     {
         refill();
         const uint32_t* pst = m_state;
-        for (size_t i = 0; i < s_n32InFullState / s_rndBlockSize; ++i, dst += s_rndBlockSize)
+        for (size_t i = 0; i < s_n32InFullState / s_rndBlockSize; ++i, dst += s_rndBlockSize) {
             temperRefillBlock<false>(pst, dst);
+            pst += s_rndBlockSize;
+        }
     }
 
 public:
