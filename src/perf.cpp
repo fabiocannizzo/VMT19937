@@ -94,7 +94,7 @@ Result testPerformance(size_t runId)
             mt.genrand_uint32_stateBlk(aligneddst.data());
         else
             NOT_IMPLEMENTED;
-        auto end = std::chrono::system_clock::now();
+    auto end = std::chrono::system_clock::now();
 
     std::chrono::duration<double> elapsed_seconds = end - start;
     double nSeconds = elapsed_seconds.count();

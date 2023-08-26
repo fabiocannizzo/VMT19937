@@ -223,7 +223,7 @@ struct SFMT19937Matrix : BinarySquareMatrix<Details::SFMT19937Params::s_nMatrixB
     void init4()
     {
     	using namespace Details;
-    	
+
         const uint32_t masks[] =
             { SFMT19937Params::s_SFMT_MSK1
             , SFMT19937Params::s_SFMT_MSK2
@@ -246,10 +246,8 @@ struct SFMT19937Matrix : BinarySquareMatrix<Details::SFMT19937Params::s_nMatrixB
         // where:
         //    <<< and >>> are 128 bit shifts
         //    << and >> are 32 bit shifts
-        
-        const size_t B = s_nBits - 128;
 
-        bool mask[128] = {};
+        const size_t B = s_nBits - 128;
 
         // w[0]
         for (size_t r = 0; r < 128; ++r)
