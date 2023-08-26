@@ -1,9 +1,10 @@
 #define VRANDGEN_TESTING 1
-#define SIMD_EMULATION
 
 #include "VRandGen.h"
 
 #include "../SFMT-src-1.5.1/SFMT.h"
+
+#include <utility>
 
 const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
@@ -16,14 +17,14 @@ extern "C" void init_by_array(unsigned long init_key[], int key_length);
 template <typename T>
 struct GenTraits;
 
-template <size_t VecLen, VRandGenQueryMode QryMode>
-struct GenTraits<VMT19937<VecLen, QryMode>>
+template <size_t VecLen, size_t ImplLen, VRandGenQueryMode QryMode>
+struct GenTraits<VMT19937<VecLen, QryMode, ImplLen>>
 {
     static const char* name() { return "VMT19937"; }
 };
 
-template <size_t VecLen, VRandGenQueryMode QryMode>
-struct GenTraits<VSFMT19937<VecLen, QryMode>>
+template <size_t VecLen, size_t ImplLen, VRandGenQueryMode QryMode>
+struct GenTraits<VSFMT19937<VecLen, QryMode, ImplLen>>
 {
     static const char* name() { return "VSFMT19937"; }
 };
@@ -212,9 +213,9 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
     const size_t s_n32InOneWord = Gen::s_n32InOneWord;
 
 
-    std::cout << GenTraits<Gen>::name() << ": Testing equivalence of generators with SIMD length " << VecLen
-        << ", common jump ahead of " << commonJumpSize << " repeated " << nCommonJumpRepeat << " times, sequence jump size of " << sequenceJumpSize
-        << ", block size " << BlkSize << " ... ";
+    std::cout << GenTraits<Gen>::name() << "< " << std::setw(3) << VecLen << ", " << std::setw(3) << Gen::s_regLenImplBits << ">"
+        << ", common jump of " << std::setw(4) << commonJumpSize << " repeated " << nCommonJumpRepeat << " times, sequence jump of " << std::setw(4) << sequenceJumpSize
+        << ", block size " << std::setw(4) << BlkSize << " ... ";
 
     std::vector<uint32_t> aligneddst(nRandomTest);
 
@@ -242,31 +243,48 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
     std::cout << "SUCCESS!\n";
 }
 
-template <typename M, size_t L, VRandGenQueryMode QM>
+template <typename M, size_t L, size_t I, VRandGenQueryMode QM>
 struct GenFromMatrix;
 
-template <size_t L, VRandGenQueryMode QM>
-struct GenFromMatrix<MT19937Matrix, L, QM>
+template <size_t L, size_t I, VRandGenQueryMode QM>
+struct GenFromMatrix<MT19937Matrix, L, I, QM>
 {
-    typedef VMT19937<L, QM> gen_t;
+    typedef VMT19937<L, QM, I> gen_t;
 };
 
-template <size_t L, VRandGenQueryMode QM>
-struct GenFromMatrix<SFMT19937Matrix, L, QM>
+template <size_t L, size_t I, VRandGenQueryMode QM>
+struct GenFromMatrix<SFMT19937Matrix, L, I, QM>
 {
-    typedef VSFMT19937<L, QM> gen_t;
+    typedef VSFMT19937<L, QM, I> gen_t;
 };
+
+
+template <size_t L, size_t I, VRandGenQueryMode QM, typename M>
+void equivalenceTestsRunner(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, const JumpMatrix<M>& seqJump)
+{
+    if constexpr (I <= L && I <= SIMD_N_BITS)
+        testEquivalence<typename GenFromMatrix<M, L, I, QM>::gen_t>(nCommonJumpRepeat, commonJump, seqJump);
+}
+
+template <size_t L, VRandGenQueryMode QM, typename M>
+void equivalenceTestsByImplLen(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, const JumpMatrix<M>& seqJump)
+{
+    equivalenceTestsRunner<L, 32,  QM, M>(nCommonJumpRepeat, commonJump, seqJump);
+    equivalenceTestsRunner<L, 128, QM, M>(nCommonJumpRepeat, commonJump, seqJump);
+    equivalenceTestsRunner<L, 256, QM, M>(nCommonJumpRepeat, commonJump, seqJump);
+    equivalenceTestsRunner<L, 512, QM, M>(nCommonJumpRepeat, commonJump, seqJump);
+}
 
 template <size_t L, typename M>
 void equivalenceTestsByMode(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, const JumpMatrix<M>& seqJump)
 {
-    testEquivalence<typename GenFromMatrix<M, L, QM_Scalar>::gen_t>(nCommonJumpRepeat, commonJump, seqJump);
-    testEquivalence<typename GenFromMatrix<M, L, QM_Block16>::gen_t>(nCommonJumpRepeat, commonJump, seqJump);
-    testEquivalence<typename GenFromMatrix<M, L, QM_StateSize>::gen_t>(nCommonJumpRepeat, commonJump, seqJump);
+    equivalenceTestsByImplLen<L, QM_Scalar>(nCommonJumpRepeat, commonJump, seqJump);
+    equivalenceTestsByImplLen<L, QM_Block16>(nCommonJumpRepeat, commonJump, seqJump);
+    equivalenceTestsByImplLen<L, QM_StateSize>(nCommonJumpRepeat, commonJump, seqJump);
 }
 
 template <size_t L, bool testSeqJump, typename M>
-void equivalenceTests(const JumpMatrix<M>& jumpSmall, const JumpMatrix<M>& jumpBig)
+void equivalenceTestsByJumpCombinations(const JumpMatrix<M>& jumpSmall, const JumpMatrix<M>& jumpBig)
 {
     JumpMatrix<M> noJump{};
     equivalenceTestsByMode<L>(0, noJump, noJump);
@@ -279,6 +297,7 @@ void equivalenceTests(const JumpMatrix<M>& jumpSmall, const JumpMatrix<M>& jumpB
         equivalenceTestsByMode<L>(0, noJump, jumpBig);
     }
 }
+
 
 void test_VMT19937()
 {
@@ -294,10 +313,10 @@ void test_VMT19937()
     pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/mt/F00009.bits")), 512);    // jump ahead 2^9 (512) elements
     pmatrix_t jumpMatrixPeriod(new matrix_t(std::string("./dat/mt/F19937.bits")), 1);   // jump ahead 2^19937 elements
 
-    equivalenceTests<32, false>(jumpMatrix1, jumpMatrix512);
-    equivalenceTests<128, true>(jumpMatrix1, jumpMatrix512);
-    equivalenceTests<256, true>(jumpMatrix1, jumpMatrix512);
-    equivalenceTests<512, true>(jumpMatrix1, jumpMatrix512);
+    equivalenceTestsByJumpCombinations<32, false>(jumpMatrix1, jumpMatrix512);
+    equivalenceTestsByJumpCombinations<128, true>(jumpMatrix1, jumpMatrix512);
+    equivalenceTestsByJumpCombinations<256, true>(jumpMatrix1, jumpMatrix512);
+    equivalenceTestsByJumpCombinations<512, true>(jumpMatrix1, jumpMatrix512);
 
     // since the period is 2^19937-1, after applying a jump matrix of 2^19937, we restart the sequence from step 1
     std::cout << "VMT19937: a jump of size 2^19937 is equivalent to a jump of size 1\n";
@@ -317,9 +336,9 @@ void test_VSFMT19937()
     pmatrix_t jumpMatrix4(new matrix_t, 4);                                              // jump ahead 1 element
     pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/sfmt/F00009.bits")), 512);   // jump ahead 2^9 (1024) elements
 
-    equivalenceTests<128, false>(jumpMatrix4, jumpMatrix512);
-    equivalenceTests<256, true>(jumpMatrix4, jumpMatrix512);
-    equivalenceTests<512, true>(jumpMatrix4, jumpMatrix512);
+    equivalenceTestsByJumpCombinations<128, false>(jumpMatrix4, jumpMatrix512);
+    equivalenceTestsByJumpCombinations<256, true>(jumpMatrix4, jumpMatrix512);
+    equivalenceTestsByJumpCombinations<512, true>(jumpMatrix4, jumpMatrix512);
 }
 
 int main()

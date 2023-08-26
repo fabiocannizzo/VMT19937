@@ -9,7 +9,7 @@
 
 namespace Details {
 
-template <size_t RegisterBitLen>
+template <size_t RegisterBitLen, size_t RegisterBitLenImpl>
 class VSFMT19937Base
 {
     static const size_t s_nBits = SFMT19937Params::s_nBits;
@@ -22,6 +22,7 @@ public:
     static_assert(s_N == 156);
 
     static const size_t s_regLenBits = RegisterBitLen;
+    static const size_t s_regLenImplBits = RegisterBitLenImpl;
     static const size_t s_nStates = RegisterBitLen / s_wordSizeBits;
     static const size_t s_n32inReg = RegisterBitLen / 32;
     static const size_t s_n32InOneWord = s_wordSizeBits / 32;            // 4
@@ -34,7 +35,7 @@ public:
 private:
     const static size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
 
-    typedef SimdRegister<s_regLenBits> XV;
+    typedef SimdRegister<s_regLenBits, RegisterBitLenImpl> XV;
 
 protected:
     alignas(64) uint32_t m_state[s_n32InFullState];    // the array of state vectors

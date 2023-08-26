@@ -10,7 +10,7 @@ struct MT19937Params
     static const size_t s_nBits = 19937;
     static const size_t s_wordSizeBits = 32;
     static const int s_N = s_nBits / s_wordSizeBits + (s_nBits % s_wordSizeBits != 0);  // 624
-    static const int s_M = 397;  // 624
+    static const int s_M = 397;
     const static size_t s_nMatrixBits = s_nBits;
 
     static const uint32_t s_temperMask1 = 0x9d2c5680UL;

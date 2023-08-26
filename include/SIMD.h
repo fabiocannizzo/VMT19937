@@ -5,18 +5,173 @@
 
 #include <algorithm>
 
-template <size_t NumBits>
-struct SimdRegister;
+namespace Details {
 
-template <size_t NumBits>
-struct SimdRegisterEmulator;
+template <size_t NumBits, size_t NumBitsImpl>
+struct SimdRegister
+{
+private:
+    static_assert((NumBits / NumBitsImpl > 1) && (NumBits % NumBitsImpl == 0), "NumBits must be a multiple of NumBitsImpl");
+    static const size_t M = NumBits / NumBitsImpl;
+    static const size_t N32 = NumBits / 32;
+    static const size_t N128 = NumBits / 128;
+    typedef SimdRegister<NumBitsImpl, NumBitsImpl> XVImpl;
+
+    struct Aux
+    {
+        Aux() : ar{ {} } {}
+        Aux(XVImpl v) { std::fill_n(ar, M, v); }
+        Aux(uint32_t v) : Aux(XVImpl(v)) {}
+        XVImpl& operator[](size_t i) { return ar[i]; }
+        const XVImpl& operator[](size_t i) const { return ar[i]; }
+        const XVImpl* begin() const { return ar; }
+        XVImpl* begin() { return ar; }
+        const XVImpl* end() const { return ar + M; }
+        XVImpl* end() { return ar + M; }
+    private:
+        XVImpl ar[M];
+    } m_v;
+
+public:
+    typedef SimdRegister<NumBits, NumBitsImpl> XV;
+
+    SimdRegister() {}
+    SimdRegister(uint32_t v) : m_v(v) {}
+    SimdRegister(uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3)
+    {
+        if constexpr (NumBitsImpl == 32) {
+            for (size_t i = 0; i < N128; ++i) {
+                m_v[0 + 4 * i] = v0;
+                m_v[1 + 4 * i] = v1;
+                m_v[2 + 4 * i] = v2;
+                m_v[3 + 4 * i] = v3;
+            }
+        }
+        else {
+            m_v = Aux(XVImpl(v0, v1, v2, v3));
+        }
+    }
+    SimdRegister(const uint32_t* p)
+    {
+        for (size_t i = 0; i < M; ++i, p += sizeof(XVImpl) / sizeof(uint32_t))
+            m_v[i] = XVImpl(p);
+    }
+    SimdRegister(const Aux& v) : m_v(v) {}
+
+    template <bool A>
+    void store(uint32_t* p)
+    {
+        for (size_t i = 0; i < M; ++i, p += sizeof(XVImpl) / sizeof(uint32_t))
+            m_v[i].template store<A>(p);
+    }
+
+    friend XV operator&(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v[i] = a.m_v[i] & b.m_v[i]; return r; }
+    friend XV operator^(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v[i] = a.m_v[i] ^ b.m_v[i]; return r; }
+    friend XV operator|(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v[i] = a.m_v[i] | b.m_v[i]; return r; }
+    friend XV operator<<(const XV& a, const int n) { XV r; for (size_t i = 0; i < M; ++i) r.m_v[i] = a.m_v[i] << n; return r; }
+    friend XV operator>>(const XV& a, const int n) { XV r; for (size_t i = 0; i < M; ++i) r.m_v[i] = a.m_v[i] >> n; return r; }
+
+    template <int nBytes>
+    static XV shl128(const XV& a)
+    {
+        static_assert(N128 > 0);
+        XV r;
+        if constexpr (NumBitsImpl == 32) {
+            for (size_t s = 0; s < N128; ++s) {
+                XVImpl current = a.m_v[4 * s];
+                r.m_v[4 * s] = current << 8;
+                for (size_t j = 1; j < 4; ++j) {
+                    XVImpl prev = current;
+                    current = a.m_v[4 * s + j];
+                    r.m_v[4 * s + j] = (current << 8) | (prev >> 24);
+                }
+            }
+        }
+        else {
+            for (size_t i = 0; i < M; ++i)
+                r.m_v[i] = XVImpl::template shl128<nBytes>(a.m_v[i]);
+        }
+        return r;
+    }
+
+    template <int nBytes>
+    static XV shr128(const XV& a)
+    {
+        static_assert(N128 > 0);
+        XV r;
+        if constexpr (NumBitsImpl == 32) {
+            for (size_t s = 0; s < N128; ++s) {
+                XVImpl current = a.m_v[4 * s];
+                for (size_t j = 0; j < 3; ++j) {
+                    XVImpl next = a.m_v[4 * s +  j + 1];
+                    r.m_v[4 * s + j] = (current >> 8) | (next << 24);
+                    current = next;
+                }
+                r.m_v[4 * s + 3] = current >> 8;
+            }
+        }
+        else {
+            for (size_t i = 0; i < M; ++i)
+                r.m_v[i] = XVImpl::template shr128<nBytes>(a.m_v[i]);
+        }
+        return r;
+    }
+
+    void broadcastLo128()
+    {
+        static_assert(N128 > 0);
+        if constexpr (NumBitsImpl == 32) {
+            for (size_t i = 0; i < N128; ++i)
+                for (size_t j = 0; j < 4; ++j)
+                    m_v[4 * i + j] = m_v[j];
+        }
+        else {
+            for (size_t i = 1; i < M; ++i)
+                m_v[i] = m_v[0];
+        }
+    }
+
+    bool eq(const XV& rhs) const
+    {
+        for (size_t i = 0; i < M; ++i)
+            if (m_v[i] != rhs.m_v[i])
+                return false;
+        return true;
+    }
+
+    static XV zero()
+    {
+        XVImpl z(0);
+        XV r;
+        for (auto& v : r.m_v)
+            v = z;
+        return r;
+    }
+
+    XV ifOddValueElseZero(const XV& value) const
+    {
+        XV r;
+        for (size_t i = 0; i < M; ++i)
+            r.m_v[i] = m_v[i].ifOddValueElseZero(value.m_v[i]);
+        return r;
+    }
+
+    uint8_t parity() const
+    {
+        XVImpl temp(m_v[0]);
+        for (size_t i = 1; i < M; ++i)
+            temp = temp ^ m_v[i];
+        return temp.parity();
+    }
+};
+
 
 template <>
-struct SimdRegister<32>
+struct SimdRegister<32, 32>
 {
     uint32_t m_v;
 
-    typedef SimdRegister<32> XV;
+    typedef SimdRegister<32, 32> XV;
 
     SimdRegister() : m_v(0) {}
     SimdRegister(const void* p) : m_v(*(const uint32_t*)p) {}
@@ -52,7 +207,7 @@ struct SimdRegister<32>
         const uint32_t lowestBit = m_v & 0x1;
         return lowestBit ? value.m_v : 0;
 #else
-        const uint32_t x[2] = {0, value.m_v};
+        const uint32_t x[2] = { 0, value.m_v };
         const uint32_t lowestBit = m_v & 0x1;
         return x[lowestBit];
 #endif
@@ -63,97 +218,8 @@ struct SimdRegister<32>
     uint8_t parity() const { return popcnt(m_v) % 2; }
 };
 
-// This class is for debugging and testing only
-// It emulates a regsiter with size Mx32 nbits, in case that is not natively available on the hardware
-template <size_t M>
-struct MAY_ALIAS SimdRegisterEmulator
-{
-    struct A
-    {
-        A() : a{ {} } {}
-        A(uint32_t v) { std::fill_n(a, M, v); }
-        uint32_t a[M];
-    };
-    A m_v;
 
-    typedef SimdRegisterEmulator<M> XV;
-
-    SimdRegisterEmulator() {}
-    SimdRegisterEmulator(uint32_t v) : m_v(v) {}
-    SimdRegisterEmulator(uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3)
-    {
-        for (size_t i = 0; i < M / 4; ++i) {
-            m_v.a[0 + 4 * i] = v0;
-            m_v.a[1 + 4 * i] = v1;
-            m_v.a[2 + 4 * i] = v2;
-            m_v.a[3 + 4 * i] = v3;
-        }
-    }
-    SimdRegisterEmulator(const uint32_t* p) { std::copy_n(p, M, m_v.a); }
-    SimdRegisterEmulator(const A& v) : m_v(v) {}
-
-    template <bool A>
-    void store(uint32_t* dst) { std::copy_n(m_v.a, M, dst); }
-
-    friend XV operator&(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = a.m_v.a[i] & b.m_v.a[i]; return r; }
-    friend XV operator^(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = a.m_v.a[i] ^ b.m_v.a[i]; return r; }
-    friend XV operator|(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = a.m_v.a[i] | b.m_v.a[i]; return r; }
-    friend XV operator<<(const XV& a, const int n) { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = a.m_v.a[i] << n; return r; }
-    friend XV operator>>(const XV& a, const int n) { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = a.m_v.a[i] >> n; return r; }
-
-    template <int nBytes>
-    static XV shl128(const XV& a)
-    {
-        XV r;
-        for (size_t s = 0; s < M / 4; ++s) {
-            const uint8_t* ps = (const uint8_t*) & a.m_v.a[4 * s];
-            uint8_t* pd = (uint8_t*) &r.m_v.a[4 * s];
-            std::copy_n(ps, 16 - nBytes, pd + nBytes);
-        }
-        return r;
-    }
-
-    template <int nBytes>
-    static XV shr128(const XV& a)
-    {
-        XV r;
-        for (size_t s = 0; s < M / 4; ++s) {
-            const uint8_t* ps = (const uint8_t*) &a.m_v.a[4 * s];
-            uint8_t* pd = (uint8_t*) &r.m_v.a[4 * s];
-            std::copy_n(ps + nBytes, 16 - nBytes, pd);
-        }
-        return r;
-    }
-
-    void broadcastLo128()
-    {
-        static_assert(M > 4);
-        for (size_t i = 0; i < M / 4; ++i)
-            for (size_t j = 0; j < 4; ++j)
-                m_v.a[4*i+j] = m_v.a[j];
-    }
-
-    bool eq(const XV& rhs) const
-    {
-        for (size_t i = 0; i < M; ++i)
-            if (m_v.a[i] != rhs.m_v.a[i])
-            return false;
-        return true;
-    }
-
-    static XV zero() { return XV(uint32_t(0)); }
-
-    XV ifOddValueElseZero(const XV& value) const { XV r; for (size_t i = 0; i < M; ++i) r.m_v.a[i] = (m_v.a[i] % 2) ? value.m_v.a[i] : 0; return r; }
-
-    uint8_t parity() const
-    {
-        size_t n;
-        for (auto v : m_v.a)
-            n += popcnt(v);
-        return n % 2;
-    }
-};
-
+/*
 template <>
 struct MAY_ALIAS SimdRegister<64>
 {
@@ -193,17 +259,18 @@ struct MAY_ALIAS SimdRegister<64>
 
     uint8_t parity() const { return popcnt(m_v) % 2; }
 };
+*/
 
 #if SIMD_N_BITS>=128
 template <>
-struct MAY_ALIAS SimdRegister<128>
+struct SimdRegister<128, 128>
 {
     __m128i m_v;
 
-    typedef SimdRegister<128> XV;
+    typedef SimdRegister<128, 128> XV;
 
     SimdRegister() : m_v(_mm_undefined_si128()) {}
-    SimdRegister(uint32_t v) : m_v(_mm_set1_epi32(v)){}
+    SimdRegister(uint32_t v) : m_v(_mm_set1_epi32(v)) {}
     SimdRegister(uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3) : m_v(_mm_setr_epi32(v0, v1, v2, v3)) {}
     SimdRegister(const void* p) : m_v(_mm_loadu_si128((const __m128i*)p)) {}
     SimdRegister(__m128i v) : m_v(v) {}
@@ -253,11 +320,11 @@ struct MAY_ALIAS SimdRegister<128>
 
 #if SIMD_N_BITS>=256
 template <>
-struct MAY_ALIAS SimdRegister<256>
+struct MAY_ALIAS SimdRegister<256, 256>
 {
     __m256i m_v;
 
-    typedef SimdRegister<256> XV;
+    typedef SimdRegister<256, 256> XV;
 
     SimdRegister() : m_v(_mm256_undefined_si256()) {}
     SimdRegister(const void* p) : m_v(_mm256_load_si256((const __m256i*)p)) {}
@@ -308,22 +375,15 @@ struct MAY_ALIAS SimdRegister<256>
         return SimdRegister<128>(_mm_xor_si128(lo, hi)).parity();
     }
 };
-#elif defined(SIMD_EMULATION)
-template <>
-struct SimdRegister<256> : public SimdRegisterEmulator<8>
-{
-    using SimdRegisterEmulator<8>::SimdRegisterEmulator;
-    SimdRegister<256>(const SimdRegisterEmulator<8>& v) : SimdRegisterEmulator<8>(v) {}
-};
 #endif
 
 #if SIMD_N_BITS>=512
 template <>
-struct MAY_ALIAS SimdRegister<512>
+struct MAY_ALIAS SimdRegister<512, 512>
 {
     __m512i m_v;
 
-    typedef SimdRegister<512> XV;
+    typedef SimdRegister<512, 512> XV;
 
     SimdRegister() : m_v(_mm512_undefined_si512()) {}
     SimdRegister(const void* p) : m_v(_mm512_load_si512((const __m512i*)p)) {}
@@ -364,15 +424,7 @@ struct MAY_ALIAS SimdRegister<512>
         return SimdRegister<256>(_mm256_xor_si256(lo, hi)).parity();
     }
 };
-#elif defined(SIMD_EMULATION)
-template <>
-struct SimdRegister<512> : public SimdRegisterEmulator<16>
-{
-    using SimdRegisterEmulator<16>::SimdRegisterEmulator;
-    SimdRegister<512>(const SimdRegisterEmulator<16>& v) : SimdRegisterEmulator<16>(v) {}
-};
 #endif
 
-
-
+} // namespace Details
 
