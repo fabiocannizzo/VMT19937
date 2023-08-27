@@ -298,7 +298,6 @@ public:
     template <typename OS>
     void toArrayChar(OS& os) const
     {
-        size_t fst = true;
         for (size_t r = 0; r < s_nBitRows; ++r) {
             const char* p = (const char*)rowBegin(r);
             for (size_t c = 0; c < s_nBytesPerRow; ++c)
