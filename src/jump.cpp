@@ -78,7 +78,7 @@ void run(const std::string& filepath, size_t nThreads, size_t saveFrequency, siz
         if (std::filesystem::is_regular_file(entry) && entry.path().has_extension() && entry.path().extension().string() == extension) {
             std::string s = entry.path().filename().string();
             s = s.substr(1, s.length() - 1 - extension.length());
-            int n = atoi(s.c_str());
+            size_t n = atoi(s.c_str());
             if (n > lastComputed)
                 lastComputed = n;
         }
