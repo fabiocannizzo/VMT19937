@@ -27,11 +27,11 @@ enum Mode {orig, sfmt, mkl_mt, mkl_sfmt, vmt, vsfmt};
 
 const char* modename[] = {"MT19937", "SFMT19937", "VSLMT19937", "VSLSFMT19937", "VMT19937", "VSFMT19937" };
 
-template <typename T>
+template <template <size_t, size_t> class Gen>
 struct GenTraits;
 
-template <size_t VecLen, VRandGenQueryMode QryMode>
-struct GenTraits<VMT19937<VecLen, QryMode>>
+template <>
+struct GenTraits<Details::VMT19937Base>
 {
     static const Mode mode = vmt;
     static const char* name() { return "VMT19937"; }
@@ -40,8 +40,8 @@ struct GenTraits<VMT19937<VecLen, QryMode>>
     static const char* jumpFileName() { return "dat/mt/F19933.bits"; }
 };
 
-template <size_t VecLen, VRandGenQueryMode QryMode>
-struct GenTraits<VSFMT19937<VecLen, QryMode>>
+template <>
+struct GenTraits<Details::VSFMT19937Base>
 {
     static const Mode mode = vsfmt;
     static const char* name() { return "VSFMT19937"; }
@@ -52,56 +52,61 @@ struct GenTraits<VSFMT19937<VecLen, QryMode>>
 
 struct Result
 {
-    Result(Mode _mode, size_t _nb, size_t _blk, size_t _qryMode, size_t _id, double _dt)
-        : mode(_mode), nBits(_nb), blkSize(_blk), qryMode(_qryMode), runId(_id), time(_dt) {}
+    Result(Mode _mode, size_t _nb, size_t _ib, size_t _blk, size_t _qryMode, size_t _id, double _dt)
+        : mode(_mode), nBits(_nb), nImplBits(_ib), blkSize(_blk), qryMode(_qryMode), runId(_id), time(_dt) {}
     Mode mode;
-    size_t nBits;
+    size_t nBits, nImplBits;
     size_t blkSize;
     size_t qryMode;
     mutable size_t runId;
     mutable double time;
     bool operator<(const Result& rhs) const {
-        return std::tuple(mode, nBits, blkSize, qryMode) < std::tuple(rhs.mode, rhs.nBits, rhs.blkSize, rhs.qryMode);
+        return std::tuple(mode, nBits, nImplBits, blkSize, qryMode) < std::tuple(rhs.mode, rhs.nBits, rhs.nImplBits, rhs.blkSize, rhs.qryMode);
     }
 };
 
-template <typename Gen>
-Result testPerformance(size_t runId)
+template <template <size_t, size_t> class Gen, size_t L, size_t I, VRandGenQueryMode QM>
+void vRandGenPerformance3(size_t runId, std::vector<Result>& res)
 {
-    const size_t VecLen = Gen::s_regLenBits;
-    const VRandGenQueryMode QryMode = Gen::s_queryMode;
-    const size_t BlkSize = QryMode == QM_Scalar ? 1 : QryMode == QM_Block16 ? 16 : Gen::s_n32InFullState;
-    const Mode mode = GenTraits<Gen>::mode;
-    const char* name = GenTraits<Gen>::name();
+    if constexpr (I <= std::min<size_t>(L, SIMD_N_BITS)) {
 
-    std::cout << "Generate " << nRandomPerf << " random numbers with " << name << " length " << VecLen
-              << " in blocks of " << BlkSize << " ... ";
+        typedef Details::VRandGen<Gen<L, I>, QM> gen_t;
+        const size_t VecLen = L;
+        const VRandGenQueryMode QryMode = QM;
+        const size_t BlkSize = QryMode == QM_Scalar ? 1 : QryMode == QM_Block16 ? 16 : gen_t::s_n32InFullState;
+        const Mode mode = GenTraits<Gen>::mode;
+        const char* name = GenTraits<Gen>::name();
 
-    AlignedVector<uint32_t, 64> aligneddst(BlkSize);
+        std::cout << "Generate " << nRandomPerf << " random numbers with " << name << " L=" << VecLen << " I=" << I
+            << " QrySize=" << BlkSize << " ... ";
 
-    typedef typename Gen::matrix_t matrix_t;
-    std::unique_ptr<matrix_t> pjump(new matrix_t(GenTraits<Gen>::jumpFileName()));    // load jump ahead matrix
-    Gen mt(seedinit, seedlength, 0, nullptr, pjump.get());
-    pjump.reset(nullptr);
+        AlignedVector<uint32_t, 64> aligneddst(BlkSize);
 
-    auto start = std::chrono::system_clock::now();
-    for (size_t i = 0; i < nRandomPerf / BlkSize; ++i)
-        if constexpr (QryMode == QM_Scalar)
-            aligneddst[0] = mt.genrand_uint32();
-        else if constexpr (QryMode == QM_Block16)
-            mt.genrand_uint32_blk16(aligneddst.data());
-        else if constexpr (QryMode == QM_StateSize)
-            mt.genrand_uint32_stateBlk(aligneddst.data());
-        else
-            NOT_IMPLEMENTED;
-    auto end = std::chrono::system_clock::now();
+        typedef typename gen_t::matrix_t matrix_t;
+        std::unique_ptr<matrix_t> pjump(new matrix_t(GenTraits<Gen>::jumpFileName()));    // load jump ahead matrix
+        gen_t mt(seedinit, seedlength, 0, nullptr, pjump.get());
+        pjump.reset(nullptr);
 
-    std::chrono::duration<double> elapsed_seconds = end - start;
-    double nSeconds = elapsed_seconds.count();
+        auto start = std::chrono::system_clock::now();
 
-    std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s" << std::endl;
+        for (size_t i = 0; i < nRandomPerf / BlkSize; ++i)
+            if constexpr (QryMode == QM_Scalar)
+                aligneddst[0] = mt.genrand_uint32();
+            else if constexpr (QryMode == QM_Block16)
+                mt.genrand_uint32_blk16(aligneddst.data());
+            else if constexpr (QryMode == QM_StateSize)
+                mt.genrand_uint32_stateBlk(aligneddst.data());
+            else
+                NOT_IMPLEMENTED;
 
-    return Result(mode, VecLen, BlkSize, BlkSize, runId, nSeconds);
+        auto end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        double nSeconds = elapsed_seconds.count();
+
+        std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s" << std::endl;
+
+        res.emplace_back(mode, VecLen, I, BlkSize, BlkSize, runId, nSeconds);
+    }
 }
 
 
@@ -123,23 +128,23 @@ Result originalPerformance(size_t runId)
     double nSeconds = elapsed_seconds.count();
     std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s\n";
 
-    return Result(orig, 32, 1, runId, 1, nSeconds);
+    return Result(orig, 32, 32, 1, runId, 1, nSeconds);
 }
 
-template <size_t BlkSize>
-Result sfmtPerformance(size_t runId)
+template <bool ScalarQry>
+Result sfmtPerformance(size_t runId, size_t BlkSize)
 {
-    static_assert(BlkSize == 1 || (BlkSize % 4 == 0 && BlkSize >= SFMT_N32), "BlkSize must be a multiple of 4 and >=156*128");
-    static_assert(nRandomPerf % BlkSize == 0, "nRandomPerf must be a multiple of BlkSize");
+    MYASSERT((BlkSize == 1) || (BlkSize % 4 == 0 && BlkSize >= SFMT_N32), "BlkSize must be a multiple of 4 and >=156*128");
+    MYASSERT((nRandomPerf % BlkSize) == 0, "nRandomPerf must be a multiple of BlkSize");
     AlignedVector<uint32_t, 64> aligneddst(BlkSize);
 
     sfmt_t sfmtgen;
     sfmt_init_gen_rand(&sfmtgen, 12345);
 
-    std::cout << "Generate " << nRandomPerf << " random numbers with SFMT code in blocks of " << BlkSize << " ... ";
+    std::cout << "Generate " << nRandomPerf << " random numbers with SFMT code QrySize=" << BlkSize << " ... ";
     auto start = std::chrono::system_clock::now();
-    for (size_t i = 0; i < nRandomPerf / BlkSize; ++i) {
-        if constexpr (BlkSize == 1)
+    for (size_t i = 0, n = nRandomPerf / BlkSize; i < n; ++i) {
+        if constexpr (ScalarQry)
             aligneddst[0] = sfmt_genrand_uint32(&sfmtgen);
         else
             sfmt_fill_array32(&sfmtgen, aligneddst.data(), BlkSize);
@@ -149,7 +154,7 @@ Result sfmtPerformance(size_t runId)
     double nSeconds = elapsed_seconds.count();
     std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s\n";
 
-    return Result(sfmt, 128, BlkSize, BlkSize == 1 ? 1 : 0, runId, nSeconds);
+    return Result(sfmt, 128, 128, BlkSize, BlkSize == 1 ? 1 : 0, runId, nSeconds);
 }
 
 #ifdef TEST_MKL
@@ -171,9 +176,11 @@ struct MKLTraits<VSL_BRNG_SFMT19937>
     static const size_t s_wordSize = 128;
 };
 
-template <MKL_INT GenCode, MKL_INT BlkSize>
-Result mklPerformance(size_t runId)
+template <MKL_INT GenCode>
+Result mklPerformance(size_t runId, MKL_INT BlkSize)
 {
+    MYASSERT(nRandomPerf % BlkSize == 0, "incorrect count");
+
     AlignedVector<uint32_t, 64> aligneddst(BlkSize);
 
     VSLStreamStatePtr stream;
@@ -181,10 +188,10 @@ Result mklPerformance(size_t runId)
 
     std::cout << "Generate " << nRandomPerf << " random numbers with MKL "
               << ((GenCode == VSL_BRNG_MT19937) ? "MT19937" : "SFMT19937")
-              << " in blocks of " << BlkSize << " ... ";
+              << " QrySize=" << BlkSize << " ... ";
 
     auto start = std::chrono::system_clock::now();
-    for (size_t i = 0; i < nRandomPerf / BlkSize; ++i)
+    for (size_t i = 0, n = nRandomPerf / BlkSize; i < n; ++i)
         viRngUniformBits32(VSL_RNG_METHOD_UNIFORMBITS32_STD, stream, BlkSize, aligneddst.data());
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
@@ -195,9 +202,27 @@ Result mklPerformance(size_t runId)
     vslDeleteStream(&stream);
 
     typedef MKLTraits<GenCode> traits;
-    return Result(traits::s_mode, traits::s_wordSize, BlkSize, 0, runId, nSeconds);
+    return Result(traits::s_mode, traits::s_wordSize, traits::s_wordSize, BlkSize, 0, runId, nSeconds);
 }
 #endif
+
+template <template <size_t, size_t> class Gen, size_t L, size_t I, VRandGenQueryMode...QMs>
+void vRandGenPerformance2(size_t runId, std::vector<Result>& res)
+{
+    (vRandGenPerformance3<Gen, L, I, QMs>(runId, res), ...);
+}
+
+template <template <size_t, size_t> class Gen, size_t L, size_t...Is>
+void vRandGenPerformance1(size_t runId, std::vector<Result>& res)
+{
+    (vRandGenPerformance2<Gen, L, Is, QM_Scalar, QM_Block16, QM_StateSize>(runId, res), ...);
+}
+
+template <template <size_t, size_t> class Gen, size_t...Ls>
+void vRandGenPerformance0(size_t runId, std::vector<Result>& res)
+{
+    (vRandGenPerformance1<Gen, Ls, 32, 128, 256, 512>(runId, res), ...);
+}
 
 void usage()
 {
@@ -244,46 +269,18 @@ int main(int argc, const char** argv)
     for (size_t i = 0; i < nRepeat; ++i) {
 
         res.push_back(originalPerformance(i));
-        res.push_back(sfmtPerformance<1>(i));
-        res.push_back(sfmtPerformance<156*128/32>(i));
+        res.push_back(sfmtPerformance<true>(i, 1));
+        res.push_back(sfmtPerformance<false>(i, 156ul * 128 / 32));
 #ifdef TEST_MKL
-        res.push_back(mklPerformance<VSL_BRNG_MT19937, 1>(i));
-        res.push_back(mklPerformance<VSL_BRNG_MT19937, 16>(i));
-        res.push_back(mklPerformance<VSL_BRNG_MT19937, 624>(i));
-        res.push_back(mklPerformance<VSL_BRNG_MT19937, 624 * 4>(i));
-        res.push_back(mklPerformance<VSL_BRNG_MT19937, 624 * 8>(i));
-        res.push_back(mklPerformance<VSL_BRNG_MT19937, 624 * 16>(i));
-        res.push_back(mklPerformance<VSL_BRNG_SFMT19937, 1>(i));
-        res.push_back(mklPerformance<VSL_BRNG_SFMT19937, 16>(i));
-        res.push_back(mklPerformance<VSL_BRNG_SFMT19937, 624>(i));
-        res.push_back(mklPerformance<VSL_BRNG_SFMT19937, 624 * 2>(i));
-        res.push_back(mklPerformance<VSL_BRNG_SFMT19937, 624 * 4>(i));
+        MKL_INT mklQrySizeMT[] = { 1, 16, 624, 624 * 4, 624 * 8, 624 * 16 };
+        MKL_INT mklQrySizeSFMT[] = { 1, 16, 624, 624 * 2, 624 * 4 };
+        for (auto sz : mklQrySizeMT)
+            res.push_back(mklPerformance<VSL_BRNG_MT19937>(i, sz));
+        for (auto sz : mklQrySizeSFMT)
+            res.push_back(mklPerformance<VSL_BRNG_SFMT19937>(i, sz));
 #endif
-        res.push_back(testPerformance<VMT19937<32, QM_Scalar>>(i));
-        res.push_back(testPerformance<VMT19937<32, QM_Block16>>(i));
-        res.push_back(testPerformance<VMT19937<32, QM_StateSize>>(i));
-        res.push_back(testPerformance<VMT19937<128, QM_Scalar>>(i));
-        res.push_back(testPerformance<VMT19937<128, QM_Block16>>(i));
-        res.push_back(testPerformance<VMT19937<128, QM_StateSize>>(i));
-        res.push_back(testPerformance<VSFMT19937<128, QM_Scalar>>(i));
-        res.push_back(testPerformance<VSFMT19937<128, QM_Block16>>(i));
-        res.push_back(testPerformance<VSFMT19937<128, QM_StateSize>>(i));
-#if SIMD_N_BITS >= 256
-        res.push_back(testPerformance<VMT19937<256, QM_Scalar>>(i));
-        res.push_back(testPerformance<VMT19937<256, QM_Block16>>(i));
-        res.push_back(testPerformance<VMT19937<256, QM_StateSize>>(i));
-        res.push_back(testPerformance<VSFMT19937<256, QM_Scalar>>(i));
-        res.push_back(testPerformance<VSFMT19937<256, QM_Block16>>(i));
-        res.push_back(testPerformance<VSFMT19937<256, QM_StateSize>>(i));
-#endif
-#if SIMD_N_BITS >= 512
-        res.push_back(testPerformance<VMT19937<512, QM_Scalar>>(i));
-        res.push_back(testPerformance<VMT19937<512, QM_Block16>>(i));
-        res.push_back(testPerformance<VMT19937<512, QM_StateSize>>(i));
-        res.push_back(testPerformance<VSFMT19937<512, QM_Scalar>>(i));
-        res.push_back(testPerformance<VSFMT19937<512, QM_Block16>>(i));
-        res.push_back(testPerformance<VSFMT19937<512, QM_StateSize>>(i));
-#endif
+        vRandGenPerformance0<Details::VMT19937Base, 32, 128, 256, 512>(i, res);
+        vRandGenPerformance0<Details::VSFMT19937Base, 128, 256, 512>(i, res);
     }
 
     std::set<Result> avgresult;
@@ -298,6 +295,7 @@ int main(int argc, const char** argv)
     }
     std::cout << std::setw(12) << std::right << "prng"
         << std::setw(8) << std::right << "n-bits"
+        << std::setw(8) << std::right << "i-bits"
         << std::setw(8) << std::right << "blksize"
         << std::setw(8) << std::right << "qrymode"
         << std::setw(8) << std::right << "time"
@@ -305,6 +303,7 @@ int main(int argc, const char** argv)
     for (auto& r : avgresult) {
         std::cout << std::setw(12) << std::right << modename[r.mode]
             << std::setw(8) << std::right << r.nBits
+            << std::setw(8) << std::right << r.nImplBits
             << std::setw(8) << std::right << r.blkSize
             << std::setw(8) << std::right << r.qryMode
             << std::setw(8) << std::right << std::fixed << std::setprecision(2) << r.time / nRepeat
