@@ -38,6 +38,7 @@ struct GenTraits<Details::VMT19937Base>
     // for maximum period, we should select the file based on the number of states
     // but these periods are so large anyway that who do not care!
     static const char* jumpFileName() { return "dat/mt/F19933.bits"; }
+    typedef Details::VMT19937Base<32,32>::matrix_t matrix_t;
 };
 
 template <>
@@ -48,6 +49,7 @@ struct GenTraits<Details::VSFMT19937Base>
     // for maximum period, we should select the file based on the number of states
     // but these periods are so large that anyway we do not care!
     static const char* jumpFileName() { return "dat/sfmt/F19935.bits"; }
+    typedef Details::VSFMT19937Base<128, 32>::matrix_t matrix_t;
 };
 
 struct Result
@@ -65,8 +67,8 @@ struct Result
     }
 };
 
-template <template <size_t, size_t> class Gen, size_t L, size_t I, VRandGenQueryMode QM>
-void vRandGenPerformance3(size_t runId, std::vector<Result>& res)
+template <template <size_t, size_t> class Gen, size_t L, size_t I, VRandGenQueryMode QM, typename M>
+void vRandGenPerformance3(size_t runId, const M* m, std::vector<Result>& res)
 {
     if constexpr (I <= std::min<size_t>(L, SIMD_N_BITS)) {
 
@@ -77,15 +79,13 @@ void vRandGenPerformance3(size_t runId, std::vector<Result>& res)
         const Mode mode = GenTraits<Gen>::mode;
         const char* name = GenTraits<Gen>::name();
 
-        std::cout << "Generate " << nRandomPerf << " random numbers with " << name << " L=" << VecLen << " I=" << I
+        std::cout << "Generate " << nRandomPerf << " random numbers with " << name << "<" << std::setw(3) << VecLen << "," << std::setw(3) << I << ">"
             << " QrySize=" << BlkSize << " ... ";
 
         AlignedVector<uint32_t, 64> aligneddst(BlkSize);
 
-        typedef typename gen_t::matrix_t matrix_t;
-        std::unique_ptr<matrix_t> pjump(new matrix_t(GenTraits<Gen>::jumpFileName()));    // load jump ahead matrix
-        gen_t mt(seedinit, seedlength, 0, nullptr, pjump.get());
-        pjump.reset(nullptr);
+        // we provide a jump matrix, although it is redundant for the purpose of just measuring performace
+        gen_t mt(seedinit, seedlength, 0, nullptr, m);
 
         auto start = std::chrono::system_clock::now();
 
@@ -206,22 +206,24 @@ Result mklPerformance(size_t runId, MKL_INT BlkSize)
 }
 #endif
 
-template <template <size_t, size_t> class Gen, size_t L, size_t I, VRandGenQueryMode...QMs>
-void vRandGenPerformance2(size_t runId, std::vector<Result>& res)
+template <template <size_t, size_t> class Gen, size_t L, size_t I, VRandGenQueryMode...QMs, typename M>
+void vRandGenPerformance2(size_t runId, const M* m, std::vector<Result>& res)
 {
-    (vRandGenPerformance3<Gen, L, I, QMs>(runId, res), ...);
+    (vRandGenPerformance3<Gen, L, I, QMs>(runId, m, res), ...);
 }
 
-template <template <size_t, size_t> class Gen, size_t L, size_t...Is>
-void vRandGenPerformance1(size_t runId, std::vector<Result>& res)
+template <template <size_t, size_t> class Gen, size_t L, size_t...Is, typename M>
+void vRandGenPerformance1(size_t runId, const M* m, std::vector<Result>& res)
 {
-    (vRandGenPerformance2<Gen, L, Is, QM_Scalar, QM_Block16, QM_StateSize>(runId, res), ...);
+    (vRandGenPerformance2<Gen, L, Is, QM_Scalar, QM_Block16, QM_StateSize>(runId, m, res), ...);
 }
 
 template <template <size_t, size_t> class Gen, size_t...Ls>
 void vRandGenPerformance0(size_t runId, std::vector<Result>& res)
 {
-    (vRandGenPerformance1<Gen, Ls, 32, 128, 256, 512>(runId, res), ...);
+    typedef typename GenTraits<Gen>::matrix_t matrix_t;
+    std::unique_ptr<matrix_t> p(new matrix_t(GenTraits<Gen>::jumpFileName()));
+    (vRandGenPerformance1<Gen, Ls, 32, 128, 256, 512>(runId, p.get(), res), ...);
 }
 
 void usage()
