@@ -3,7 +3,7 @@
 #include "VMT19937.h"
 #include "VSFMT19937.h"
 
-enum VRandGenQueryMode { QM_Scalar, QM_Block16, QM_StateSize };
+enum VRandGenQueryMode { QM_Any, QM_Scalar, QM_Block16, QM_StateSize };
 
 namespace Details
 {
