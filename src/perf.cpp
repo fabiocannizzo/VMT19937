@@ -383,8 +383,8 @@ int main(int argc, const char** argv)
         nRandomPerf *= 1000;
 
     for (size_t i = 0; i < nRepeat; ++i) {
-        std::cout << "Iteration: " << i + 1 << "\n";
-        std::cout << "Generating " << nRandomPerf << " 32-bits random numbers with:\n";
+        std::cout << "Iteration: " << std::setw(2) << i + 1 << ": " 
+                  << "generating " << nRandomPerf << " 32-bits random numbers\n";
         {
             size_t m = 0;
             std::cout
@@ -411,31 +411,36 @@ int main(int argc, const char** argv)
         vRandGenPerformance0<Details::VSFMT19937Base, 128, 256, 512>();
     }
 
+    const size_t spacing[] = { 20, 8, 8, 8, 10, 6, 8, 8, 8, 8, 11, 12 };
+    size_t s = 0;
     std::cout << "\n"
-        << std::setw(20) << std::right << "prng"
-        << std::setw(8) << std::right << "g-bits"
-        << std::setw(8) << std::right << "r-bits"
-        << std::setw(8) << std::right << "blksize"
-        << std::setw(10) << std::right << "qrymode"
-        << std::setw(6) << std::right << "nruns"
-        << std::setw(8) << std::right << "tmin"
-        << std::setw(8) << std::right << "tmax"
-        << std::setw(8) << std::right << "tavg"
-        << std::setw(8) << std::right << "tdev"
-        << std::setw(11) << std::right << "tavg/tdev"
+        << std::setw(spacing[s++]) << std::right << "prng"
+        << std::setw(spacing[s++]) << std::right << "g-bits"
+        << std::setw(spacing[s++]) << std::right << "r-bits"
+        << std::setw(spacing[s++]) << std::right << "blksize"
+        << std::setw(spacing[s++]) << std::right << "qrymode"
+        << std::setw(spacing[s++]) << std::right << "nruns"
+        << std::setw(spacing[s++]) << std::right << "tmin"
+        << std::setw(spacing[s++]) << std::right << "tmax"
+        << std::setw(spacing[s++]) << std::right << "tavg"
+        << std::setw(spacing[s++]) << std::right << "tdev"
+        << std::setw(1+spacing[s++]) << std::right << "tavg/tdev"
+        << std::setw(spacing[s++]) << std::right << "throughput"
         << "\n";
     for (auto& [k, v] : results) {
-        std::cout << std::setw(20) << std::right << modename[k.mode]
-            << std::setw(8) << std::right << k.nBits
-            << std::setw(8) << std::right << k.nImplBits
-            << std::setw(8) << std::right << k.blkSize
-            << std::setw(10) << std::right << queryModeName(k.qryMode)
-            << std::setw(6) << std::right << v.singleRuns.size()
-            << std::setw(8) << std::right << std::fixed << std::setprecision(3) << v.mi
-            << std::setw(8) << std::right << std::fixed << std::setprecision(3) << v.ma
-            << std::setw(8) << std::right << std::fixed << std::setprecision(3) << v.avg
-            << std::setw(8) << std::right << std::fixed << std::setprecision(3) << v.stdev
-            << std::setw(10) << std::right << std::fixed << std::setprecision(3) << v.stdev /v.avg*100 << "%"
+        s = 0;
+        std::cout << std::setw(spacing[s++]) << std::right << modename[k.mode]
+            << std::setw(spacing[s++]) << std::right << k.nBits
+            << std::setw(spacing[s++]) << std::right << k.nImplBits
+            << std::setw(spacing[s++]) << std::right << k.blkSize
+            << std::setw(spacing[s++]) << std::right << queryModeName(k.qryMode)
+            << std::setw(spacing[s++]) << std::right << v.singleRuns.size()
+            << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.mi
+            << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.ma
+            << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.avg
+            << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.stdev
+            << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.stdev /v.avg*100 << "%"
+            << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(1) << nRandomPerf / 1.0e6 / v.avg
             << "\n";
     }
 
