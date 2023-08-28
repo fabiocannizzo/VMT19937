@@ -82,3 +82,4 @@ inline void matrixToCube(T* mat, const T* vec, size_t outerDim, size_t midIndex)
         for (size_t i = 0; i < InnerDim; ++i)
             mat[w * (MidDim * InnerDim) + i] = vec[w * InnerDim + i];
 }
+

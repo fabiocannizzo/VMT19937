@@ -42,8 +42,8 @@ protected:
 
 private:
     // This data members is necessary only if QueryMode!=QM_StateSize
+    const uint32_t* const m_state_end;
     const uint32_t* m_prnd;
-
 
     static FORCE_INLINE XV advance1(const XV& xA, const XV& xB, const XV& xC, const XV& xD, const XV& bMask)
     {
@@ -320,11 +320,37 @@ protected:
         std::copy(begin(), end(), dst);
     }
 
+    void genrand_uint32_anySize(uint32_t* dst, size_t n)
+    {
+        if (size_t nAvail = std::distance(m_prnd, end());  nAvail <= n) {
+            std::copy_n(m_prnd, nAvail, dst);
+            n -= nAvail;
+            dst += nAvail;
+            refill();
+        }
+        else {
+            std::copy_n(m_prnd, n, dst);
+            m_prnd += n;
+            return;
+        }
+
+        while (n >= s_n32InFullState) {
+            std::copy_n(m_prnd, s_n32InFullState, dst);
+            n -= s_n32InFullState;
+            dst += s_n32InFullState;
+            refill();
+        }
+
+        std::copy_n(begin(), n, dst);
+        m_prnd += n;
+    }
+
 public:
 
     // constructors
     VSFMT19937Base()
-        : m_prnd(nullptr)
+        : m_state_end(m_state + s_n32InFullState)
+        , m_prnd(nullptr)
     {}
 
 }; // VSFMT19937Base

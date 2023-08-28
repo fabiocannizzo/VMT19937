@@ -1,4 +1,4 @@
-#include "VRandGen.h"
+#include "TestUtils.h"
 
 #include "../SFMT-src-1.5.1/SFMT.h"
 
@@ -30,17 +30,6 @@ extern "C" void init_by_array(unsigned long init_key[], int key_length);
 enum Mode {orig, sfmt, mkl_mt, mkl_sfmt, vmt, vsfmt};
 
 const char* modename[] = {"ORIG-MT19937", "ORIG-SFMT19937", "MKL-MT19937", "MKL-SFMT19937", "V-MT19937", "V-SFMT19937" };
-
-const char* queryModeName(VRandGenQueryMode qm)
-{
-    switch (qm) {
-        case QM_Any: return "AnySize";
-        case QM_Scalar: return "Scalar";
-        case QM_Block16: return "Block16";
-        case QM_StateSize: return "State";
-        default: THROW("how did we get here?")
-    }
-}
 
 template <template <size_t, size_t> class Gen>
 struct GenTraits;
