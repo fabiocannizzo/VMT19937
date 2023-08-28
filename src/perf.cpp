@@ -21,7 +21,7 @@ using namespace std;
 const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 
-const size_t nRandomPerf = uint64_t(624) * 16 * 800000;
+size_t nRandomPerf = size_t(624) * 16 * 800;
 const size_t anySizeQuery = 1000;
 
 extern "C" unsigned long genrand_int32();
@@ -69,6 +69,8 @@ struct GenTraits<Details::VSFMT19937Base>
     static const auto* matrix() { return psfmt.get(); }
 };
 
+const size_t messageSpacing[] = { 15, 9, 8, 8, 12 };
+
 struct ResultKey
 {
     ResultKey(Mode _mode, size_t _nb, size_t _ib, size_t _blk, VRandGenQueryMode _qryMode)
@@ -79,13 +81,13 @@ struct ResultKey
     VRandGenQueryMode qryMode;
     void print() const
     {
+        size_t i = 0;
         std::cout
-            << "  "
-            << std::setw(15) << modename[mode]
-            << ", word=" << std::setw(3) << nBits
-            << ", reg=" << std::setw(3) << nImplBits
-            << ", blk=" << std::setw(4) << blkSize
-            << ", mode=" << std::setw(7) << queryModeName(qryMode)
+            << std::setw(messageSpacing[i++]) << modename[mode]
+            << std::setw(messageSpacing[i++]) << nBits
+            << std::setw(messageSpacing[i++]) << nImplBits
+            << std::setw(messageSpacing[i++]) << blkSize
+            << std::setw(messageSpacing[i++]) << queryModeName(qryMode)
             << " ... ";
     }
     bool operator<(const ResultKey& rhs) const
@@ -338,10 +340,10 @@ void usage()
     std::cerr
         << "Invalid command line arguments\n"
         << "Example:\n"
-        << "perf [-n nRepeats]\n"
+        << "perf [-n nRepeats] [-s slow]\n"
         << "  nRepeats defaults to 1\n"
+        << "  slow must be 0 or 1, defaults to 0\n"
         ;
-    std::exit(-1);
 }
 
 int main(int argc, const char** argv)
@@ -360,24 +362,39 @@ int main(int argc, const char** argv)
    NOT_IMPLEMENTED;
 # endif
 #endif
-
     size_t nRepeat = 1;
+    int slow = 1;
     // parse command line arguments
     for (int i = 1; i < argc; i += 2) {
         string key(argv[i]);
         const char* value = argv[i + 1];
-        if (key == "-n") {
+        if (key == "-n")
             nRepeat = atoi(value);
-        }
-        else
+        else if (key == "-s")
+            slow = atoi(value);
+        else {
             usage();
+            exit(1);
+        }
     }
     std::cout << "nRepeat = " << nRepeat << "\n";
-
-    std::cout << "Generating " << nRandomPerf << " 32-bits random numbers with:\n";
+    std::cout << "slow = " << slow << "\n";
+    if (slow)
+        nRandomPerf *= 1000;
 
     for (size_t i = 0; i < nRepeat; ++i) {
         std::cout << "Iteration: " << i + 1 << "\n";
+        std::cout << "Generating " << nRandomPerf << " 32-bits random numbers with:\n";
+        {
+            size_t m = 0;
+            std::cout
+                << std::setw(messageSpacing[m++]) << "Generator"
+                << std::setw(messageSpacing[m++]) << "WordSize"
+                << std::setw(messageSpacing[m++]) << "RegSize"
+                << std::setw(messageSpacing[m++]) << "BlkSize"
+                << std::setw(messageSpacing[m++]) << "QueryMode"
+                << "\n";
+        }
 
         originalPerformance();
         sfmtPerformance<true>(1);
@@ -394,28 +411,31 @@ int main(int argc, const char** argv)
         vRandGenPerformance0<Details::VSFMT19937Base, 128, 256, 512>();
     }
 
-    std::cout << std::setw(20) << std::right << "prng"
-        << std::setw(8) << std::right << "n-bits"
-        << std::setw(8) << std::right << "i-bits"
+    std::cout << "\n"
+        << std::setw(20) << std::right << "prng"
+        << std::setw(8) << std::right << "g-bits"
+        << std::setw(8) << std::right << "r-bits"
         << std::setw(8) << std::right << "blksize"
-        << std::setw(12) << std::right << "qrymode"
-        << std::setw(8) << std::right << "nruns"
+        << std::setw(10) << std::right << "qrymode"
+        << std::setw(6) << std::right << "nruns"
         << std::setw(8) << std::right << "tmin"
         << std::setw(8) << std::right << "tmax"
         << std::setw(8) << std::right << "tavg"
         << std::setw(8) << std::right << "tdev"
+        << std::setw(11) << std::right << "tavg/tdev"
         << "\n";
     for (auto& [k, v] : results) {
         std::cout << std::setw(20) << std::right << modename[k.mode]
             << std::setw(8) << std::right << k.nBits
             << std::setw(8) << std::right << k.nImplBits
             << std::setw(8) << std::right << k.blkSize
-            << std::setw(12) << std::right << queryModeName(k.qryMode)
-            << std::setw(8) << std::right << v.singleRuns.size()
+            << std::setw(10) << std::right << queryModeName(k.qryMode)
+            << std::setw(6) << std::right << v.singleRuns.size()
             << std::setw(8) << std::right << std::fixed << std::setprecision(3) << v.mi
             << std::setw(8) << std::right << std::fixed << std::setprecision(3) << v.ma
             << std::setw(8) << std::right << std::fixed << std::setprecision(3) << v.avg
             << std::setw(8) << std::right << std::fixed << std::setprecision(3) << v.stdev
+            << std::setw(10) << std::right << std::fixed << std::setprecision(3) << v.stdev /v.avg*100 << "%"
             << "\n";
     }
 
