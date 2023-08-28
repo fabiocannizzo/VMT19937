@@ -112,7 +112,7 @@ public:
     // generates a random number on [0,0xffffffff] interval
     uint32_t FORCE_INLINE genrand_uint32()
     {
-        static_assert(QueryMode == QM_Scalar);
+        static_assert(QueryMode == QM_Scalar || QueryMode == QM_Any);
         return base_t::genrand_uint32();
     }
 
@@ -131,18 +131,26 @@ public:
         static_assert(QueryMode == QM_StateSize, "This function can only be invoked when query mode is QM_StateSize");
         base_t::genrand_uint32_stateBlk(dst);
     }
+
+    // generates a block of the same size as the state vector of uniform discrete random numbers in [0,0xffffffff] interval
+    // for optimal performance the vector dst should be aligned on a 64 byte boundary
+    void genrand_uint32_anySize(uint32_t* dst, size_t n)
+    {
+        static_assert(QueryMode == QM_Any, "This function can only be invoked when query mode is QM_Any");
+        base_t::genrand_uint32_anySize(dst, n);
+    }
 };
 
 } // namespace Details
 
 template < size_t RegisterBitLen = SIMD_N_BITS
-         , VRandGenQueryMode QueryMode = QM_Scalar
+         , VRandGenQueryMode QueryMode = QM_Any
          , size_t RegisterBitLenImpl = std::min<size_t>(SIMD_N_BITS, RegisterBitLen)
          >
 using VMT19937 = Details::VRandGen<Details::VMT19937Base<RegisterBitLen, RegisterBitLenImpl>, QueryMode>;
 
 template < size_t RegisterBitLen = SIMD_N_BITS
-         , VRandGenQueryMode QueryMode = QM_Scalar
+         , VRandGenQueryMode QueryMode = QM_Any
          , size_t RegisterBitLenImpl = std::min<size_t>(SIMD_N_BITS, RegisterBitLen)
          >
 using VSFMT19937 = Details::VRandGen<Details::VSFMT19937Base<RegisterBitLen, RegisterBitLenImpl>, QueryMode>;

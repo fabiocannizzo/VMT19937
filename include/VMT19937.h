@@ -41,18 +41,18 @@ private:
     const static size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
     typedef SimdRegister<s_regLenBits, RegisterBitLenImpl> XV;
 
-    static const uint32_t s_rndBlockSize = 64 / sizeof(uint32_t); // exactly one cache line
+    static const uint32_t s_n32InRndCache = 64 / sizeof(uint32_t); // exactly one cache line
 
 protected:
     alignas(64) uint32_t m_state[s_N * s_n32inReg];    // the array of state vectors
 
 private:
     // This data members is necessary only if QueryMode==QM_Scalar
-    alignas(64) uint32_t m_rnd[s_rndBlockSize]; // buffer of tempered numbers with same size as a cache line
-    const uint32_t* m_prnd;
+    alignas(64) uint32_t m_rnd[s_n32InRndCache]; // buffer of tempered numbers with same size as a cache line
+    const uint32_t* m_prnd, * const m_rndEnd;
 
     // This data members are redundant if QueryMode==QM_StateSize
-    const uint32_t*m_pst, *m_pst_end;    // m_pos==m_pst_end means the state vector has been consumed and need to be regenerated
+    const uint32_t*m_pst, * const m_pstEnd;    // m_pos==m_pstEnd means the state vector has been consumed and need to be regenerated
 
 private:
 
@@ -86,18 +86,20 @@ private:
     }
 
     template <bool Aligned>
-    static FORCE_INLINE void temperRefillBlock(const uint32_t *st, uint32_t *dst)
+    static FORCE_INLINE void temperRefillBlock(const uint32_t *&st_, uint32_t *dst)
     {
         typedef SimdRegister<SIMD_N_BITS, SIMD_N_BITS> XVmax;
         const size_t n32PerIteration = sizeof(XVmax) / sizeof(uint32_t);
 
         TemperCst<XVmax> cst{};
-        for (size_t i = 0; i < s_rndBlockSize * sizeof(uint32_t) / sizeof(XVmax); ++i) {
+        const uint32_t* st = st_;
+        for (size_t i = 0; i < s_n32InRndCache * sizeof(uint32_t) / sizeof(XVmax); ++i) {
             XVmax tmp = temper(XVmax(st), cst);
             tmp.template store<Aligned>((uint32_t*)(dst));
             dst += n32PerIteration;
             st += n32PerIteration;
         }
+        st_ = st;
     }
 
     static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, const RefillCst& masks)
@@ -174,8 +176,29 @@ private:
         // last iteration
         advanceLoop<1, 1, 1 - N, M - N>(stCur, x0, masks);
 
-        m_pst = m_state;
+        m_pst = begin();
     }
+
+    const uint32_t* begin() const
+    {
+        return m_state;
+    }
+
+    const uint32_t* end() const
+    {
+        return m_pstEnd;
+    }
+
+    const uint32_t* beginRnd() const
+    {
+        return m_rnd;
+    }
+
+    const uint32_t* endRnd() const
+    {
+        return m_rndEnd;
+    }
+
 
     uint32_t& scalarState(uint32_t scalarIndex)
     {
@@ -199,7 +222,7 @@ private:
 protected:
     void reinitPointers()
     {
-        m_pst = m_pst_end;
+        m_pst = m_pstEnd;
         m_prnd = (const uint32_t*)(((uint8_t*)m_rnd) + sizeof(m_rnd));
     }
 
@@ -269,14 +292,13 @@ protected:
         if ((reinterpret_cast<intptr_t>(m_prnd) % sizeof(m_rnd)) != 0)
             return *m_prnd++;
 
-        if (m_pst != m_pst_end)
+        if (m_pst != m_pstEnd)
             /* do nothing*/; // most likely case first
         else {
             refill();
         }
 
         temperRefillBlock<true>(m_pst, m_rnd);
-        m_pst += s_rndBlockSize;
         m_prnd = m_rnd;
 
         return *m_prnd++;
@@ -286,12 +308,11 @@ protected:
     // for optimal performance the vector dst should be aligned on a 64 byte boundary
     void genrand_uint32_blk16(uint32_t* dst)
     {
-        if (m_pst != m_pst_end)
+        if (m_pst != m_pstEnd)
             /* do nothing*/; // most likely case first
         else
             refill();
         temperRefillBlock<false>(m_pst, dst);
-        m_pst += s_rndBlockSize;
     }
 
     // generates a block of the same size as the state vector of uniform discrete random numbers in [0,0xffffffff] interval
@@ -300,9 +321,83 @@ protected:
     {
         refill();
         const uint32_t* pst = m_state;
-        for (size_t i = 0; i < s_n32InFullState / s_rndBlockSize; ++i, dst += s_rndBlockSize) {
+        for (size_t i = 0; i < s_n32InFullState / s_n32InRndCache; ++i, dst += s_n32InRndCache) {
             temperRefillBlock<false>(pst, dst);
-            pst += s_rndBlockSize;
+        }
+    }
+
+    void genrand_uint32_anySize(uint32_t* dst, size_t n)
+    {
+        if (size_t nAvailInRnd = std::distance<const uint32_t*>(m_prnd, endRnd()); nAvailInRnd < n) {
+            std::copy_n(m_prnd, nAvailInRnd, dst);
+            n -= nAvailInRnd;
+            dst += nAvailInRnd;
+        }
+        else {
+            std::copy_n(m_prnd, n, dst);
+            m_prnd += n;
+            return;
+        }
+
+        // we are now aligned with Block16
+        if (size_t nAvailInState = std::distance(m_pst, end()); nAvailInState < n) {
+            if (nAvailInState) {
+                n -= nAvailInState;
+                do {
+                    temperRefillBlock<false>(m_pst, dst);
+                    dst += s_n32InRndCache;
+                    nAvailInState -= s_n32InRndCache;
+                } while (nAvailInState);
+            }
+        }
+        else {
+            size_t nFullRndBlocks = n / s_n32InRndCache;
+            for (size_t i = 0; i < nFullRndBlocks; ++i) {
+                temperRefillBlock<false>(m_pst, dst);
+                dst += s_n32InRndCache;
+            }
+            n = n % s_n32InRndCache;
+            if (n) {
+                temperRefillBlock<true>(m_pst, m_rnd);
+                std::copy_n(m_rnd, n, dst);
+                m_prnd = m_rnd + n;
+            }
+            else {
+                m_prnd = endRnd();
+            }
+            return;
+        }
+
+        // we are now aligned with the state vector
+
+        size_t nFullStates = n / s_n32InFullState;
+        while (nFullStates--) {
+            genrand_uint32_stateBlk(dst);
+            dst += s_n32InFullState;
+            n -= s_n32InFullState;
+        }
+        m_pst = end();
+
+        if (n > 0) {
+            refill();
+
+            while (n > s_n32InRndCache) {
+                temperRefillBlock<false>(m_pst, dst);
+                n -= s_n32InRndCache;
+                dst += s_n32InRndCache;
+            }
+
+            if (n) {
+                temperRefillBlock<true>(m_pst, m_rnd);
+                std::copy_n(m_rnd, n, dst);
+                m_prnd = m_rnd + n;
+            }
+            else {
+                m_prnd = endRnd();
+            }
+        }
+        else {
+            m_prnd = endRnd();
         }
     }
 
@@ -311,8 +406,9 @@ public:
     // constructors
     VMT19937Base()
         : m_prnd(nullptr)
+        , m_rndEnd(m_rnd + s_n32InRndCache)
         , m_pst(nullptr)
-        , m_pst_end(m_state + s_N * s_n32inReg)
+        , m_pstEnd(m_state + s_N * s_n32inReg)
     {}
 };
 
