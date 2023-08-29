@@ -21,8 +21,8 @@ using namespace std;
 const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 
-size_t nRandomPerf = size_t(624) * 16 * 800;
-const size_t anySizeQuery = 1000;
+// this might be changed via cli arguments
+size_t nRandomPerf = size_t(624) * 32 * 800;
 
 extern "C" unsigned long genrand_int32();
 extern "C" void init_by_array(unsigned long init_key[], int key_length);
@@ -30,6 +30,8 @@ extern "C" void init_by_array(unsigned long init_key[], int key_length);
 enum Mode {orig, sfmt, mkl_mt, mkl_sfmt, vmt, vsfmt};
 
 const char* modename[] = {"ORIG-MT19937", "ORIG-SFMT19937", "MKL-MT19937", "MKL-SFMT19937", "V-MT19937", "V-SFMT19937" };
+
+const size_t anySize[] = { 1, 4, 16, 64, 256, 1024, 4096, 16384 };
 
 template <template <size_t, size_t> class Gen>
 struct GenTraits;
@@ -126,55 +128,49 @@ bool alreadyHaveEnoughIter(const ResultKey& key)
 }
 
 template <template <size_t, size_t> class Gen, size_t L, size_t I, VRandGenQueryMode QryMode>
-void vRandGenPerformance3()
+void vRandGenPerformance4(size_t blkSize)
 {
-    if constexpr (I <= std::min<size_t>(L, SIMD_N_BITS)) {
+    typedef Details::VRandGen<Gen<L, I>, QryMode> gen_t;
 
-        typedef Details::VRandGen<Gen<L, I>, QryMode> gen_t;
-        size_t blkSize;
-        switch (QryMode) {
-            case QM_Scalar: blkSize = 1; break;
-            case QM_Block16: blkSize = 16; break;
-            case QM_Any: blkSize = anySizeQuery; break;
-            case QM_StateSize: blkSize = gen_t::s_n32InFullState; break;
-            default: THROW("how did we get here?");
-        }
-        const Mode mode = GenTraits<Gen>::mode;
+    const Mode mode = GenTraits<Gen>::mode;
 
-        ResultKey key(mode, L, I, blkSize, QryMode);
+    MYASSERT(((blkSize > 0) && ((nRandomPerf % blkSize) == 0)), "invalid blkSize " << blkSize);
 
-        key.print();
+    ResultKey key(mode, L, I, blkSize, QryMode);
 
-        if (alreadyHaveEnoughIter(key)) {
-            std::cout << "skip\n";
-            return;
-        }
+    key.print();
 
-        AlignedVector<uint32_t, 64> aligneddst(blkSize);
-
-        // we provide a jump matrix, although it is redundant for the purpose of just measuring performace
-        gen_t mt(seedinit, seedlength, 0, nullptr, GenTraits<Gen>::matrix());
-
-        auto start = std::chrono::system_clock::now();
-
-        for (size_t i = 0, n = nRandomPerf / blkSize; i < n; ++i)
-            if constexpr (QryMode == QM_Scalar)
-                aligneddst[0] = mt.genrand_uint32();
-            else if constexpr (QryMode == QM_Block16)
-                mt.genrand_uint32_blk16(aligneddst.data());
-            else if constexpr (QryMode == QM_StateSize)
-                mt.genrand_uint32_stateBlk(aligneddst.data());
-            else
-                NOT_IMPLEMENTED;
-
-        auto end = std::chrono::system_clock::now();
-        std::chrono::duration<double> elapsed_seconds = end - start;
-        double nSeconds = elapsed_seconds.count();
-
-        std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s" << std::endl;
-
-        addResult(key, nSeconds);
+    if (alreadyHaveEnoughIter(key)) {
+        std::cout << "skip\n";
+        return;
     }
+
+    AlignedVector<uint32_t, 64> aligneddst(blkSize);
+
+    // we provide a jump matrix, although it is redundant for the purpose of just measuring performace
+    gen_t mt(seedinit, seedlength, 0, nullptr, GenTraits<Gen>::matrix());
+
+    auto start = std::chrono::system_clock::now();
+
+    for (size_t i = 0, n = nRandomPerf / blkSize; i < n; ++i)
+        if constexpr (QryMode == QM_Scalar)
+            aligneddst[0] = mt.genrand_uint32();
+        else if constexpr (QryMode == QM_Block16)
+            mt.genrand_uint32_blk16(aligneddst.data());
+        else if constexpr (QryMode == QM_StateSize)
+            mt.genrand_uint32_stateBlk(aligneddst.data());
+        else if constexpr (QryMode == QM_Any)
+            mt.genrand_uint32_anySize(aligneddst.data(), blkSize);
+        else
+            NOT_IMPLEMENTED;
+
+    auto end = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end - start;
+    double nSeconds = elapsed_seconds.count();
+
+    std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s" << std::endl;
+
+    addResult(key, nSeconds);
 }
 
 
@@ -306,16 +302,38 @@ void mklPerformance(MKL_INT GenCode, MKL_INT BlkSize)
 }
 #endif
 
+template <template <size_t, size_t> class Gen, size_t L, size_t I, VRandGenQueryMode QM>
+void vRandGenPerformance3()
+{
+    typedef Details::VRandGen<Gen<L, I>, QM> gen_t;
+    size_t blkSize;
+    switch (QM) {
+        case QM_Scalar: blkSize = 1; break;
+        case QM_Block16: blkSize = 16; break;
+        case QM_Any: blkSize = 0; break;
+        case QM_StateSize: blkSize = gen_t::s_n32InFullState; break;
+        default: THROW("how did we get here?");
+    }
+    bool fst = true;
+    for (auto sz : anySize) {
+        if (QM != QM_Any && !fst)
+            break;
+        fst = false;
+        vRandGenPerformance4<Gen, L, I, QM>(QM != QM_Any?  blkSize: sz);
+    }
+}
+
 template <template <size_t, size_t> class Gen, size_t L, size_t I, VRandGenQueryMode...QMs>
 void vRandGenPerformance2()
 {
-    (vRandGenPerformance3<Gen, L, I, QMs>(), ...);
+    if constexpr (I <= std::min<size_t>(L, SIMD_N_BITS))
+        (vRandGenPerformance3<Gen, L, I, QMs>(), ...);
 }
 
 template <template <size_t, size_t> class Gen, size_t L, size_t...Is>
 void vRandGenPerformance1()
 {
-    (vRandGenPerformance2<Gen, L, Is, QM_Scalar, QM_Block16, QM_StateSize>(), ...);
+    (vRandGenPerformance2<Gen, L, Is, QM_Scalar, QM_Block16, QM_StateSize, QM_Any>(), ...);
 }
 
 template <template <size_t, size_t> class Gen, size_t...Ls>
@@ -389,12 +407,10 @@ int main(int argc, const char** argv)
         sfmtPerformance<true>(1);
         sfmtPerformance<false>(156 * 128 / 32);
 #ifdef TEST_MKL
-        MKL_INT mklQrySizeMT[] = { 1, 16, 624, 624 * 4, 624 * 8, 624 * 16 };
-        for (auto sz : mklQrySizeMT)
-            mklPerformance(VSL_BRNG_MT19937, sz);
-        MKL_INT mklQrySizeSFMT[] = { 1, 16, 624, 624 * 2, 624 * 4 };
-        for (auto sz : mklQrySizeSFMT)
-            mklPerformance(VSL_BRNG_SFMT19937, sz);
+        for (auto sz : anySize)
+            mklPerformance(VSL_BRNG_MT19937, (MKL_INT) sz);
+        for (auto sz : anySize)
+            mklPerformance(VSL_BRNG_SFMT19937, (MKL_INT) sz);
 #endif
         vRandGenPerformance0<Details::VMT19937Base, 32, 128, 256, 512>();
         vRandGenPerformance0<Details::VSFMT19937Base, 128, 256, 512>();
