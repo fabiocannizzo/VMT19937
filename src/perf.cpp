@@ -31,7 +31,7 @@ enum Mode {orig, sfmt, mkl_mt, mkl_sfmt, vmt, vsfmt};
 
 const char* modename[] = {"ORIG-MT19937", "ORIG-SFMT19937", "MKL-MT19937", "MKL-SFMT19937", "V-MT19937", "V-SFMT19937" };
 
-const size_t anySize[] = { 1, 4, 16, 64, 256, 1024, 4096, 16384 };
+const size_t anySize[] = { 1, 4, 16, 64, 256, 624, 1024, 4096, 16384 };
 
 template <template <size_t, size_t> class Gen>
 struct GenTraits;
@@ -207,7 +207,7 @@ void originalPerformance()
 template <bool ScalarQry>
 void sfmtPerformance(size_t BlkSize)
 {
-    ResultKey key(sfmt, 128, 128, BlkSize, QM_Any);
+    ResultKey key(sfmt, 128, 128, BlkSize, ScalarQry ? QM_Scalar : QM_Any);
     key.print();
     if (alreadyHaveEnoughIter(key)) {
         std::cout << "skip\n";
@@ -405,7 +405,9 @@ int main(int argc, const char** argv)
 
         originalPerformance();
         sfmtPerformance<true>(1);
-        sfmtPerformance<false>(156 * 128 / 32);
+        for (auto sz : anySize)
+            if(sz > 624)
+                sfmtPerformance<false>(sz);
 #ifdef TEST_MKL
         for (auto sz : anySize)
             mklPerformance(VSL_BRNG_MT19937, (MKL_INT) sz);
