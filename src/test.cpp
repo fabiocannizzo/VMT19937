@@ -226,7 +226,7 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
     if (blkSize > 0)
         std::cout << blkSize;
     else
-        std::cout << "var";
+        std::cout << "rand";
     std::cout << " ... ";
 
     std::vector<uint32_t> aligneddst(nRandomTest);
