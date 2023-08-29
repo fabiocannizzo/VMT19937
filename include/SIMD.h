@@ -372,7 +372,7 @@ struct MAY_ALIAS SimdRegister<256, 256>
     {
         __m128i hi(_mm256_extracti128_si256(m_v, 1));
         __m128i lo(_mm256_castsi256_si128(m_v));
-        return SimdRegister<128>(_mm_xor_si128(lo, hi)).parity();
+        return SimdRegister<128, 128>(_mm_xor_si128(lo, hi)).parity();
     }
 };
 #endif
@@ -421,7 +421,7 @@ struct MAY_ALIAS SimdRegister<512, 512>
     {
         __m256i hi(_mm512_extracti64x4_epi64(m_v, 1));
         __m256i lo(_mm512_castsi512_si256(m_v));
-        return SimdRegister<256>(_mm256_xor_si256(lo, hi)).parity();
+        return SimdRegister<256, 256>(_mm256_xor_si256(lo, hi)).parity();
     }
 };
 #endif
