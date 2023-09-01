@@ -1,0 +1,2786 @@
+set MKL dispacthing to AVX512
+nRepeat = 10
+slow = 1
+Iteration:  1: generating 15974400000 32-bits random numbers
+      Generator WordSize RegSize BlkSize   QueryMode
+   ORIG-MT19937       32      32       1      Scalar ... done in: 42.90s
+ ORIG-SFMT19937      128     128       1      Scalar ... done in: 13.99s
+ ORIG-SFMT19937      128     128    1024     AnySize ... done in: 5.25s
+ ORIG-SFMT19937      128     128    4096     AnySize ... done in: 4.73s
+ ORIG-SFMT19937      128     128   16384     AnySize ... done in: 4.68s
+    MKL-MT19937       32     512       1     AnySize ... done in: 300.30s
+    MKL-MT19937       32     512       4     AnySize ... done in: 76.47s
+    MKL-MT19937       32     512      16     AnySize ... done in: 17.06s
+    MKL-MT19937       32     512      64     AnySize ... done in: 7.34s
+    MKL-MT19937       32     512     256     AnySize ... done in: 4.20s
+    MKL-MT19937       32     512     624     AnySize ... done in: 4.64s
+    MKL-MT19937       32     512    1024     AnySize ... done in: 3.94s
+    MKL-MT19937       32     512    4096     AnySize ... done in: 2.67s
+    MKL-MT19937       32     512   16384     AnySize ... done in: 2.46s
+  MKL-SFMT19937      128     512       1     AnySize ... done in: 258.09s
+  MKL-SFMT19937      128     512       4     AnySize ... done in: 69.83s
+  MKL-SFMT19937      128     512      16     AnySize ... done in: 20.81s
+  MKL-SFMT19937      128     512      64     AnySize ... done in: 8.79s
+  MKL-SFMT19937      128     512     256     AnySize ... done in: 5.07s
+  MKL-SFMT19937      128     512     624     AnySize ... done in: 4.84s
+  MKL-SFMT19937      128     512    1024     AnySize ... done in: 4.30s
+  MKL-SFMT19937      128     512    4096     AnySize ... done in: 3.26s
+  MKL-SFMT19937      128     512   16384     AnySize ... done in: 2.99s
+      V-MT19937       32      32       1      Scalar ... done in: 19.63s
+      V-MT19937       32      32      16     Block16 ... done in: 10.56s
+      V-MT19937       32      32     624       State ... done in: 10.56s
+      V-MT19937       32      32       1     AnySize ... done in: 40.46s
+      V-MT19937       32      32       4     AnySize ... done in: 25.01s
+      V-MT19937       32      32      16     AnySize ... done in: 12.08s
+      V-MT19937       32      32      64     AnySize ... done in: 10.63s
+      V-MT19937       32      32     256     AnySize ... done in: 10.57s
+      V-MT19937       32      32     624     AnySize ... done in: 10.56s
+      V-MT19937       32      32    1024     AnySize ... done in: 10.65s
+      V-MT19937       32      32    4096     AnySize ... done in: 10.57s
+      V-MT19937       32      32   16384     AnySize ... done in: 10.59s
+      V-MT19937      128      32       1      Scalar ... done in: 23.95s
+      V-MT19937      128      32      16     Block16 ... done in: 13.83s
+      V-MT19937      128      32    2496       State ... done in: 13.81s
+      V-MT19937      128      32       1     AnySize ... done in: 48.12s
+      V-MT19937      128      32       4     AnySize ... done in: 27.69s
+      V-MT19937      128      32      16     AnySize ... done in: 15.51s
+      V-MT19937      128      32      64     AnySize ... done in: 14.11s
+      V-MT19937      128      32     256     AnySize ... done in: 14.03s
+      V-MT19937      128      32     624     AnySize ... done in: 13.86s
+      V-MT19937      128      32    1024     AnySize ... done in: 13.90s
+      V-MT19937      128      32    4096     AnySize ... done in: 13.88s
+      V-MT19937      128      32   16384     AnySize ... done in: 14.01s
+      V-MT19937      128     128       1      Scalar ... done in: 15.10s
+      V-MT19937      128     128      16     Block16 ... done in: 4.92s
+      V-MT19937      128     128    2496       State ... done in: 5.06s
+      V-MT19937      128     128       1     AnySize ... done in: 39.12s
+      V-MT19937      128     128       4     AnySize ... done in: 18.57s
+      V-MT19937      128     128      16     AnySize ... done in: 6.35s
+      V-MT19937      128     128      64     AnySize ... done in: 5.19s
+      V-MT19937      128     128     256     AnySize ... done in: 4.96s
+      V-MT19937      128     128     624     AnySize ... done in: 4.92s
+      V-MT19937      128     128    1024     AnySize ... done in: 4.96s
+      V-MT19937      128     128    4096     AnySize ... done in: 4.96s
+      V-MT19937      128     128   16384     AnySize ... done in: 5.08s
+      V-MT19937      256      32       1      Scalar ... done in: 21.26s
+      V-MT19937      256      32      16     Block16 ... done in: 11.86s
+      V-MT19937      256      32    4992       State ... done in: 11.82s
+      V-MT19937      256      32       1     AnySize ... done in: 42.82s
+      V-MT19937      256      32       4     AnySize ... done in: 25.20s
+      V-MT19937      256      32      16     AnySize ... done in: 13.57s
+      V-MT19937      256      32      64     AnySize ... done in: 12.19s
+      V-MT19937      256      32     256     AnySize ... done in: 11.95s
+      V-MT19937      256      32     624     AnySize ... done in: 11.93s
+      V-MT19937      256      32    1024     AnySize ... done in: 11.91s
+      V-MT19937      256      32    4096     AnySize ... done in: 11.90s
+      V-MT19937      256      32   16384     AnySize ... done in: 12.19s
+      V-MT19937      256     128       1      Scalar ... done in: 13.82s
+      V-MT19937      256     128      16     Block16 ... done in: 4.91s
+      V-MT19937      256     128    4992       State ... done in: 4.88s
+      V-MT19937      256     128       1     AnySize ... done in: 40.76s
+      V-MT19937      256     128       4     AnySize ... done in: 16.97s
+      V-MT19937      256     128      16     AnySize ... done in: 6.32s
+      V-MT19937      256     128      64     AnySize ... done in: 5.22s
+      V-MT19937      256     128     256     AnySize ... done in: 5.15s
+      V-MT19937      256     128     624     AnySize ... done in: 4.92s
+      V-MT19937      256     128    1024     AnySize ... done in: 4.96s
+      V-MT19937      256     128    4096     AnySize ... done in: 4.94s
+      V-MT19937      256     128   16384     AnySize ... done in: 5.21s
+      V-MT19937      256     256       1      Scalar ... done in: 12.49s
+      V-MT19937      256     256      16     Block16 ... done in: 3.39s
+      V-MT19937      256     256    4992       State ... done in: 3.28s
+      V-MT19937      256     256       1     AnySize ... done in: 38.73s
+      V-MT19937      256     256       4     AnySize ... done in: 15.47s
+      V-MT19937      256     256      16     AnySize ... done in: 4.66s
+      V-MT19937      256     256      64     AnySize ... done in: 3.51s
+      V-MT19937      256     256     256     AnySize ... done in: 3.18s
+      V-MT19937      256     256     624     AnySize ... done in: 3.19s
+      V-MT19937      256     256    1024     AnySize ... done in: 3.17s
+      V-MT19937      256     256    4096     AnySize ... done in: 3.16s
+      V-MT19937      256     256   16384     AnySize ... done in: 3.44s
+      V-MT19937      512      32       1      Scalar ... done in: 25.13s
+      V-MT19937      512      32      16     Block16 ... done in: 15.74s
+      V-MT19937      512      32    9984       State ... done in: 16.01s
+      V-MT19937      512      32       1     AnySize ... done in: 45.35s
+      V-MT19937      512      32       4     AnySize ... done in: 29.60s
+      V-MT19937      512      32      16     AnySize ... done in: 17.72s
+      V-MT19937      512      32      64     AnySize ... done in: 17.10s
+      V-MT19937      512      32     256     AnySize ... done in: 16.11s
+      V-MT19937      512      32     624     AnySize ... done in: 15.99s
+      V-MT19937      512      32    1024     AnySize ... done in: 16.14s
+      V-MT19937      512      32    4096     AnySize ... done in: 16.63s
+      V-MT19937      512      32   16384     AnySize ... done in: 17.03s
+      V-MT19937      512     128       1      Scalar ... done in: 14.28s
+      V-MT19937      512     128      16     Block16 ... done in: 4.92s
+      V-MT19937      512     128    9984       State ... done in: 5.14s
+      V-MT19937      512     128       1     AnySize ... done in: 37.65s
+      V-MT19937      512     128       4     AnySize ... done in: 16.38s
+      V-MT19937      512     128      16     AnySize ... done in: 6.49s
+      V-MT19937      512     128      64     AnySize ... done in: 5.77s
+      V-MT19937      512     128     256     AnySize ... done in: 5.03s
+      V-MT19937      512     128     624     AnySize ... done in: 5.00s
+      V-MT19937      512     128    1024     AnySize ... done in: 4.98s
+      V-MT19937      512     128    4096     AnySize ... done in: 5.40s
+      V-MT19937      512     128   16384     AnySize ... done in: 5.90s
+      V-MT19937      512     256       1      Scalar ... done in: 12.20s
+      V-MT19937      512     256      16     Block16 ... done in: 3.11s
+      V-MT19937      512     256    9984       State ... done in: 3.35s
+      V-MT19937      512     256       1     AnySize ... done in: 35.63s
+      V-MT19937      512     256       4     AnySize ... done in: 16.05s
+      V-MT19937      512     256      16     AnySize ... done in: 4.80s
+      V-MT19937      512     256      64     AnySize ... done in: 4.09s
+      V-MT19937      512     256     256     AnySize ... done in: 3.38s
+      V-MT19937      512     256     624     AnySize ... done in: 3.17s
+      V-MT19937      512     256    1024     AnySize ... done in: 3.14s
+      V-MT19937      512     256    4096     AnySize ... done in: 3.56s
+      V-MT19937      512     256   16384     AnySize ... done in: 4.07s
+      V-MT19937      512     512       1      Scalar ... done in: 11.65s
+      V-MT19937      512     512      16     Block16 ... done in: 2.59s
+      V-MT19937      512     512    9984       State ... done in: 2.84s
+      V-MT19937      512     512       1     AnySize ... done in: 35.28s
+      V-MT19937      512     512       4     AnySize ... done in: 15.83s
+      V-MT19937      512     512      16     AnySize ... done in: 4.05s
+      V-MT19937      512     512      64     AnySize ... done in: 3.55s
+      V-MT19937      512     512     256     AnySize ... done in: 2.68s
+      V-MT19937      512     512     624     AnySize ... done in: 2.67s
+      V-MT19937      512     512    1024     AnySize ... done in: 2.57s
+      V-MT19937      512     512    4096     AnySize ... done in: 3.03s
+      V-MT19937      512     512   16384     AnySize ... done in: 3.57s
+    V-SFMT19937      128      32       1      Scalar ... done in: 26.81s
+    V-SFMT19937      128      32      16     Block16 ... done in: 18.66s
+    V-SFMT19937      128      32     624       State ... done in: 18.12s
+    V-SFMT19937      128      32       1     AnySize ... done in: 54.53s
+    V-SFMT19937      128      32       4     AnySize ... done in: 31.39s
+    V-SFMT19937      128      32      16     AnySize ... done in: 20.43s
+    V-SFMT19937      128      32      64     AnySize ... done in: 18.53s
+    V-SFMT19937      128      32     256     AnySize ... done in: 18.40s
+    V-SFMT19937      128      32     624     AnySize ... done in: 17.96s
+    V-SFMT19937      128      32    1024     AnySize ... done in: 18.04s
+    V-SFMT19937      128      32    4096     AnySize ... done in: 18.12s
+    V-SFMT19937      128      32   16384     AnySize ... done in: 18.11s
+    V-SFMT19937      128     128       1      Scalar ... done in: 13.96s
+    V-SFMT19937      128     128      16     Block16 ... done in: 5.52s
+    V-SFMT19937      128     128     624       State ... done in: 5.09s
+    V-SFMT19937      128     128       1     AnySize ... done in: 27.83s
+    V-SFMT19937      128     128       4     AnySize ... done in: 15.02s
+    V-SFMT19937      128     128      16     AnySize ... done in: 6.79s
+    V-SFMT19937      128     128      64     AnySize ... done in: 5.25s
+    V-SFMT19937      128     128     256     AnySize ... done in: 5.21s
+    V-SFMT19937      128     128     624     AnySize ... done in: 5.09s
+    V-SFMT19937      128     128    1024     AnySize ... done in: 5.12s
+    V-SFMT19937      128     128    4096     AnySize ... done in: 5.17s
+    V-SFMT19937      128     128   16384     AnySize ... done in: 5.16s
+    V-SFMT19937      256      32       1      Scalar ... done in: 24.97s
+    V-SFMT19937      256      32      16     Block16 ... done in: 16.82s
+    V-SFMT19937      256      32    1248       State ... done in: 16.10s
+    V-SFMT19937      256      32       1     AnySize ... done in: 48.17s
+    V-SFMT19937      256      32       4     AnySize ... done in: 28.48s
+    V-SFMT19937      256      32      16     AnySize ... done in: 18.33s
+    V-SFMT19937      256      32      64     AnySize ... done in: 16.53s
+    V-SFMT19937      256      32     256     AnySize ... done in: 16.29s
+    V-SFMT19937      256      32     624     AnySize ... done in: 16.14s
+    V-SFMT19937      256      32    1024     AnySize ... done in: 16.18s
+    V-SFMT19937      256      32    4096     AnySize ... done in: 16.15s
+    V-SFMT19937      256      32   16384     AnySize ... done in: 16.19s
+    V-SFMT19937      256     128       1      Scalar ... done in: 12.79s
+    V-SFMT19937      256     128      16     Block16 ... done in: 4.38s
+    V-SFMT19937      256     128    1248       State ... done in: 3.93s
+    V-SFMT19937      256     128       1     AnySize ... done in: 34.42s
+    V-SFMT19937      256     128       4     AnySize ... done in: 15.13s
+    V-SFMT19937      256     128      16     AnySize ... done in: 5.85s
+    V-SFMT19937      256     128      64     AnySize ... done in: 4.29s
+    V-SFMT19937      256     128     256     AnySize ... done in: 4.10s
+    V-SFMT19937      256     128     624     AnySize ... done in: 3.90s
+    V-SFMT19937      256     128    1024     AnySize ... done in: 3.94s
+    V-SFMT19937      256     128    4096     AnySize ... done in: 3.94s
+    V-SFMT19937      256     128   16384     AnySize ... done in: 4.02s
+    V-SFMT19937      256     256       1      Scalar ... done in: 11.67s
+    V-SFMT19937      256     256      16     Block16 ... done in: 3.20s
+    V-SFMT19937      256     256    1248       State ... done in: 2.78s
+    V-SFMT19937      256     256       1     AnySize ... done in: 33.66s
+    V-SFMT19937      256     256       4     AnySize ... done in: 13.93s
+    V-SFMT19937      256     256      16     AnySize ... done in: 4.63s
+    V-SFMT19937      256     256      64     AnySize ... done in: 3.06s
+    V-SFMT19937      256     256     256     AnySize ... done in: 2.86s
+    V-SFMT19937      256     256     624     AnySize ... done in: 2.75s
+    V-SFMT19937      256     256    1024     AnySize ... done in: 2.76s
+    V-SFMT19937      256     256    4096     AnySize ... done in: 2.74s
+    V-SFMT19937      256     256   16384     AnySize ... done in: 2.78s
+    V-SFMT19937      512      32       1      Scalar ... done in: 34.01s
+    V-SFMT19937      512      32      16     Block16 ... done in: 25.17s
+    V-SFMT19937      512      32    2496       State ... done in: 24.88s
+    V-SFMT19937      512      32       1     AnySize ... done in: 57.79s
+    V-SFMT19937      512      32       4     AnySize ... done in: 36.32s
+    V-SFMT19937      512      32      16     AnySize ... done in: 26.88s
+    V-SFMT19937      512      32      64     AnySize ... done in: 25.57s
+    V-SFMT19937      512      32     256     AnySize ... done in: 25.30s
+    V-SFMT19937      512      32     624     AnySize ... done in: 25.20s
+    V-SFMT19937      512      32    1024     AnySize ... done in: 25.18s
+    V-SFMT19937      512      32    4096     AnySize ... done in: 25.01s
+    V-SFMT19937      512      32   16384     AnySize ... done in: 25.36s
+    V-SFMT19937      512     128       1      Scalar ... done in: 15.92s
+    V-SFMT19937      512     128      16     Block16 ... done in: 7.20s
+    V-SFMT19937      512     128    2496       State ... done in: 6.91s
+    V-SFMT19937      512     128       1     AnySize ... done in: 36.00s
+    V-SFMT19937      512     128       4     AnySize ... done in: 18.27s
+    V-SFMT19937      512     128      16     AnySize ... done in: 8.80s
+    V-SFMT19937      512     128      64     AnySize ... done in: 7.54s
+    V-SFMT19937      512     128     256     AnySize ... done in: 7.26s
+    V-SFMT19937      512     128     624     AnySize ... done in: 7.21s
+    V-SFMT19937      512     128    1024     AnySize ... done in: 7.17s
+    V-SFMT19937      512     128    4096     AnySize ... done in: 7.00s
+    V-SFMT19937      512     128   16384     AnySize ... done in: 7.40s
+    V-SFMT19937      512     256       1      Scalar ... done in: 11.04s
+    V-SFMT19937      512     256      16     Block16 ... done in: 2.63s
+    V-SFMT19937      512     256    2496       State ... done in: 2.11s
+    V-SFMT19937      512     256       1     AnySize ... done in: 30.57s
+    V-SFMT19937      512     256       4     AnySize ... done in: 13.36s
+    V-SFMT19937      512     256      16     AnySize ... done in: 4.20s
+    V-SFMT19937      512     256      64     AnySize ... done in: 2.63s
+    V-SFMT19937      512     256     256     AnySize ... done in: 2.36s
+    V-SFMT19937      512     256     624     AnySize ... done in: 2.35s
+    V-SFMT19937      512     256    1024     AnySize ... done in: 2.21s
+    V-SFMT19937      512     256    4096     AnySize ... done in: 2.18s
+    V-SFMT19937      512     256   16384     AnySize ... done in: 2.45s
+    V-SFMT19937      512     512       1      Scalar ... done in: 10.64s
+    V-SFMT19937      512     512      16     Block16 ... done in: 1.97s
+    V-SFMT19937      512     512    2496       State ... done in: 1.65s
+    V-SFMT19937      512     512       1     AnySize ... done in: 34.46s
+    V-SFMT19937      512     512       4     AnySize ... done in: 12.97s
+    V-SFMT19937      512     512      16     AnySize ... done in: 3.55s
+    V-SFMT19937      512     512      64     AnySize ... done in: 2.29s
+    V-SFMT19937      512     512     256     AnySize ... done in: 2.00s
+    V-SFMT19937      512     512     624     AnySize ... done in: 1.95s
+    V-SFMT19937      512     512    1024     AnySize ... done in: 1.92s
+    V-SFMT19937      512     512    4096     AnySize ... done in: 1.74s
+    V-SFMT19937      512     512   16384     AnySize ... done in: 1.90s
+Iteration:  2: generating 15974400000 32-bits random numbers
+      Generator WordSize RegSize BlkSize   QueryMode
+   ORIG-MT19937       32      32       1      Scalar ... done in: 42.82s
+ ORIG-SFMT19937      128     128       1      Scalar ... done in: 13.91s
+ ORIG-SFMT19937      128     128    1024     AnySize ... done in: 5.28s
+ ORIG-SFMT19937      128     128    4096     AnySize ... done in: 4.68s
+ ORIG-SFMT19937      128     128   16384     AnySize ... done in: 4.67s
+    MKL-MT19937       32     512       1     AnySize ... done in: 300.28s
+    MKL-MT19937       32     512       4     AnySize ... done in: 76.56s
+    MKL-MT19937       32     512      16     AnySize ... done in: 16.98s
+    MKL-MT19937       32     512      64     AnySize ... done in: 7.34s
+    MKL-MT19937       32     512     256     AnySize ... done in: 4.29s
+    MKL-MT19937       32     512     624     AnySize ... done in: 4.87s
+    MKL-MT19937       32     512    1024     AnySize ... done in: 4.17s
+    MKL-MT19937       32     512    4096     AnySize ... done in: 2.73s
+    MKL-MT19937       32     512   16384     AnySize ... done in: 2.45s
+  MKL-SFMT19937      128     512       1     AnySize ... done in: 258.16s
+  MKL-SFMT19937      128     512       4     AnySize ... done in: 69.92s
+  MKL-SFMT19937      128     512      16     AnySize ... done in: 20.54s
+  MKL-SFMT19937      128     512      64     AnySize ... done in: 8.94s
+  MKL-SFMT19937      128     512     256     AnySize ... done in: 5.14s
+  MKL-SFMT19937      128     512     624     AnySize ... done in: 4.60s
+  MKL-SFMT19937      128     512    1024     AnySize ... done in: 4.13s
+  MKL-SFMT19937      128     512    4096     AnySize ... done in: 3.21s
+  MKL-SFMT19937      128     512   16384     AnySize ... done in: 2.98s
+      V-MT19937       32      32       1      Scalar ... done in: 19.62s
+      V-MT19937       32      32      16     Block16 ... done in: 10.56s
+      V-MT19937       32      32     624       State ... done in: 10.56s
+      V-MT19937       32      32       1     AnySize ... done in: 40.46s
+      V-MT19937       32      32       4     AnySize ... done in: 25.01s
+      V-MT19937       32      32      16     AnySize ... done in: 12.08s
+      V-MT19937       32      32      64     AnySize ... done in: 10.62s
+      V-MT19937       32      32     256     AnySize ... done in: 10.57s
+      V-MT19937       32      32     624     AnySize ... done in: 10.55s
+      V-MT19937       32      32    1024     AnySize ... done in: 10.64s
+      V-MT19937       32      32    4096     AnySize ... done in: 10.57s
+      V-MT19937       32      32   16384     AnySize ... done in: 10.58s
+      V-MT19937      128      32       1      Scalar ... done in: 23.97s
+      V-MT19937      128      32      16     Block16 ... done in: 13.82s
+      V-MT19937      128      32    2496       State ... done in: 13.81s
+      V-MT19937      128      32       1     AnySize ... done in: 48.14s
+      V-MT19937      128      32       4     AnySize ... done in: 27.70s
+      V-MT19937      128      32      16     AnySize ... done in: 15.51s
+      V-MT19937      128      32      64     AnySize ... done in: 14.12s
+      V-MT19937      128      32     256     AnySize ... done in: 14.01s
+      V-MT19937      128      32     624     AnySize ... done in: 13.85s
+      V-MT19937      128      32    1024     AnySize ... done in: 13.90s
+      V-MT19937      128      32    4096     AnySize ... done in: 13.87s
+      V-MT19937      128      32   16384     AnySize ... done in: 14.01s
+      V-MT19937      128     128       1      Scalar ... done in: 15.12s
+      V-MT19937      128     128      16     Block16 ... done in: 4.93s
+      V-MT19937      128     128    2496       State ... done in: 4.90s
+      V-MT19937      128     128       1     AnySize ... done in: 38.96s
+      V-MT19937      128     128       4     AnySize ... done in: 18.44s
+      V-MT19937      128     128      16     AnySize ... done in: 6.35s
+      V-MT19937      128     128      64     AnySize ... done in: 5.19s
+      V-MT19937      128     128     256     AnySize ... done in: 5.08s
+      V-MT19937      128     128     624     AnySize ... done in: 4.92s
+      V-MT19937      128     128    1024     AnySize ... done in: 4.96s
+      V-MT19937      128     128    4096     AnySize ... done in: 4.96s
+      V-MT19937      128     128   16384     AnySize ... done in: 5.08s
+      V-MT19937      256      32       1      Scalar ... done in: 21.26s
+      V-MT19937      256      32      16     Block16 ... done in: 11.85s
+      V-MT19937      256      32    4992       State ... done in: 11.82s
+      V-MT19937      256      32       1     AnySize ... done in: 42.82s
+      V-MT19937      256      32       4     AnySize ... done in: 25.21s
+      V-MT19937      256      32      16     AnySize ... done in: 13.57s
+      V-MT19937      256      32      64     AnySize ... done in: 12.19s
+      V-MT19937      256      32     256     AnySize ... done in: 11.91s
+      V-MT19937      256      32     624     AnySize ... done in: 11.91s
+      V-MT19937      256      32    1024     AnySize ... done in: 11.91s
+      V-MT19937      256      32    4096     AnySize ... done in: 11.90s
+      V-MT19937      256      32   16384     AnySize ... done in: 12.19s
+      V-MT19937      256     128       1      Scalar ... done in: 13.82s
+      V-MT19937      256     128      16     Block16 ... done in: 4.89s
+      V-MT19937      256     128    4992       State ... done in: 4.88s
+      V-MT19937      256     128       1     AnySize ... done in: 40.74s
+      V-MT19937      256     128       4     AnySize ... done in: 16.97s
+      V-MT19937      256     128      16     AnySize ... done in: 6.32s
+      V-MT19937      256     128      64     AnySize ... done in: 5.22s
+      V-MT19937      256     128     256     AnySize ... done in: 4.96s
+      V-MT19937      256     128     624     AnySize ... done in: 4.94s
+      V-MT19937      256     128    1024     AnySize ... done in: 4.95s
+      V-MT19937      256     128    4096     AnySize ... done in: 4.94s
+      V-MT19937      256     128   16384     AnySize ... done in: 5.21s
+      V-MT19937      256     256       1      Scalar ... done in: 12.49s
+      V-MT19937      256     256      16     Block16 ... done in: 3.10s
+      V-MT19937      256     256    4992       State ... done in: 3.09s
+      V-MT19937      256     256       1     AnySize ... done in: 38.75s
+      V-MT19937      256     256       4     AnySize ... done in: 15.48s
+      V-MT19937      256     256      16     AnySize ... done in: 4.63s
+      V-MT19937      256     256      64     AnySize ... done in: 3.51s
+      V-MT19937      256     256     256     AnySize ... done in: 3.17s
+      V-MT19937      256     256     624     AnySize ... done in: 3.16s
+      V-MT19937      256     256    1024     AnySize ... done in: 3.17s
+      V-MT19937      256     256    4096     AnySize ... done in: 3.16s
+      V-MT19937      256     256   16384     AnySize ... done in: 3.43s
+      V-MT19937      512      32       1      Scalar ... done in: 25.12s
+      V-MT19937      512      32      16     Block16 ... done in: 15.75s
+      V-MT19937      512      32    9984       State ... done in: 16.22s
+      V-MT19937      512      32       1     AnySize ... done in: 45.40s
+      V-MT19937      512      32       4     AnySize ... done in: 29.58s
+      V-MT19937      512      32      16     AnySize ... done in: 17.67s
+      V-MT19937      512      32      64     AnySize ... done in: 17.15s
+      V-MT19937      512      32     256     AnySize ... done in: 16.09s
+      V-MT19937      512      32     624     AnySize ... done in: 16.01s
+      V-MT19937      512      32    1024     AnySize ... done in: 16.14s
+      V-MT19937      512      32    4096     AnySize ... done in: 16.62s
+      V-MT19937      512      32   16384     AnySize ... done in: 17.04s
+      V-MT19937      512     128       1      Scalar ... done in: 14.28s
+      V-MT19937      512     128      16     Block16 ... done in: 4.92s
+      V-MT19937      512     128    9984       State ... done in: 5.34s
+      V-MT19937      512     128       1     AnySize ... done in: 37.65s
+      V-MT19937      512     128       4     AnySize ... done in: 16.39s
+      V-MT19937      512     128      16     AnySize ... done in: 6.52s
+      V-MT19937      512     128      64     AnySize ... done in: 5.77s
+      V-MT19937      512     128     256     AnySize ... done in: 5.02s
+      V-MT19937      512     128     624     AnySize ... done in: 4.97s
+      V-MT19937      512     128    1024     AnySize ... done in: 5.02s
+      V-MT19937      512     128    4096     AnySize ... done in: 5.42s
+      V-MT19937      512     128   16384     AnySize ... done in: 5.91s
+      V-MT19937      512     256       1      Scalar ... done in: 12.20s
+      V-MT19937      512     256      16     Block16 ... done in: 3.11s
+      V-MT19937      512     256    9984       State ... done in: 3.53s
+      V-MT19937      512     256       1     AnySize ... done in: 35.64s
+      V-MT19937      512     256       4     AnySize ... done in: 16.05s
+      V-MT19937      512     256      16     AnySize ... done in: 4.80s
+      V-MT19937      512     256      64     AnySize ... done in: 4.09s
+      V-MT19937      512     256     256     AnySize ... done in: 3.21s
+      V-MT19937      512     256     624     AnySize ... done in: 3.16s
+      V-MT19937      512     256    1024     AnySize ... done in: 3.21s
+      V-MT19937      512     256    4096     AnySize ... done in: 3.60s
+      V-MT19937      512     256   16384     AnySize ... done in: 4.08s
+      V-MT19937      512     512       1      Scalar ... done in: 11.65s
+      V-MT19937      512     512      16     Block16 ... done in: 2.59s
+      V-MT19937      512     512    9984       State ... done in: 3.03s
+      V-MT19937      512     512       1     AnySize ... done in: 35.28s
+      V-MT19937      512     512       4     AnySize ... done in: 15.83s
+      V-MT19937      512     512      16     AnySize ... done in: 4.06s
+      V-MT19937      512     512      64     AnySize ... done in: 3.55s
+      V-MT19937      512     512     256     AnySize ... done in: 2.69s
+      V-MT19937      512     512     624     AnySize ... done in: 2.61s
+      V-MT19937      512     512    1024     AnySize ... done in: 2.67s
+      V-MT19937      512     512    4096     AnySize ... done in: 3.09s
+      V-MT19937      512     512   16384     AnySize ... done in: 3.59s
+    V-SFMT19937      128      32       1      Scalar ... done in: 26.81s
+    V-SFMT19937      128      32      16     Block16 ... done in: 18.63s
+    V-SFMT19937      128      32     624       State ... done in: 18.12s
+    V-SFMT19937      128      32       1     AnySize ... done in: 54.55s
+    V-SFMT19937      128      32       4     AnySize ... done in: 31.40s
+    V-SFMT19937      128      32      16     AnySize ... done in: 20.44s
+    V-SFMT19937      128      32      64     AnySize ... done in: 18.40s
+    V-SFMT19937      128      32     256     AnySize ... done in: 18.30s
+    V-SFMT19937      128      32     624     AnySize ... done in: 17.97s
+    V-SFMT19937      128      32    1024     AnySize ... done in: 18.14s
+    V-SFMT19937      128      32    4096     AnySize ... done in: 18.12s
+    V-SFMT19937      128      32   16384     AnySize ... done in: 18.11s
+    V-SFMT19937      128     128       1      Scalar ... done in: 13.96s
+    V-SFMT19937      128     128      16     Block16 ... done in: 5.52s
+    V-SFMT19937      128     128     624       State ... done in: 5.19s
+    V-SFMT19937      128     128       1     AnySize ... done in: 27.84s
+    V-SFMT19937      128     128       4     AnySize ... done in: 15.03s
+    V-SFMT19937      128     128      16     AnySize ... done in: 6.80s
+    V-SFMT19937      128     128      64     AnySize ... done in: 5.26s
+    V-SFMT19937      128     128     256     AnySize ... done in: 5.26s
+    V-SFMT19937      128     128     624     AnySize ... done in: 5.11s
+    V-SFMT19937      128     128    1024     AnySize ... done in: 5.14s
+    V-SFMT19937      128     128    4096     AnySize ... done in: 5.18s
+    V-SFMT19937      128     128   16384     AnySize ... done in: 5.17s
+    V-SFMT19937      256      32       1      Scalar ... done in: 24.98s
+    V-SFMT19937      256      32      16     Block16 ... done in: 16.82s
+    V-SFMT19937      256      32    1248       State ... done in: 16.09s
+    V-SFMT19937      256      32       1     AnySize ... done in: 48.08s
+    V-SFMT19937      256      32       4     AnySize ... done in: 28.49s
+    V-SFMT19937      256      32      16     AnySize ... done in: 18.33s
+    V-SFMT19937      256      32      64     AnySize ... done in: 16.53s
+    V-SFMT19937      256      32     256     AnySize ... done in: 16.28s
+    V-SFMT19937      256      32     624     AnySize ... done in: 16.14s
+    V-SFMT19937      256      32    1024     AnySize ... done in: 16.17s
+    V-SFMT19937      256      32    4096     AnySize ... done in: 16.15s
+    V-SFMT19937      256      32   16384     AnySize ... done in: 16.19s
+    V-SFMT19937      256     128       1      Scalar ... done in: 12.79s
+    V-SFMT19937      256     128      16     Block16 ... done in: 4.38s
+    V-SFMT19937      256     128    1248       State ... done in: 3.90s
+    V-SFMT19937      256     128       1     AnySize ... done in: 34.36s
+    V-SFMT19937      256     128       4     AnySize ... done in: 15.14s
+    V-SFMT19937      256     128      16     AnySize ... done in: 5.85s
+    V-SFMT19937      256     128      64     AnySize ... done in: 4.30s
+    V-SFMT19937      256     128     256     AnySize ... done in: 4.03s
+    V-SFMT19937      256     128     624     AnySize ... done in: 3.91s
+    V-SFMT19937      256     128    1024     AnySize ... done in: 3.93s
+    V-SFMT19937      256     128    4096     AnySize ... done in: 3.94s
+    V-SFMT19937      256     128   16384     AnySize ... done in: 4.02s
+    V-SFMT19937      256     256       1      Scalar ... done in: 11.67s
+    V-SFMT19937      256     256      16     Block16 ... done in: 3.20s
+    V-SFMT19937      256     256    1248       State ... done in: 2.70s
+    V-SFMT19937      256     256       1     AnySize ... done in: 33.47s
+    V-SFMT19937      256     256       4     AnySize ... done in: 13.88s
+    V-SFMT19937      256     256      16     AnySize ... done in: 4.63s
+    V-SFMT19937      256     256      64     AnySize ... done in: 3.05s
+    V-SFMT19937      256     256     256     AnySize ... done in: 2.84s
+    V-SFMT19937      256     256     624     AnySize ... done in: 2.75s
+    V-SFMT19937      256     256    1024     AnySize ... done in: 2.75s
+    V-SFMT19937      256     256    4096     AnySize ... done in: 2.74s
+    V-SFMT19937      256     256   16384     AnySize ... done in: 2.78s
+    V-SFMT19937      512      32       1      Scalar ... done in: 34.01s
+    V-SFMT19937      512      32      16     Block16 ... done in: 25.18s
+    V-SFMT19937      512      32    2496       State ... done in: 24.86s
+    V-SFMT19937      512      32       1     AnySize ... done in: 57.80s
+    V-SFMT19937      512      32       4     AnySize ... done in: 36.33s
+    V-SFMT19937      512      32      16     AnySize ... done in: 26.88s
+    V-SFMT19937      512      32      64     AnySize ... done in: 25.57s
+    V-SFMT19937      512      32     256     AnySize ... done in: 25.32s
+    V-SFMT19937      512      32     624     AnySize ... done in: 25.18s
+    V-SFMT19937      512      32    1024     AnySize ... done in: 25.17s
+    V-SFMT19937      512      32    4096     AnySize ... done in: 25.02s
+    V-SFMT19937      512      32   16384     AnySize ... done in: 25.37s
+    V-SFMT19937      512     128       1      Scalar ... done in: 15.92s
+    V-SFMT19937      512     128      16     Block16 ... done in: 7.20s
+    V-SFMT19937      512     128    2496       State ... done in: 6.84s
+    V-SFMT19937      512     128       1     AnySize ... done in: 36.04s
+    V-SFMT19937      512     128       4     AnySize ... done in: 18.27s
+    V-SFMT19937      512     128      16     AnySize ... done in: 8.80s
+    V-SFMT19937      512     128      64     AnySize ... done in: 7.55s
+    V-SFMT19937      512     128     256     AnySize ... done in: 7.28s
+    V-SFMT19937      512     128     624     AnySize ... done in: 7.20s
+    V-SFMT19937      512     128    1024     AnySize ... done in: 7.16s
+    V-SFMT19937      512     128    4096     AnySize ... done in: 6.99s
+    V-SFMT19937      512     128   16384     AnySize ... done in: 7.40s
+    V-SFMT19937      512     256       1      Scalar ... done in: 11.05s
+    V-SFMT19937      512     256      16     Block16 ... done in: 2.63s
+    V-SFMT19937      512     256    2496       State ... done in: 2.11s
+    V-SFMT19937      512     256       1     AnySize ... done in: 30.82s
+    V-SFMT19937      512     256       4     AnySize ... done in: 13.31s
+    V-SFMT19937      512     256      16     AnySize ... done in: 4.17s
+    V-SFMT19937      512     256      64     AnySize ... done in: 2.62s
+    V-SFMT19937      512     256     256     AnySize ... done in: 2.38s
+    V-SFMT19937      512     256     624     AnySize ... done in: 2.20s
+    V-SFMT19937      512     256    1024     AnySize ... done in: 2.19s
+    V-SFMT19937      512     256    4096     AnySize ... done in: 2.15s
+    V-SFMT19937      512     256   16384     AnySize ... done in: 2.44s
+    V-SFMT19937      512     512       1      Scalar ... done in: 10.64s
+    V-SFMT19937      512     512      16     Block16 ... done in: 1.95s
+    V-SFMT19937      512     512    2496       State ... done in: 1.53s
+    V-SFMT19937      512     512       1     AnySize ... done in: 34.50s
+    V-SFMT19937      512     512       4     AnySize ... done in: 12.98s
+    V-SFMT19937      512     512      16     AnySize ... done in: 3.55s
+    V-SFMT19937      512     512      64     AnySize ... done in: 2.29s
+    V-SFMT19937      512     512     256     AnySize ... done in: 2.05s
+    V-SFMT19937      512     512     624     AnySize ... done in: 1.95s
+    V-SFMT19937      512     512    1024     AnySize ... done in: 1.92s
+    V-SFMT19937      512     512    4096     AnySize ... done in: 1.74s
+    V-SFMT19937      512     512   16384     AnySize ... done in: 1.90s
+Iteration:  3: generating 15974400000 32-bits random numbers
+      Generator WordSize RegSize BlkSize   QueryMode
+   ORIG-MT19937       32      32       1      Scalar ... skip
+ ORIG-SFMT19937      128     128       1      Scalar ... skip
+ ORIG-SFMT19937      128     128    1024     AnySize ... skip
+ ORIG-SFMT19937      128     128    4096     AnySize ... skip
+ ORIG-SFMT19937      128     128   16384     AnySize ... skip
+    MKL-MT19937       32     512       1     AnySize ... skip
+    MKL-MT19937       32     512       4     AnySize ... skip
+    MKL-MT19937       32     512      16     AnySize ... skip
+    MKL-MT19937       32     512      64     AnySize ... skip
+    MKL-MT19937       32     512     256     AnySize ... done in: 4.30s
+    MKL-MT19937       32     512     624     AnySize ... done in: 4.87s
+    MKL-MT19937       32     512    1024     AnySize ... done in: 4.17s
+    MKL-MT19937       32     512    4096     AnySize ... done in: 2.73s
+    MKL-MT19937       32     512   16384     AnySize ... skip
+  MKL-SFMT19937      128     512       1     AnySize ... skip
+  MKL-SFMT19937      128     512       4     AnySize ... skip
+  MKL-SFMT19937      128     512      16     AnySize ... skip
+  MKL-SFMT19937      128     512      64     AnySize ... done in: 8.95s
+  MKL-SFMT19937      128     512     256     AnySize ... skip
+  MKL-SFMT19937      128     512     624     AnySize ... done in: 4.69s
+  MKL-SFMT19937      128     512    1024     AnySize ... done in: 4.15s
+  MKL-SFMT19937      128     512    4096     AnySize ... done in: 3.22s
+  MKL-SFMT19937      128     512   16384     AnySize ... skip
+      V-MT19937       32      32       1      Scalar ... skip
+      V-MT19937       32      32      16     Block16 ... skip
+      V-MT19937       32      32     624       State ... skip
+      V-MT19937       32      32       1     AnySize ... skip
+      V-MT19937       32      32       4     AnySize ... skip
+      V-MT19937       32      32      16     AnySize ... skip
+      V-MT19937       32      32      64     AnySize ... skip
+      V-MT19937       32      32     256     AnySize ... skip
+      V-MT19937       32      32     624     AnySize ... skip
+      V-MT19937       32      32    1024     AnySize ... skip
+      V-MT19937       32      32    4096     AnySize ... skip
+      V-MT19937       32      32   16384     AnySize ... skip
+      V-MT19937      128      32       1      Scalar ... skip
+      V-MT19937      128      32      16     Block16 ... skip
+      V-MT19937      128      32    2496       State ... skip
+      V-MT19937      128      32       1     AnySize ... skip
+      V-MT19937      128      32       4     AnySize ... skip
+      V-MT19937      128      32      16     AnySize ... skip
+      V-MT19937      128      32      64     AnySize ... skip
+      V-MT19937      128      32     256     AnySize ... skip
+      V-MT19937      128      32     624     AnySize ... skip
+      V-MT19937      128      32    1024     AnySize ... skip
+      V-MT19937      128      32    4096     AnySize ... skip
+      V-MT19937      128      32   16384     AnySize ... skip
+      V-MT19937      128     128       1      Scalar ... skip
+      V-MT19937      128     128      16     Block16 ... skip
+      V-MT19937      128     128    2496       State ... done in: 4.90s
+      V-MT19937      128     128       1     AnySize ... skip
+      V-MT19937      128     128       4     AnySize ... skip
+      V-MT19937      128     128      16     AnySize ... skip
+      V-MT19937      128     128      64     AnySize ... skip
+      V-MT19937      128     128     256     AnySize ... done in: 4.97s
+      V-MT19937      128     128     624     AnySize ... skip
+      V-MT19937      128     128    1024     AnySize ... skip
+      V-MT19937      128     128    4096     AnySize ... skip
+      V-MT19937      128     128   16384     AnySize ... skip
+      V-MT19937      256      32       1      Scalar ... skip
+      V-MT19937      256      32      16     Block16 ... skip
+      V-MT19937      256      32    4992       State ... skip
+      V-MT19937      256      32       1     AnySize ... skip
+      V-MT19937      256      32       4     AnySize ... skip
+      V-MT19937      256      32      16     AnySize ... skip
+      V-MT19937      256      32      64     AnySize ... skip
+      V-MT19937      256      32     256     AnySize ... skip
+      V-MT19937      256      32     624     AnySize ... skip
+      V-MT19937      256      32    1024     AnySize ... skip
+      V-MT19937      256      32    4096     AnySize ... skip
+      V-MT19937      256      32   16384     AnySize ... skip
+      V-MT19937      256     128       1      Scalar ... skip
+      V-MT19937      256     128      16     Block16 ... skip
+      V-MT19937      256     128    4992       State ... skip
+      V-MT19937      256     128       1     AnySize ... skip
+      V-MT19937      256     128       4     AnySize ... skip
+      V-MT19937      256     128      16     AnySize ... skip
+      V-MT19937      256     128      64     AnySize ... skip
+      V-MT19937      256     128     256     AnySize ... done in: 5.13s
+      V-MT19937      256     128     624     AnySize ... skip
+      V-MT19937      256     128    1024     AnySize ... skip
+      V-MT19937      256     128    4096     AnySize ... skip
+      V-MT19937      256     128   16384     AnySize ... skip
+      V-MT19937      256     256       1      Scalar ... skip
+      V-MT19937      256     256      16     Block16 ... done in: 3.10s
+      V-MT19937      256     256    4992       State ... done in: 3.09s
+      V-MT19937      256     256       1     AnySize ... skip
+      V-MT19937      256     256       4     AnySize ... skip
+      V-MT19937      256     256      16     AnySize ... skip
+      V-MT19937      256     256      64     AnySize ... skip
+      V-MT19937      256     256     256     AnySize ... skip
+      V-MT19937      256     256     624     AnySize ... skip
+      V-MT19937      256     256    1024     AnySize ... skip
+      V-MT19937      256     256    4096     AnySize ... skip
+      V-MT19937      256     256   16384     AnySize ... skip
+      V-MT19937      512      32       1      Scalar ... skip
+      V-MT19937      512      32      16     Block16 ... skip
+      V-MT19937      512      32    9984       State ... skip
+      V-MT19937      512      32       1     AnySize ... skip
+      V-MT19937      512      32       4     AnySize ... skip
+      V-MT19937      512      32      16     AnySize ... skip
+      V-MT19937      512      32      64     AnySize ... skip
+      V-MT19937      512      32     256     AnySize ... skip
+      V-MT19937      512      32     624     AnySize ... skip
+      V-MT19937      512      32    1024     AnySize ... skip
+      V-MT19937      512      32    4096     AnySize ... skip
+      V-MT19937      512      32   16384     AnySize ... skip
+      V-MT19937      512     128       1      Scalar ... skip
+      V-MT19937      512     128      16     Block16 ... skip
+      V-MT19937      512     128    9984       State ... done in: 5.31s
+      V-MT19937      512     128       1     AnySize ... skip
+      V-MT19937      512     128       4     AnySize ... skip
+      V-MT19937      512     128      16     AnySize ... skip
+      V-MT19937      512     128      64     AnySize ... skip
+      V-MT19937      512     128     256     AnySize ... skip
+      V-MT19937      512     128     624     AnySize ... skip
+      V-MT19937      512     128    1024     AnySize ... skip
+      V-MT19937      512     128    4096     AnySize ... skip
+      V-MT19937      512     128   16384     AnySize ... skip
+      V-MT19937      512     256       1      Scalar ... skip
+      V-MT19937      512     256      16     Block16 ... skip
+      V-MT19937      512     256    9984       State ... done in: 3.49s
+      V-MT19937      512     256       1     AnySize ... skip
+      V-MT19937      512     256       4     AnySize ... skip
+      V-MT19937      512     256      16     AnySize ... skip
+      V-MT19937      512     256      64     AnySize ... skip
+      V-MT19937      512     256     256     AnySize ... done in: 3.16s
+      V-MT19937      512     256     624     AnySize ... skip
+      V-MT19937      512     256    1024     AnySize ... done in: 3.18s
+      V-MT19937      512     256    4096     AnySize ... skip
+      V-MT19937      512     256   16384     AnySize ... skip
+      V-MT19937      512     512       1      Scalar ... skip
+      V-MT19937      512     512      16     Block16 ... skip
+      V-MT19937      512     512    9984       State ... done in: 2.99s
+      V-MT19937      512     512       1     AnySize ... skip
+      V-MT19937      512     512       4     AnySize ... skip
+      V-MT19937      512     512      16     AnySize ... skip
+      V-MT19937      512     512      64     AnySize ... skip
+      V-MT19937      512     512     256     AnySize ... skip
+      V-MT19937      512     512     624     AnySize ... done in: 2.59s
+      V-MT19937      512     512    1024     AnySize ... done in: 2.65s
+      V-MT19937      512     512    4096     AnySize ... done in: 3.08s
+      V-MT19937      512     512   16384     AnySize ... skip
+    V-SFMT19937      128      32       1      Scalar ... skip
+    V-SFMT19937      128      32      16     Block16 ... skip
+    V-SFMT19937      128      32     624       State ... skip
+    V-SFMT19937      128      32       1     AnySize ... skip
+    V-SFMT19937      128      32       4     AnySize ... skip
+    V-SFMT19937      128      32      16     AnySize ... skip
+    V-SFMT19937      128      32      64     AnySize ... skip
+    V-SFMT19937      128      32     256     AnySize ... skip
+    V-SFMT19937      128      32     624     AnySize ... skip
+    V-SFMT19937      128      32    1024     AnySize ... skip
+    V-SFMT19937      128      32    4096     AnySize ... skip
+    V-SFMT19937      128      32   16384     AnySize ... skip
+    V-SFMT19937      128     128       1      Scalar ... skip
+    V-SFMT19937      128     128      16     Block16 ... skip
+    V-SFMT19937      128     128     624       State ... done in: 5.11s
+    V-SFMT19937      128     128       1     AnySize ... skip
+    V-SFMT19937      128     128       4     AnySize ... skip
+    V-SFMT19937      128     128      16     AnySize ... skip
+    V-SFMT19937      128     128      64     AnySize ... skip
+    V-SFMT19937      128     128     256     AnySize ... skip
+    V-SFMT19937      128     128     624     AnySize ... skip
+    V-SFMT19937      128     128    1024     AnySize ... skip
+    V-SFMT19937      128     128    4096     AnySize ... skip
+    V-SFMT19937      128     128   16384     AnySize ... skip
+    V-SFMT19937      256      32       1      Scalar ... skip
+    V-SFMT19937      256      32      16     Block16 ... skip
+    V-SFMT19937      256      32    1248       State ... skip
+    V-SFMT19937      256      32       1     AnySize ... skip
+    V-SFMT19937      256      32       4     AnySize ... skip
+    V-SFMT19937      256      32      16     AnySize ... skip
+    V-SFMT19937      256      32      64     AnySize ... skip
+    V-SFMT19937      256      32     256     AnySize ... skip
+    V-SFMT19937      256      32     624     AnySize ... skip
+    V-SFMT19937      256      32    1024     AnySize ... skip
+    V-SFMT19937      256      32    4096     AnySize ... skip
+    V-SFMT19937      256      32   16384     AnySize ... skip
+    V-SFMT19937      256     128       1      Scalar ... skip
+    V-SFMT19937      256     128      16     Block16 ... skip
+    V-SFMT19937      256     128    1248       State ... skip
+    V-SFMT19937      256     128       1     AnySize ... skip
+    V-SFMT19937      256     128       4     AnySize ... skip
+    V-SFMT19937      256     128      16     AnySize ... skip
+    V-SFMT19937      256     128      64     AnySize ... skip
+    V-SFMT19937      256     128     256     AnySize ... done in: 4.04s
+    V-SFMT19937      256     128     624     AnySize ... skip
+    V-SFMT19937      256     128    1024     AnySize ... skip
+    V-SFMT19937      256     128    4096     AnySize ... skip
+    V-SFMT19937      256     128   16384     AnySize ... skip
+    V-SFMT19937      256     256       1      Scalar ... skip
+    V-SFMT19937      256     256      16     Block16 ... skip
+    V-SFMT19937      256     256    1248       State ... done in: 2.69s
+    V-SFMT19937      256     256       1     AnySize ... skip
+    V-SFMT19937      256     256       4     AnySize ... skip
+    V-SFMT19937      256     256      16     AnySize ... skip
+    V-SFMT19937      256     256      64     AnySize ... skip
+    V-SFMT19937      256     256     256     AnySize ... skip
+    V-SFMT19937      256     256     624     AnySize ... skip
+    V-SFMT19937      256     256    1024     AnySize ... skip
+    V-SFMT19937      256     256    4096     AnySize ... skip
+    V-SFMT19937      256     256   16384     AnySize ... skip
+    V-SFMT19937      512      32       1      Scalar ... skip
+    V-SFMT19937      512      32      16     Block16 ... skip
+    V-SFMT19937      512      32    2496       State ... skip
+    V-SFMT19937      512      32       1     AnySize ... skip
+    V-SFMT19937      512      32       4     AnySize ... skip
+    V-SFMT19937      512      32      16     AnySize ... skip
+    V-SFMT19937      512      32      64     AnySize ... skip
+    V-SFMT19937      512      32     256     AnySize ... skip
+    V-SFMT19937      512      32     624     AnySize ... skip
+    V-SFMT19937      512      32    1024     AnySize ... skip
+    V-SFMT19937      512      32    4096     AnySize ... skip
+    V-SFMT19937      512      32   16384     AnySize ... skip
+    V-SFMT19937      512     128       1      Scalar ... skip
+    V-SFMT19937      512     128      16     Block16 ... skip
+    V-SFMT19937      512     128    2496       State ... skip
+    V-SFMT19937      512     128       1     AnySize ... skip
+    V-SFMT19937      512     128       4     AnySize ... skip
+    V-SFMT19937      512     128      16     AnySize ... skip
+    V-SFMT19937      512     128      64     AnySize ... skip
+    V-SFMT19937      512     128     256     AnySize ... skip
+    V-SFMT19937      512     128     624     AnySize ... skip
+    V-SFMT19937      512     128    1024     AnySize ... skip
+    V-SFMT19937      512     128    4096     AnySize ... skip
+    V-SFMT19937      512     128   16384     AnySize ... skip
+    V-SFMT19937      512     256       1      Scalar ... skip
+    V-SFMT19937      512     256      16     Block16 ... skip
+    V-SFMT19937      512     256    2496       State ... skip
+    V-SFMT19937      512     256       1     AnySize ... skip
+    V-SFMT19937      512     256       4     AnySize ... skip
+    V-SFMT19937      512     256      16     AnySize ... skip
+    V-SFMT19937      512     256      64     AnySize ... skip
+    V-SFMT19937      512     256     256     AnySize ... skip
+    V-SFMT19937      512     256     624     AnySize ... done in: 2.20s
+    V-SFMT19937      512     256    1024     AnySize ... skip
+    V-SFMT19937      512     256    4096     AnySize ... skip
+    V-SFMT19937      512     256   16384     AnySize ... skip
+    V-SFMT19937      512     512       1      Scalar ... skip
+    V-SFMT19937      512     512      16     Block16 ... skip
+    V-SFMT19937      512     512    2496       State ... done in: 1.53s
+    V-SFMT19937      512     512       1     AnySize ... skip
+    V-SFMT19937      512     512       4     AnySize ... skip
+    V-SFMT19937      512     512      16     AnySize ... skip
+    V-SFMT19937      512     512      64     AnySize ... skip
+    V-SFMT19937      512     512     256     AnySize ... done in: 2.01s
+    V-SFMT19937      512     512     624     AnySize ... skip
+    V-SFMT19937      512     512    1024     AnySize ... skip
+    V-SFMT19937      512     512    4096     AnySize ... skip
+    V-SFMT19937      512     512   16384     AnySize ... skip
+Iteration:  4: generating 15974400000 32-bits random numbers
+      Generator WordSize RegSize BlkSize   QueryMode
+   ORIG-MT19937       32      32       1      Scalar ... skip
+ ORIG-SFMT19937      128     128       1      Scalar ... skip
+ ORIG-SFMT19937      128     128    1024     AnySize ... skip
+ ORIG-SFMT19937      128     128    4096     AnySize ... skip
+ ORIG-SFMT19937      128     128   16384     AnySize ... skip
+    MKL-MT19937       32     512       1     AnySize ... skip
+    MKL-MT19937       32     512       4     AnySize ... skip
+    MKL-MT19937       32     512      16     AnySize ... skip
+    MKL-MT19937       32     512      64     AnySize ... skip
+    MKL-MT19937       32     512     256     AnySize ... done in: 4.22s
+    MKL-MT19937       32     512     624     AnySize ... done in: 3.94s
+    MKL-MT19937       32     512    1024     AnySize ... done in: 3.76s
+    MKL-MT19937       32     512    4096     AnySize ... done in: 2.68s
+    MKL-MT19937       32     512   16384     AnySize ... skip
+  MKL-SFMT19937      128     512       1     AnySize ... skip
+  MKL-SFMT19937      128     512       4     AnySize ... skip
+  MKL-SFMT19937      128     512      16     AnySize ... skip
+  MKL-SFMT19937      128     512      64     AnySize ... skip
+  MKL-SFMT19937      128     512     256     AnySize ... skip
+  MKL-SFMT19937      128     512     624     AnySize ... done in: 4.63s
+  MKL-SFMT19937      128     512    1024     AnySize ... done in: 4.15s
+  MKL-SFMT19937      128     512    4096     AnySize ... skip
+  MKL-SFMT19937      128     512   16384     AnySize ... skip
+      V-MT19937       32      32       1      Scalar ... skip
+      V-MT19937       32      32      16     Block16 ... skip
+      V-MT19937       32      32     624       State ... skip
+      V-MT19937       32      32       1     AnySize ... skip
+      V-MT19937       32      32       4     AnySize ... skip
+      V-MT19937       32      32      16     AnySize ... skip
+      V-MT19937       32      32      64     AnySize ... skip
+      V-MT19937       32      32     256     AnySize ... skip
+      V-MT19937       32      32     624     AnySize ... skip
+      V-MT19937       32      32    1024     AnySize ... skip
+      V-MT19937       32      32    4096     AnySize ... skip
+      V-MT19937       32      32   16384     AnySize ... skip
+      V-MT19937      128      32       1      Scalar ... skip
+      V-MT19937      128      32      16     Block16 ... skip
+      V-MT19937      128      32    2496       State ... skip
+      V-MT19937      128      32       1     AnySize ... skip
+      V-MT19937      128      32       4     AnySize ... skip
+      V-MT19937      128      32      16     AnySize ... skip
+      V-MT19937      128      32      64     AnySize ... skip
+      V-MT19937      128      32     256     AnySize ... skip
+      V-MT19937      128      32     624     AnySize ... skip
+      V-MT19937      128      32    1024     AnySize ... skip
+      V-MT19937      128      32    4096     AnySize ... skip
+      V-MT19937      128      32   16384     AnySize ... skip
+      V-MT19937      128     128       1      Scalar ... skip
+      V-MT19937      128     128      16     Block16 ... skip
+      V-MT19937      128     128    2496       State ... done in: 4.90s
+      V-MT19937      128     128       1     AnySize ... skip
+      V-MT19937      128     128       4     AnySize ... skip
+      V-MT19937      128     128      16     AnySize ... skip
+      V-MT19937      128     128      64     AnySize ... skip
+      V-MT19937      128     128     256     AnySize ... done in: 4.98s
+      V-MT19937      128     128     624     AnySize ... skip
+      V-MT19937      128     128    1024     AnySize ... skip
+      V-MT19937      128     128    4096     AnySize ... skip
+      V-MT19937      128     128   16384     AnySize ... skip
+      V-MT19937      256      32       1      Scalar ... skip
+      V-MT19937      256      32      16     Block16 ... skip
+      V-MT19937      256      32    4992       State ... skip
+      V-MT19937      256      32       1     AnySize ... skip
+      V-MT19937      256      32       4     AnySize ... skip
+      V-MT19937      256      32      16     AnySize ... skip
+      V-MT19937      256      32      64     AnySize ... skip
+      V-MT19937      256      32     256     AnySize ... skip
+      V-MT19937      256      32     624     AnySize ... skip
+      V-MT19937      256      32    1024     AnySize ... skip
+      V-MT19937      256      32    4096     AnySize ... skip
+      V-MT19937      256      32   16384     AnySize ... skip
+      V-MT19937      256     128       1      Scalar ... skip
+      V-MT19937      256     128      16     Block16 ... skip
+      V-MT19937      256     128    4992       State ... skip
+      V-MT19937      256     128       1     AnySize ... skip
+      V-MT19937      256     128       4     AnySize ... skip
+      V-MT19937      256     128      16     AnySize ... skip
+      V-MT19937      256     128      64     AnySize ... skip
+      V-MT19937      256     128     256     AnySize ... done in: 4.99s
+      V-MT19937      256     128     624     AnySize ... skip
+      V-MT19937      256     128    1024     AnySize ... skip
+      V-MT19937      256     128    4096     AnySize ... skip
+      V-MT19937      256     128   16384     AnySize ... skip
+      V-MT19937      256     256       1      Scalar ... skip
+      V-MT19937      256     256      16     Block16 ... done in: 3.10s
+      V-MT19937      256     256    4992       State ... done in: 3.09s
+      V-MT19937      256     256       1     AnySize ... skip
+      V-MT19937      256     256       4     AnySize ... skip
+      V-MT19937      256     256      16     AnySize ... skip
+      V-MT19937      256     256      64     AnySize ... skip
+      V-MT19937      256     256     256     AnySize ... skip
+      V-MT19937      256     256     624     AnySize ... skip
+      V-MT19937      256     256    1024     AnySize ... skip
+      V-MT19937      256     256    4096     AnySize ... skip
+      V-MT19937      256     256   16384     AnySize ... skip
+      V-MT19937      512      32       1      Scalar ... skip
+      V-MT19937      512      32      16     Block16 ... skip
+      V-MT19937      512      32    9984       State ... skip
+      V-MT19937      512      32       1     AnySize ... skip
+      V-MT19937      512      32       4     AnySize ... skip
+      V-MT19937      512      32      16     AnySize ... skip
+      V-MT19937      512      32      64     AnySize ... skip
+      V-MT19937      512      32     256     AnySize ... skip
+      V-MT19937      512      32     624     AnySize ... skip
+      V-MT19937      512      32    1024     AnySize ... skip
+      V-MT19937      512      32    4096     AnySize ... skip
+      V-MT19937      512      32   16384     AnySize ... skip
+      V-MT19937      512     128       1      Scalar ... skip
+      V-MT19937      512     128      16     Block16 ... skip
+      V-MT19937      512     128    9984       State ... done in: 5.31s
+      V-MT19937      512     128       1     AnySize ... skip
+      V-MT19937      512     128       4     AnySize ... skip
+      V-MT19937      512     128      16     AnySize ... skip
+      V-MT19937      512     128      64     AnySize ... skip
+      V-MT19937      512     128     256     AnySize ... skip
+      V-MT19937      512     128     624     AnySize ... skip
+      V-MT19937      512     128    1024     AnySize ... skip
+      V-MT19937      512     128    4096     AnySize ... skip
+      V-MT19937      512     128   16384     AnySize ... skip
+      V-MT19937      512     256       1      Scalar ... skip
+      V-MT19937      512     256      16     Block16 ... skip
+      V-MT19937      512     256    9984       State ... done in: 3.49s
+      V-MT19937      512     256       1     AnySize ... skip
+      V-MT19937      512     256       4     AnySize ... skip
+      V-MT19937      512     256      16     AnySize ... skip
+      V-MT19937      512     256      64     AnySize ... skip
+      V-MT19937      512     256     256     AnySize ... done in: 3.16s
+      V-MT19937      512     256     624     AnySize ... skip
+      V-MT19937      512     256    1024     AnySize ... done in: 3.18s
+      V-MT19937      512     256    4096     AnySize ... skip
+      V-MT19937      512     256   16384     AnySize ... skip
+      V-MT19937      512     512       1      Scalar ... skip
+      V-MT19937      512     512      16     Block16 ... skip
+      V-MT19937      512     512    9984       State ... done in: 2.99s
+      V-MT19937      512     512       1     AnySize ... skip
+      V-MT19937      512     512       4     AnySize ... skip
+      V-MT19937      512     512      16     AnySize ... skip
+      V-MT19937      512     512      64     AnySize ... skip
+      V-MT19937      512     512     256     AnySize ... skip
+      V-MT19937      512     512     624     AnySize ... done in: 2.59s
+      V-MT19937      512     512    1024     AnySize ... done in: 2.65s
+      V-MT19937      512     512    4096     AnySize ... done in: 3.08s
+      V-MT19937      512     512   16384     AnySize ... skip
+    V-SFMT19937      128      32       1      Scalar ... skip
+    V-SFMT19937      128      32      16     Block16 ... skip
+    V-SFMT19937      128      32     624       State ... skip
+    V-SFMT19937      128      32       1     AnySize ... skip
+    V-SFMT19937      128      32       4     AnySize ... skip
+    V-SFMT19937      128      32      16     AnySize ... skip
+    V-SFMT19937      128      32      64     AnySize ... skip
+    V-SFMT19937      128      32     256     AnySize ... skip
+    V-SFMT19937      128      32     624     AnySize ... skip
+    V-SFMT19937      128      32    1024     AnySize ... skip
+    V-SFMT19937      128      32    4096     AnySize ... skip
+    V-SFMT19937      128      32   16384     AnySize ... skip
+    V-SFMT19937      128     128       1      Scalar ... skip
+    V-SFMT19937      128     128      16     Block16 ... skip
+    V-SFMT19937      128     128     624       State ... done in: 5.11s
+    V-SFMT19937      128     128       1     AnySize ... skip
+    V-SFMT19937      128     128       4     AnySize ... skip
+    V-SFMT19937      128     128      16     AnySize ... skip
+    V-SFMT19937      128     128      64     AnySize ... skip
+    V-SFMT19937      128     128     256     AnySize ... skip
+    V-SFMT19937      128     128     624     AnySize ... skip
+    V-SFMT19937      128     128    1024     AnySize ... skip
+    V-SFMT19937      128     128    4096     AnySize ... skip
+    V-SFMT19937      128     128   16384     AnySize ... skip
+    V-SFMT19937      256      32       1      Scalar ... skip
+    V-SFMT19937      256      32      16     Block16 ... skip
+    V-SFMT19937      256      32    1248       State ... skip
+    V-SFMT19937      256      32       1     AnySize ... skip
+    V-SFMT19937      256      32       4     AnySize ... skip
+    V-SFMT19937      256      32      16     AnySize ... skip
+    V-SFMT19937      256      32      64     AnySize ... skip
+    V-SFMT19937      256      32     256     AnySize ... skip
+    V-SFMT19937      256      32     624     AnySize ... skip
+    V-SFMT19937      256      32    1024     AnySize ... skip
+    V-SFMT19937      256      32    4096     AnySize ... skip
+    V-SFMT19937      256      32   16384     AnySize ... skip
+    V-SFMT19937      256     128       1      Scalar ... skip
+    V-SFMT19937      256     128      16     Block16 ... skip
+    V-SFMT19937      256     128    1248       State ... skip
+    V-SFMT19937      256     128       1     AnySize ... skip
+    V-SFMT19937      256     128       4     AnySize ... skip
+    V-SFMT19937      256     128      16     AnySize ... skip
+    V-SFMT19937      256     128      64     AnySize ... skip
+    V-SFMT19937      256     128     256     AnySize ... skip
+    V-SFMT19937      256     128     624     AnySize ... skip
+    V-SFMT19937      256     128    1024     AnySize ... skip
+    V-SFMT19937      256     128    4096     AnySize ... skip
+    V-SFMT19937      256     128   16384     AnySize ... skip
+    V-SFMT19937      256     256       1      Scalar ... skip
+    V-SFMT19937      256     256      16     Block16 ... skip
+    V-SFMT19937      256     256    1248       State ... done in: 2.69s
+    V-SFMT19937      256     256       1     AnySize ... skip
+    V-SFMT19937      256     256       4     AnySize ... skip
+    V-SFMT19937      256     256      16     AnySize ... skip
+    V-SFMT19937      256     256      64     AnySize ... skip
+    V-SFMT19937      256     256     256     AnySize ... skip
+    V-SFMT19937      256     256     624     AnySize ... skip
+    V-SFMT19937      256     256    1024     AnySize ... skip
+    V-SFMT19937      256     256    4096     AnySize ... skip
+    V-SFMT19937      256     256   16384     AnySize ... skip
+    V-SFMT19937      512      32       1      Scalar ... skip
+    V-SFMT19937      512      32      16     Block16 ... skip
+    V-SFMT19937      512      32    2496       State ... skip
+    V-SFMT19937      512      32       1     AnySize ... skip
+    V-SFMT19937      512      32       4     AnySize ... skip
+    V-SFMT19937      512      32      16     AnySize ... skip
+    V-SFMT19937      512      32      64     AnySize ... skip
+    V-SFMT19937      512      32     256     AnySize ... skip
+    V-SFMT19937      512      32     624     AnySize ... skip
+    V-SFMT19937      512      32    1024     AnySize ... skip
+    V-SFMT19937      512      32    4096     AnySize ... skip
+    V-SFMT19937      512      32   16384     AnySize ... skip
+    V-SFMT19937      512     128       1      Scalar ... skip
+    V-SFMT19937      512     128      16     Block16 ... skip
+    V-SFMT19937      512     128    2496       State ... skip
+    V-SFMT19937      512     128       1     AnySize ... skip
+    V-SFMT19937      512     128       4     AnySize ... skip
+    V-SFMT19937      512     128      16     AnySize ... skip
+    V-SFMT19937      512     128      64     AnySize ... skip
+    V-SFMT19937      512     128     256     AnySize ... skip
+    V-SFMT19937      512     128     624     AnySize ... skip
+    V-SFMT19937      512     128    1024     AnySize ... skip
+    V-SFMT19937      512     128    4096     AnySize ... skip
+    V-SFMT19937      512     128   16384     AnySize ... skip
+    V-SFMT19937      512     256       1      Scalar ... skip
+    V-SFMT19937      512     256      16     Block16 ... skip
+    V-SFMT19937      512     256    2496       State ... skip
+    V-SFMT19937      512     256       1     AnySize ... skip
+    V-SFMT19937      512     256       4     AnySize ... skip
+    V-SFMT19937      512     256      16     AnySize ... skip
+    V-SFMT19937      512     256      64     AnySize ... skip
+    V-SFMT19937      512     256     256     AnySize ... skip
+    V-SFMT19937      512     256     624     AnySize ... done in: 2.20s
+    V-SFMT19937      512     256    1024     AnySize ... skip
+    V-SFMT19937      512     256    4096     AnySize ... skip
+    V-SFMT19937      512     256   16384     AnySize ... skip
+    V-SFMT19937      512     512       1      Scalar ... skip
+    V-SFMT19937      512     512      16     Block16 ... skip
+    V-SFMT19937      512     512    2496       State ... done in: 1.53s
+    V-SFMT19937      512     512       1     AnySize ... skip
+    V-SFMT19937      512     512       4     AnySize ... skip
+    V-SFMT19937      512     512      16     AnySize ... skip
+    V-SFMT19937      512     512      64     AnySize ... skip
+    V-SFMT19937      512     512     256     AnySize ... done in: 2.01s
+    V-SFMT19937      512     512     624     AnySize ... skip
+    V-SFMT19937      512     512    1024     AnySize ... skip
+    V-SFMT19937      512     512    4096     AnySize ... skip
+    V-SFMT19937      512     512   16384     AnySize ... skip
+Iteration:  5: generating 15974400000 32-bits random numbers
+      Generator WordSize RegSize BlkSize   QueryMode
+   ORIG-MT19937       32      32       1      Scalar ... skip
+ ORIG-SFMT19937      128     128       1      Scalar ... skip
+ ORIG-SFMT19937      128     128    1024     AnySize ... skip
+ ORIG-SFMT19937      128     128    4096     AnySize ... skip
+ ORIG-SFMT19937      128     128   16384     AnySize ... skip
+    MKL-MT19937       32     512       1     AnySize ... skip
+    MKL-MT19937       32     512       4     AnySize ... skip
+    MKL-MT19937       32     512      16     AnySize ... skip
+    MKL-MT19937       32     512      64     AnySize ... skip
+    MKL-MT19937       32     512     256     AnySize ... done in: 4.22s
+    MKL-MT19937       32     512     624     AnySize ... done in: 3.95s
+    MKL-MT19937       32     512    1024     AnySize ... done in: 3.76s
+    MKL-MT19937       32     512    4096     AnySize ... done in: 2.68s
+    MKL-MT19937       32     512   16384     AnySize ... skip
+  MKL-SFMT19937      128     512       1     AnySize ... skip
+  MKL-SFMT19937      128     512       4     AnySize ... skip
+  MKL-SFMT19937      128     512      16     AnySize ... skip
+  MKL-SFMT19937      128     512      64     AnySize ... skip
+  MKL-SFMT19937      128     512     256     AnySize ... skip
+  MKL-SFMT19937      128     512     624     AnySize ... done in: 4.48s
+  MKL-SFMT19937      128     512    1024     AnySize ... done in: 4.13s
+  MKL-SFMT19937      128     512    4096     AnySize ... skip
+  MKL-SFMT19937      128     512   16384     AnySize ... skip
+      V-MT19937       32      32       1      Scalar ... skip
+      V-MT19937       32      32      16     Block16 ... skip
+      V-MT19937       32      32     624       State ... skip
+      V-MT19937       32      32       1     AnySize ... skip
+      V-MT19937       32      32       4     AnySize ... skip
+      V-MT19937       32      32      16     AnySize ... skip
+      V-MT19937       32      32      64     AnySize ... skip
+      V-MT19937       32      32     256     AnySize ... skip
+      V-MT19937       32      32     624     AnySize ... skip
+      V-MT19937       32      32    1024     AnySize ... skip
+      V-MT19937       32      32    4096     AnySize ... skip
+      V-MT19937       32      32   16384     AnySize ... skip
+      V-MT19937      128      32       1      Scalar ... skip
+      V-MT19937      128      32      16     Block16 ... skip
+      V-MT19937      128      32    2496       State ... skip
+      V-MT19937      128      32       1     AnySize ... skip
+      V-MT19937      128      32       4     AnySize ... skip
+      V-MT19937      128      32      16     AnySize ... skip
+      V-MT19937      128      32      64     AnySize ... skip
+      V-MT19937      128      32     256     AnySize ... skip
+      V-MT19937      128      32     624     AnySize ... skip
+      V-MT19937      128      32    1024     AnySize ... skip
+      V-MT19937      128      32    4096     AnySize ... skip
+      V-MT19937      128      32   16384     AnySize ... skip
+      V-MT19937      128     128       1      Scalar ... skip
+      V-MT19937      128     128      16     Block16 ... skip
+      V-MT19937      128     128    2496       State ... done in: 4.90s
+      V-MT19937      128     128       1     AnySize ... skip
+      V-MT19937      128     128       4     AnySize ... skip
+      V-MT19937      128     128      16     AnySize ... skip
+      V-MT19937      128     128      64     AnySize ... skip
+      V-MT19937      128     128     256     AnySize ... done in: 4.98s
+      V-MT19937      128     128     624     AnySize ... skip
+      V-MT19937      128     128    1024     AnySize ... skip
+      V-MT19937      128     128    4096     AnySize ... skip
+      V-MT19937      128     128   16384     AnySize ... skip
+      V-MT19937      256      32       1      Scalar ... skip
+      V-MT19937      256      32      16     Block16 ... skip
+      V-MT19937      256      32    4992       State ... skip
+      V-MT19937      256      32       1     AnySize ... skip
+      V-MT19937      256      32       4     AnySize ... skip
+      V-MT19937      256      32      16     AnySize ... skip
+      V-MT19937      256      32      64     AnySize ... skip
+      V-MT19937      256      32     256     AnySize ... skip
+      V-MT19937      256      32     624     AnySize ... skip
+      V-MT19937      256      32    1024     AnySize ... skip
+      V-MT19937      256      32    4096     AnySize ... skip
+      V-MT19937      256      32   16384     AnySize ... skip
+      V-MT19937      256     128       1      Scalar ... skip
+      V-MT19937      256     128      16     Block16 ... skip
+      V-MT19937      256     128    4992       State ... skip
+      V-MT19937      256     128       1     AnySize ... skip
+      V-MT19937      256     128       4     AnySize ... skip
+      V-MT19937      256     128      16     AnySize ... skip
+      V-MT19937      256     128      64     AnySize ... skip
+      V-MT19937      256     128     256     AnySize ... done in: 4.99s
+      V-MT19937      256     128     624     AnySize ... skip
+      V-MT19937      256     128    1024     AnySize ... skip
+      V-MT19937      256     128    4096     AnySize ... skip
+      V-MT19937      256     128   16384     AnySize ... skip
+      V-MT19937      256     256       1      Scalar ... skip
+      V-MT19937      256     256      16     Block16 ... done in: 3.10s
+      V-MT19937      256     256    4992       State ... done in: 3.09s
+      V-MT19937      256     256       1     AnySize ... skip
+      V-MT19937      256     256       4     AnySize ... skip
+      V-MT19937      256     256      16     AnySize ... skip
+      V-MT19937      256     256      64     AnySize ... skip
+      V-MT19937      256     256     256     AnySize ... skip
+      V-MT19937      256     256     624     AnySize ... skip
+      V-MT19937      256     256    1024     AnySize ... skip
+      V-MT19937      256     256    4096     AnySize ... skip
+      V-MT19937      256     256   16384     AnySize ... skip
+      V-MT19937      512      32       1      Scalar ... skip
+      V-MT19937      512      32      16     Block16 ... skip
+      V-MT19937      512      32    9984       State ... skip
+      V-MT19937      512      32       1     AnySize ... skip
+      V-MT19937      512      32       4     AnySize ... skip
+      V-MT19937      512      32      16     AnySize ... skip
+      V-MT19937      512      32      64     AnySize ... skip
+      V-MT19937      512      32     256     AnySize ... skip
+      V-MT19937      512      32     624     AnySize ... skip
+      V-MT19937      512      32    1024     AnySize ... skip
+      V-MT19937      512      32    4096     AnySize ... skip
+      V-MT19937      512      32   16384     AnySize ... skip
+      V-MT19937      512     128       1      Scalar ... skip
+      V-MT19937      512     128      16     Block16 ... skip
+      V-MT19937      512     128    9984       State ... done in: 5.32s
+      V-MT19937      512     128       1     AnySize ... skip
+      V-MT19937      512     128       4     AnySize ... skip
+      V-MT19937      512     128      16     AnySize ... skip
+      V-MT19937      512     128      64     AnySize ... skip
+      V-MT19937      512     128     256     AnySize ... skip
+      V-MT19937      512     128     624     AnySize ... skip
+      V-MT19937      512     128    1024     AnySize ... skip
+      V-MT19937      512     128    4096     AnySize ... skip
+      V-MT19937      512     128   16384     AnySize ... skip
+      V-MT19937      512     256       1      Scalar ... skip
+      V-MT19937      512     256      16     Block16 ... skip
+      V-MT19937      512     256    9984       State ... done in: 3.50s
+      V-MT19937      512     256       1     AnySize ... skip
+      V-MT19937      512     256       4     AnySize ... skip
+      V-MT19937      512     256      16     AnySize ... skip
+      V-MT19937      512     256      64     AnySize ... skip
+      V-MT19937      512     256     256     AnySize ... done in: 3.40s
+      V-MT19937      512     256     624     AnySize ... skip
+      V-MT19937      512     256    1024     AnySize ... skip
+      V-MT19937      512     256    4096     AnySize ... skip
+      V-MT19937      512     256   16384     AnySize ... skip
+      V-MT19937      512     512       1      Scalar ... skip
+      V-MT19937      512     512      16     Block16 ... skip
+      V-MT19937      512     512    9984       State ... done in: 3.00s
+      V-MT19937      512     512       1     AnySize ... skip
+      V-MT19937      512     512       4     AnySize ... skip
+      V-MT19937      512     512      16     AnySize ... skip
+      V-MT19937      512     512      64     AnySize ... skip
+      V-MT19937      512     512     256     AnySize ... skip
+      V-MT19937      512     512     624     AnySize ... done in: 2.65s
+      V-MT19937      512     512    1024     AnySize ... done in: 2.67s
+      V-MT19937      512     512    4096     AnySize ... skip
+      V-MT19937      512     512   16384     AnySize ... skip
+    V-SFMT19937      128      32       1      Scalar ... skip
+    V-SFMT19937      128      32      16     Block16 ... skip
+    V-SFMT19937      128      32     624       State ... skip
+    V-SFMT19937      128      32       1     AnySize ... skip
+    V-SFMT19937      128      32       4     AnySize ... skip
+    V-SFMT19937      128      32      16     AnySize ... skip
+    V-SFMT19937      128      32      64     AnySize ... skip
+    V-SFMT19937      128      32     256     AnySize ... skip
+    V-SFMT19937      128      32     624     AnySize ... skip
+    V-SFMT19937      128      32    1024     AnySize ... skip
+    V-SFMT19937      128      32    4096     AnySize ... skip
+    V-SFMT19937      128      32   16384     AnySize ... skip
+    V-SFMT19937      128     128       1      Scalar ... skip
+    V-SFMT19937      128     128      16     Block16 ... skip
+    V-SFMT19937      128     128     624       State ... skip
+    V-SFMT19937      128     128       1     AnySize ... skip
+    V-SFMT19937      128     128       4     AnySize ... skip
+    V-SFMT19937      128     128      16     AnySize ... skip
+    V-SFMT19937      128     128      64     AnySize ... skip
+    V-SFMT19937      128     128     256     AnySize ... skip
+    V-SFMT19937      128     128     624     AnySize ... skip
+    V-SFMT19937      128     128    1024     AnySize ... skip
+    V-SFMT19937      128     128    4096     AnySize ... skip
+    V-SFMT19937      128     128   16384     AnySize ... skip
+    V-SFMT19937      256      32       1      Scalar ... skip
+    V-SFMT19937      256      32      16     Block16 ... skip
+    V-SFMT19937      256      32    1248       State ... skip
+    V-SFMT19937      256      32       1     AnySize ... skip
+    V-SFMT19937      256      32       4     AnySize ... skip
+    V-SFMT19937      256      32      16     AnySize ... skip
+    V-SFMT19937      256      32      64     AnySize ... skip
+    V-SFMT19937      256      32     256     AnySize ... skip
+    V-SFMT19937      256      32     624     AnySize ... skip
+    V-SFMT19937      256      32    1024     AnySize ... skip
+    V-SFMT19937      256      32    4096     AnySize ... skip
+    V-SFMT19937      256      32   16384     AnySize ... skip
+    V-SFMT19937      256     128       1      Scalar ... skip
+    V-SFMT19937      256     128      16     Block16 ... skip
+    V-SFMT19937      256     128    1248       State ... skip
+    V-SFMT19937      256     128       1     AnySize ... skip
+    V-SFMT19937      256     128       4     AnySize ... skip
+    V-SFMT19937      256     128      16     AnySize ... skip
+    V-SFMT19937      256     128      64     AnySize ... skip
+    V-SFMT19937      256     128     256     AnySize ... skip
+    V-SFMT19937      256     128     624     AnySize ... skip
+    V-SFMT19937      256     128    1024     AnySize ... skip
+    V-SFMT19937      256     128    4096     AnySize ... skip
+    V-SFMT19937      256     128   16384     AnySize ... skip
+    V-SFMT19937      256     256       1      Scalar ... skip
+    V-SFMT19937      256     256      16     Block16 ... skip
+    V-SFMT19937      256     256    1248       State ... done in: 2.69s
+    V-SFMT19937      256     256       1     AnySize ... skip
+    V-SFMT19937      256     256       4     AnySize ... skip
+    V-SFMT19937      256     256      16     AnySize ... skip
+    V-SFMT19937      256     256      64     AnySize ... skip
+    V-SFMT19937      256     256     256     AnySize ... skip
+    V-SFMT19937      256     256     624     AnySize ... skip
+    V-SFMT19937      256     256    1024     AnySize ... skip
+    V-SFMT19937      256     256    4096     AnySize ... skip
+    V-SFMT19937      256     256   16384     AnySize ... skip
+    V-SFMT19937      512      32       1      Scalar ... skip
+    V-SFMT19937      512      32      16     Block16 ... skip
+    V-SFMT19937      512      32    2496       State ... skip
+    V-SFMT19937      512      32       1     AnySize ... skip
+    V-SFMT19937      512      32       4     AnySize ... skip
+    V-SFMT19937      512      32      16     AnySize ... skip
+    V-SFMT19937      512      32      64     AnySize ... skip
+    V-SFMT19937      512      32     256     AnySize ... skip
+    V-SFMT19937      512      32     624     AnySize ... skip
+    V-SFMT19937      512      32    1024     AnySize ... skip
+    V-SFMT19937      512      32    4096     AnySize ... skip
+    V-SFMT19937      512      32   16384     AnySize ... skip
+    V-SFMT19937      512     128       1      Scalar ... skip
+    V-SFMT19937      512     128      16     Block16 ... skip
+    V-SFMT19937      512     128    2496       State ... skip
+    V-SFMT19937      512     128       1     AnySize ... skip
+    V-SFMT19937      512     128       4     AnySize ... skip
+    V-SFMT19937      512     128      16     AnySize ... skip
+    V-SFMT19937      512     128      64     AnySize ... skip
+    V-SFMT19937      512     128     256     AnySize ... skip
+    V-SFMT19937      512     128     624     AnySize ... skip
+    V-SFMT19937      512     128    1024     AnySize ... skip
+    V-SFMT19937      512     128    4096     AnySize ... skip
+    V-SFMT19937      512     128   16384     AnySize ... skip
+    V-SFMT19937      512     256       1      Scalar ... skip
+    V-SFMT19937      512     256      16     Block16 ... skip
+    V-SFMT19937      512     256    2496       State ... skip
+    V-SFMT19937      512     256       1     AnySize ... skip
+    V-SFMT19937      512     256       4     AnySize ... skip
+    V-SFMT19937      512     256      16     AnySize ... skip
+    V-SFMT19937      512     256      64     AnySize ... skip
+    V-SFMT19937      512     256     256     AnySize ... skip
+    V-SFMT19937      512     256     624     AnySize ... done in: 2.22s
+    V-SFMT19937      512     256    1024     AnySize ... skip
+    V-SFMT19937      512     256    4096     AnySize ... skip
+    V-SFMT19937      512     256   16384     AnySize ... skip
+    V-SFMT19937      512     512       1      Scalar ... skip
+    V-SFMT19937      512     512      16     Block16 ... skip
+    V-SFMT19937      512     512    2496       State ... done in: 1.53s
+    V-SFMT19937      512     512       1     AnySize ... skip
+    V-SFMT19937      512     512       4     AnySize ... skip
+    V-SFMT19937      512     512      16     AnySize ... skip
+    V-SFMT19937      512     512      64     AnySize ... skip
+    V-SFMT19937      512     512     256     AnySize ... done in: 2.02s
+    V-SFMT19937      512     512     624     AnySize ... skip
+    V-SFMT19937      512     512    1024     AnySize ... skip
+    V-SFMT19937      512     512    4096     AnySize ... skip
+    V-SFMT19937      512     512   16384     AnySize ... skip
+Iteration:  6: generating 15974400000 32-bits random numbers
+      Generator WordSize RegSize BlkSize   QueryMode
+   ORIG-MT19937       32      32       1      Scalar ... skip
+ ORIG-SFMT19937      128     128       1      Scalar ... skip
+ ORIG-SFMT19937      128     128    1024     AnySize ... skip
+ ORIG-SFMT19937      128     128    4096     AnySize ... skip
+ ORIG-SFMT19937      128     128   16384     AnySize ... skip
+    MKL-MT19937       32     512       1     AnySize ... skip
+    MKL-MT19937       32     512       4     AnySize ... skip
+    MKL-MT19937       32     512      16     AnySize ... skip
+    MKL-MT19937       32     512      64     AnySize ... skip
+    MKL-MT19937       32     512     256     AnySize ... done in: 4.36s
+    MKL-MT19937       32     512     624     AnySize ... done in: 3.95s
+    MKL-MT19937       32     512    1024     AnySize ... done in: 4.17s
+    MKL-MT19937       32     512    4096     AnySize ... done in: 2.68s
+    MKL-MT19937       32     512   16384     AnySize ... skip
+  MKL-SFMT19937      128     512       1     AnySize ... skip
+  MKL-SFMT19937      128     512       4     AnySize ... skip
+  MKL-SFMT19937      128     512      16     AnySize ... skip
+  MKL-SFMT19937      128     512      64     AnySize ... skip
+  MKL-SFMT19937      128     512     256     AnySize ... skip
+  MKL-SFMT19937      128     512     624     AnySize ... done in: 4.65s
+  MKL-SFMT19937      128     512    1024     AnySize ... done in: 4.15s
+  MKL-SFMT19937      128     512    4096     AnySize ... skip
+  MKL-SFMT19937      128     512   16384     AnySize ... skip
+      V-MT19937       32      32       1      Scalar ... skip
+      V-MT19937       32      32      16     Block16 ... skip
+      V-MT19937       32      32     624       State ... skip
+      V-MT19937       32      32       1     AnySize ... skip
+      V-MT19937       32      32       4     AnySize ... skip
+      V-MT19937       32      32      16     AnySize ... skip
+      V-MT19937       32      32      64     AnySize ... skip
+      V-MT19937       32      32     256     AnySize ... skip
+      V-MT19937       32      32     624     AnySize ... skip
+      V-MT19937       32      32    1024     AnySize ... skip
+      V-MT19937       32      32    4096     AnySize ... skip
+      V-MT19937       32      32   16384     AnySize ... skip
+      V-MT19937      128      32       1      Scalar ... skip
+      V-MT19937      128      32      16     Block16 ... skip
+      V-MT19937      128      32    2496       State ... skip
+      V-MT19937      128      32       1     AnySize ... skip
+      V-MT19937      128      32       4     AnySize ... skip
+      V-MT19937      128      32      16     AnySize ... skip
+      V-MT19937      128      32      64     AnySize ... skip
+      V-MT19937      128      32     256     AnySize ... skip
+      V-MT19937      128      32     624     AnySize ... skip
+      V-MT19937      128      32    1024     AnySize ... skip
+      V-MT19937      128      32    4096     AnySize ... skip
+      V-MT19937      128      32   16384     AnySize ... skip
+      V-MT19937      128     128       1      Scalar ... skip
+      V-MT19937      128     128      16     Block16 ... skip
+      V-MT19937      128     128    2496       State ... done in: 4.90s
+      V-MT19937      128     128       1     AnySize ... skip
+      V-MT19937      128     128       4     AnySize ... skip
+      V-MT19937      128     128      16     AnySize ... skip
+      V-MT19937      128     128      64     AnySize ... skip
+      V-MT19937      128     128     256     AnySize ... skip
+      V-MT19937      128     128     624     AnySize ... skip
+      V-MT19937      128     128    1024     AnySize ... skip
+      V-MT19937      128     128    4096     AnySize ... skip
+      V-MT19937      128     128   16384     AnySize ... skip
+      V-MT19937      256      32       1      Scalar ... skip
+      V-MT19937      256      32      16     Block16 ... skip
+      V-MT19937      256      32    4992       State ... skip
+      V-MT19937      256      32       1     AnySize ... skip
+      V-MT19937      256      32       4     AnySize ... skip
+      V-MT19937      256      32      16     AnySize ... skip
+      V-MT19937      256      32      64     AnySize ... skip
+      V-MT19937      256      32     256     AnySize ... skip
+      V-MT19937      256      32     624     AnySize ... skip
+      V-MT19937      256      32    1024     AnySize ... skip
+      V-MT19937      256      32    4096     AnySize ... skip
+      V-MT19937      256      32   16384     AnySize ... skip
+      V-MT19937      256     128       1      Scalar ... skip
+      V-MT19937      256     128      16     Block16 ... skip
+      V-MT19937      256     128    4992       State ... skip
+      V-MT19937      256     128       1     AnySize ... skip
+      V-MT19937      256     128       4     AnySize ... skip
+      V-MT19937      256     128      16     AnySize ... skip
+      V-MT19937      256     128      64     AnySize ... skip
+      V-MT19937      256     128     256     AnySize ... done in: 5.11s
+      V-MT19937      256     128     624     AnySize ... skip
+      V-MT19937      256     128    1024     AnySize ... skip
+      V-MT19937      256     128    4096     AnySize ... skip
+      V-MT19937      256     128   16384     AnySize ... skip
+      V-MT19937      256     256       1      Scalar ... skip
+      V-MT19937      256     256      16     Block16 ... done in: 3.10s
+      V-MT19937      256     256    4992       State ... done in: 3.09s
+      V-MT19937      256     256       1     AnySize ... skip
+      V-MT19937      256     256       4     AnySize ... skip
+      V-MT19937      256     256      16     AnySize ... skip
+      V-MT19937      256     256      64     AnySize ... skip
+      V-MT19937      256     256     256     AnySize ... skip
+      V-MT19937      256     256     624     AnySize ... skip
+      V-MT19937      256     256    1024     AnySize ... skip
+      V-MT19937      256     256    4096     AnySize ... skip
+      V-MT19937      256     256   16384     AnySize ... skip
+      V-MT19937      512      32       1      Scalar ... skip
+      V-MT19937      512      32      16     Block16 ... skip
+      V-MT19937      512      32    9984       State ... skip
+      V-MT19937      512      32       1     AnySize ... skip
+      V-MT19937      512      32       4     AnySize ... skip
+      V-MT19937      512      32      16     AnySize ... skip
+      V-MT19937      512      32      64     AnySize ... skip
+      V-MT19937      512      32     256     AnySize ... skip
+      V-MT19937      512      32     624     AnySize ... skip
+      V-MT19937      512      32    1024     AnySize ... skip
+      V-MT19937      512      32    4096     AnySize ... skip
+      V-MT19937      512      32   16384     AnySize ... skip
+      V-MT19937      512     128       1      Scalar ... skip
+      V-MT19937      512     128      16     Block16 ... skip
+      V-MT19937      512     128    9984       State ... done in: 5.31s
+      V-MT19937      512     128       1     AnySize ... skip
+      V-MT19937      512     128       4     AnySize ... skip
+      V-MT19937      512     128      16     AnySize ... skip
+      V-MT19937      512     128      64     AnySize ... skip
+      V-MT19937      512     128     256     AnySize ... skip
+      V-MT19937      512     128     624     AnySize ... skip
+      V-MT19937      512     128    1024     AnySize ... skip
+      V-MT19937      512     128    4096     AnySize ... skip
+      V-MT19937      512     128   16384     AnySize ... skip
+      V-MT19937      512     256       1      Scalar ... skip
+      V-MT19937      512     256      16     Block16 ... skip
+      V-MT19937      512     256    9984       State ... done in: 3.49s
+      V-MT19937      512     256       1     AnySize ... skip
+      V-MT19937      512     256       4     AnySize ... skip
+      V-MT19937      512     256      16     AnySize ... skip
+      V-MT19937      512     256      64     AnySize ... skip
+      V-MT19937      512     256     256     AnySize ... done in: 3.11s
+      V-MT19937      512     256     624     AnySize ... skip
+      V-MT19937      512     256    1024     AnySize ... skip
+      V-MT19937      512     256    4096     AnySize ... skip
+      V-MT19937      512     256   16384     AnySize ... skip
+      V-MT19937      512     512       1      Scalar ... skip
+      V-MT19937      512     512      16     Block16 ... skip
+      V-MT19937      512     512    9984       State ... done in: 2.99s
+      V-MT19937      512     512       1     AnySize ... skip
+      V-MT19937      512     512       4     AnySize ... skip
+      V-MT19937      512     512      16     AnySize ... skip
+      V-MT19937      512     512      64     AnySize ... skip
+      V-MT19937      512     512     256     AnySize ... skip
+      V-MT19937      512     512     624     AnySize ... done in: 2.64s
+      V-MT19937      512     512    1024     AnySize ... done in: 2.67s
+      V-MT19937      512     512    4096     AnySize ... skip
+      V-MT19937      512     512   16384     AnySize ... skip
+    V-SFMT19937      128      32       1      Scalar ... skip
+    V-SFMT19937      128      32      16     Block16 ... skip
+    V-SFMT19937      128      32     624       State ... skip
+    V-SFMT19937      128      32       1     AnySize ... skip
+    V-SFMT19937      128      32       4     AnySize ... skip
+    V-SFMT19937      128      32      16     AnySize ... skip
+    V-SFMT19937      128      32      64     AnySize ... skip
+    V-SFMT19937      128      32     256     AnySize ... skip
+    V-SFMT19937      128      32     624     AnySize ... skip
+    V-SFMT19937      128      32    1024     AnySize ... skip
+    V-SFMT19937      128      32    4096     AnySize ... skip
+    V-SFMT19937      128      32   16384     AnySize ... skip
+    V-SFMT19937      128     128       1      Scalar ... skip
+    V-SFMT19937      128     128      16     Block16 ... skip
+    V-SFMT19937      128     128     624       State ... skip
+    V-SFMT19937      128     128       1     AnySize ... skip
+    V-SFMT19937      128     128       4     AnySize ... skip
+    V-SFMT19937      128     128      16     AnySize ... skip
+    V-SFMT19937      128     128      64     AnySize ... skip
+    V-SFMT19937      128     128     256     AnySize ... skip
+    V-SFMT19937      128     128     624     AnySize ... skip
+    V-SFMT19937      128     128    1024     AnySize ... skip
+    V-SFMT19937      128     128    4096     AnySize ... skip
+    V-SFMT19937      128     128   16384     AnySize ... skip
+    V-SFMT19937      256      32       1      Scalar ... skip
+    V-SFMT19937      256      32      16     Block16 ... skip
+    V-SFMT19937      256      32    1248       State ... skip
+    V-SFMT19937      256      32       1     AnySize ... skip
+    V-SFMT19937      256      32       4     AnySize ... skip
+    V-SFMT19937      256      32      16     AnySize ... skip
+    V-SFMT19937      256      32      64     AnySize ... skip
+    V-SFMT19937      256      32     256     AnySize ... skip
+    V-SFMT19937      256      32     624     AnySize ... skip
+    V-SFMT19937      256      32    1024     AnySize ... skip
+    V-SFMT19937      256      32    4096     AnySize ... skip
+    V-SFMT19937      256      32   16384     AnySize ... skip
+    V-SFMT19937      256     128       1      Scalar ... skip
+    V-SFMT19937      256     128      16     Block16 ... skip
+    V-SFMT19937      256     128    1248       State ... skip
+    V-SFMT19937      256     128       1     AnySize ... skip
+    V-SFMT19937      256     128       4     AnySize ... skip
+    V-SFMT19937      256     128      16     AnySize ... skip
+    V-SFMT19937      256     128      64     AnySize ... skip
+    V-SFMT19937      256     128     256     AnySize ... skip
+    V-SFMT19937      256     128     624     AnySize ... skip
+    V-SFMT19937      256     128    1024     AnySize ... skip
+    V-SFMT19937      256     128    4096     AnySize ... skip
+    V-SFMT19937      256     128   16384     AnySize ... skip
+    V-SFMT19937      256     256       1      Scalar ... skip
+    V-SFMT19937      256     256      16     Block16 ... skip
+    V-SFMT19937      256     256    1248       State ... done in: 2.70s
+    V-SFMT19937      256     256       1     AnySize ... skip
+    V-SFMT19937      256     256       4     AnySize ... skip
+    V-SFMT19937      256     256      16     AnySize ... skip
+    V-SFMT19937      256     256      64     AnySize ... skip
+    V-SFMT19937      256     256     256     AnySize ... skip
+    V-SFMT19937      256     256     624     AnySize ... skip
+    V-SFMT19937      256     256    1024     AnySize ... skip
+    V-SFMT19937      256     256    4096     AnySize ... skip
+    V-SFMT19937      256     256   16384     AnySize ... skip
+    V-SFMT19937      512      32       1      Scalar ... skip
+    V-SFMT19937      512      32      16     Block16 ... skip
+    V-SFMT19937      512      32    2496       State ... skip
+    V-SFMT19937      512      32       1     AnySize ... skip
+    V-SFMT19937      512      32       4     AnySize ... skip
+    V-SFMT19937      512      32      16     AnySize ... skip
+    V-SFMT19937      512      32      64     AnySize ... skip
+    V-SFMT19937      512      32     256     AnySize ... skip
+    V-SFMT19937      512      32     624     AnySize ... skip
+    V-SFMT19937      512      32    1024     AnySize ... skip
+    V-SFMT19937      512      32    4096     AnySize ... skip
+    V-SFMT19937      512      32   16384     AnySize ... skip
+    V-SFMT19937      512     128       1      Scalar ... skip
+    V-SFMT19937      512     128      16     Block16 ... skip
+    V-SFMT19937      512     128    2496       State ... skip
+    V-SFMT19937      512     128       1     AnySize ... skip
+    V-SFMT19937      512     128       4     AnySize ... skip
+    V-SFMT19937      512     128      16     AnySize ... skip
+    V-SFMT19937      512     128      64     AnySize ... skip
+    V-SFMT19937      512     128     256     AnySize ... skip
+    V-SFMT19937      512     128     624     AnySize ... skip
+    V-SFMT19937      512     128    1024     AnySize ... skip
+    V-SFMT19937      512     128    4096     AnySize ... skip
+    V-SFMT19937      512     128   16384     AnySize ... skip
+    V-SFMT19937      512     256       1      Scalar ... skip
+    V-SFMT19937      512     256      16     Block16 ... skip
+    V-SFMT19937      512     256    2496       State ... skip
+    V-SFMT19937      512     256       1     AnySize ... skip
+    V-SFMT19937      512     256       4     AnySize ... skip
+    V-SFMT19937      512     256      16     AnySize ... skip
+    V-SFMT19937      512     256      64     AnySize ... skip
+    V-SFMT19937      512     256     256     AnySize ... skip
+    V-SFMT19937      512     256     624     AnySize ... done in: 2.22s
+    V-SFMT19937      512     256    1024     AnySize ... skip
+    V-SFMT19937      512     256    4096     AnySize ... skip
+    V-SFMT19937      512     256   16384     AnySize ... skip
+    V-SFMT19937      512     512       1      Scalar ... skip
+    V-SFMT19937      512     512      16     Block16 ... skip
+    V-SFMT19937      512     512    2496       State ... done in: 1.53s
+    V-SFMT19937      512     512       1     AnySize ... skip
+    V-SFMT19937      512     512       4     AnySize ... skip
+    V-SFMT19937      512     512      16     AnySize ... skip
+    V-SFMT19937      512     512      64     AnySize ... skip
+    V-SFMT19937      512     512     256     AnySize ... skip
+    V-SFMT19937      512     512     624     AnySize ... skip
+    V-SFMT19937      512     512    1024     AnySize ... skip
+    V-SFMT19937      512     512    4096     AnySize ... skip
+    V-SFMT19937      512     512   16384     AnySize ... skip
+Iteration:  7: generating 15974400000 32-bits random numbers
+      Generator WordSize RegSize BlkSize   QueryMode
+   ORIG-MT19937       32      32       1      Scalar ... skip
+ ORIG-SFMT19937      128     128       1      Scalar ... skip
+ ORIG-SFMT19937      128     128    1024     AnySize ... skip
+ ORIG-SFMT19937      128     128    4096     AnySize ... skip
+ ORIG-SFMT19937      128     128   16384     AnySize ... skip
+    MKL-MT19937       32     512       1     AnySize ... skip
+    MKL-MT19937       32     512       4     AnySize ... skip
+    MKL-MT19937       32     512      16     AnySize ... skip
+    MKL-MT19937       32     512      64     AnySize ... skip
+    MKL-MT19937       32     512     256     AnySize ... done in: 4.36s
+    MKL-MT19937       32     512     624     AnySize ... done in: 3.95s
+    MKL-MT19937       32     512    1024     AnySize ... done in: 4.17s
+    MKL-MT19937       32     512    4096     AnySize ... done in: 2.68s
+    MKL-MT19937       32     512   16384     AnySize ... skip
+  MKL-SFMT19937      128     512       1     AnySize ... skip
+  MKL-SFMT19937      128     512       4     AnySize ... skip
+  MKL-SFMT19937      128     512      16     AnySize ... skip
+  MKL-SFMT19937      128     512      64     AnySize ... skip
+  MKL-SFMT19937      128     512     256     AnySize ... skip
+  MKL-SFMT19937      128     512     624     AnySize ... done in: 4.66s
+  MKL-SFMT19937      128     512    1024     AnySize ... done in: 4.13s
+  MKL-SFMT19937      128     512    4096     AnySize ... skip
+  MKL-SFMT19937      128     512   16384     AnySize ... skip
+      V-MT19937       32      32       1      Scalar ... skip
+      V-MT19937       32      32      16     Block16 ... skip
+      V-MT19937       32      32     624       State ... skip
+      V-MT19937       32      32       1     AnySize ... skip
+      V-MT19937       32      32       4     AnySize ... skip
+      V-MT19937       32      32      16     AnySize ... skip
+      V-MT19937       32      32      64     AnySize ... skip
+      V-MT19937       32      32     256     AnySize ... skip
+      V-MT19937       32      32     624     AnySize ... skip
+      V-MT19937       32      32    1024     AnySize ... skip
+      V-MT19937       32      32    4096     AnySize ... skip
+      V-MT19937       32      32   16384     AnySize ... skip
+      V-MT19937      128      32       1      Scalar ... skip
+      V-MT19937      128      32      16     Block16 ... skip
+      V-MT19937      128      32    2496       State ... skip
+      V-MT19937      128      32       1     AnySize ... skip
+      V-MT19937      128      32       4     AnySize ... skip
+      V-MT19937      128      32      16     AnySize ... skip
+      V-MT19937      128      32      64     AnySize ... skip
+      V-MT19937      128      32     256     AnySize ... skip
+      V-MT19937      128      32     624     AnySize ... skip
+      V-MT19937      128      32    1024     AnySize ... skip
+      V-MT19937      128      32    4096     AnySize ... skip
+      V-MT19937      128      32   16384     AnySize ... skip
+      V-MT19937      128     128       1      Scalar ... skip
+      V-MT19937      128     128      16     Block16 ... skip
+      V-MT19937      128     128    2496       State ... done in: 4.90s
+      V-MT19937      128     128       1     AnySize ... skip
+      V-MT19937      128     128       4     AnySize ... skip
+      V-MT19937      128     128      16     AnySize ... skip
+      V-MT19937      128     128      64     AnySize ... skip
+      V-MT19937      128     128     256     AnySize ... skip
+      V-MT19937      128     128     624     AnySize ... skip
+      V-MT19937      128     128    1024     AnySize ... skip
+      V-MT19937      128     128    4096     AnySize ... skip
+      V-MT19937      128     128   16384     AnySize ... skip
+      V-MT19937      256      32       1      Scalar ... skip
+      V-MT19937      256      32      16     Block16 ... skip
+      V-MT19937      256      32    4992       State ... skip
+      V-MT19937      256      32       1     AnySize ... skip
+      V-MT19937      256      32       4     AnySize ... skip
+      V-MT19937      256      32      16     AnySize ... skip
+      V-MT19937      256      32      64     AnySize ... skip
+      V-MT19937      256      32     256     AnySize ... skip
+      V-MT19937      256      32     624     AnySize ... skip
+      V-MT19937      256      32    1024     AnySize ... skip
+      V-MT19937      256      32    4096     AnySize ... skip
+      V-MT19937      256      32   16384     AnySize ... skip
+      V-MT19937      256     128       1      Scalar ... skip
+      V-MT19937      256     128      16     Block16 ... skip
+      V-MT19937      256     128    4992       State ... skip
+      V-MT19937      256     128       1     AnySize ... skip
+      V-MT19937      256     128       4     AnySize ... skip
+      V-MT19937      256     128      16     AnySize ... skip
+      V-MT19937      256     128      64     AnySize ... skip
+      V-MT19937      256     128     256     AnySize ... done in: 5.11s
+      V-MT19937      256     128     624     AnySize ... skip
+      V-MT19937      256     128    1024     AnySize ... skip
+      V-MT19937      256     128    4096     AnySize ... skip
+      V-MT19937      256     128   16384     AnySize ... skip
+      V-MT19937      256     256       1      Scalar ... skip
+      V-MT19937      256     256      16     Block16 ... done in: 3.10s
+      V-MT19937      256     256    4992       State ... done in: 3.09s
+      V-MT19937      256     256       1     AnySize ... skip
+      V-MT19937      256     256       4     AnySize ... skip
+      V-MT19937      256     256      16     AnySize ... skip
+      V-MT19937      256     256      64     AnySize ... skip
+      V-MT19937      256     256     256     AnySize ... skip
+      V-MT19937      256     256     624     AnySize ... skip
+      V-MT19937      256     256    1024     AnySize ... skip
+      V-MT19937      256     256    4096     AnySize ... skip
+      V-MT19937      256     256   16384     AnySize ... skip
+      V-MT19937      512      32       1      Scalar ... skip
+      V-MT19937      512      32      16     Block16 ... skip
+      V-MT19937      512      32    9984       State ... skip
+      V-MT19937      512      32       1     AnySize ... skip
+      V-MT19937      512      32       4     AnySize ... skip
+      V-MT19937      512      32      16     AnySize ... skip
+      V-MT19937      512      32      64     AnySize ... skip
+      V-MT19937      512      32     256     AnySize ... skip
+      V-MT19937      512      32     624     AnySize ... skip
+      V-MT19937      512      32    1024     AnySize ... skip
+      V-MT19937      512      32    4096     AnySize ... skip
+      V-MT19937      512      32   16384     AnySize ... skip
+      V-MT19937      512     128       1      Scalar ... skip
+      V-MT19937      512     128      16     Block16 ... skip
+      V-MT19937      512     128    9984       State ... done in: 5.31s
+      V-MT19937      512     128       1     AnySize ... skip
+      V-MT19937      512     128       4     AnySize ... skip
+      V-MT19937      512     128      16     AnySize ... skip
+      V-MT19937      512     128      64     AnySize ... skip
+      V-MT19937      512     128     256     AnySize ... skip
+      V-MT19937      512     128     624     AnySize ... skip
+      V-MT19937      512     128    1024     AnySize ... skip
+      V-MT19937      512     128    4096     AnySize ... skip
+      V-MT19937      512     128   16384     AnySize ... skip
+      V-MT19937      512     256       1      Scalar ... skip
+      V-MT19937      512     256      16     Block16 ... skip
+      V-MT19937      512     256    9984       State ... done in: 3.49s
+      V-MT19937      512     256       1     AnySize ... skip
+      V-MT19937      512     256       4     AnySize ... skip
+      V-MT19937      512     256      16     AnySize ... skip
+      V-MT19937      512     256      64     AnySize ... skip
+      V-MT19937      512     256     256     AnySize ... done in: 3.11s
+      V-MT19937      512     256     624     AnySize ... skip
+      V-MT19937      512     256    1024     AnySize ... skip
+      V-MT19937      512     256    4096     AnySize ... skip
+      V-MT19937      512     256   16384     AnySize ... skip
+      V-MT19937      512     512       1      Scalar ... skip
+      V-MT19937      512     512      16     Block16 ... skip
+      V-MT19937      512     512    9984       State ... done in: 2.99s
+      V-MT19937      512     512       1     AnySize ... skip
+      V-MT19937      512     512       4     AnySize ... skip
+      V-MT19937      512     512      16     AnySize ... skip
+      V-MT19937      512     512      64     AnySize ... skip
+      V-MT19937      512     512     256     AnySize ... skip
+      V-MT19937      512     512     624     AnySize ... done in: 2.64s
+      V-MT19937      512     512    1024     AnySize ... done in: 2.67s
+      V-MT19937      512     512    4096     AnySize ... skip
+      V-MT19937      512     512   16384     AnySize ... skip
+    V-SFMT19937      128      32       1      Scalar ... skip
+    V-SFMT19937      128      32      16     Block16 ... skip
+    V-SFMT19937      128      32     624       State ... skip
+    V-SFMT19937      128      32       1     AnySize ... skip
+    V-SFMT19937      128      32       4     AnySize ... skip
+    V-SFMT19937      128      32      16     AnySize ... skip
+    V-SFMT19937      128      32      64     AnySize ... skip
+    V-SFMT19937      128      32     256     AnySize ... skip
+    V-SFMT19937      128      32     624     AnySize ... skip
+    V-SFMT19937      128      32    1024     AnySize ... skip
+    V-SFMT19937      128      32    4096     AnySize ... skip
+    V-SFMT19937      128      32   16384     AnySize ... skip
+    V-SFMT19937      128     128       1      Scalar ... skip
+    V-SFMT19937      128     128      16     Block16 ... skip
+    V-SFMT19937      128     128     624       State ... skip
+    V-SFMT19937      128     128       1     AnySize ... skip
+    V-SFMT19937      128     128       4     AnySize ... skip
+    V-SFMT19937      128     128      16     AnySize ... skip
+    V-SFMT19937      128     128      64     AnySize ... skip
+    V-SFMT19937      128     128     256     AnySize ... skip
+    V-SFMT19937      128     128     624     AnySize ... skip
+    V-SFMT19937      128     128    1024     AnySize ... skip
+    V-SFMT19937      128     128    4096     AnySize ... skip
+    V-SFMT19937      128     128   16384     AnySize ... skip
+    V-SFMT19937      256      32       1      Scalar ... skip
+    V-SFMT19937      256      32      16     Block16 ... skip
+    V-SFMT19937      256      32    1248       State ... skip
+    V-SFMT19937      256      32       1     AnySize ... skip
+    V-SFMT19937      256      32       4     AnySize ... skip
+    V-SFMT19937      256      32      16     AnySize ... skip
+    V-SFMT19937      256      32      64     AnySize ... skip
+    V-SFMT19937      256      32     256     AnySize ... skip
+    V-SFMT19937      256      32     624     AnySize ... skip
+    V-SFMT19937      256      32    1024     AnySize ... skip
+    V-SFMT19937      256      32    4096     AnySize ... skip
+    V-SFMT19937      256      32   16384     AnySize ... skip
+    V-SFMT19937      256     128       1      Scalar ... skip
+    V-SFMT19937      256     128      16     Block16 ... skip
+    V-SFMT19937      256     128    1248       State ... skip
+    V-SFMT19937      256     128       1     AnySize ... skip
+    V-SFMT19937      256     128       4     AnySize ... skip
+    V-SFMT19937      256     128      16     AnySize ... skip
+    V-SFMT19937      256     128      64     AnySize ... skip
+    V-SFMT19937      256     128     256     AnySize ... skip
+    V-SFMT19937      256     128     624     AnySize ... skip
+    V-SFMT19937      256     128    1024     AnySize ... skip
+    V-SFMT19937      256     128    4096     AnySize ... skip
+    V-SFMT19937      256     128   16384     AnySize ... skip
+    V-SFMT19937      256     256       1      Scalar ... skip
+    V-SFMT19937      256     256      16     Block16 ... skip
+    V-SFMT19937      256     256    1248       State ... done in: 2.69s
+    V-SFMT19937      256     256       1     AnySize ... skip
+    V-SFMT19937      256     256       4     AnySize ... skip
+    V-SFMT19937      256     256      16     AnySize ... skip
+    V-SFMT19937      256     256      64     AnySize ... skip
+    V-SFMT19937      256     256     256     AnySize ... skip
+    V-SFMT19937      256     256     624     AnySize ... skip
+    V-SFMT19937      256     256    1024     AnySize ... skip
+    V-SFMT19937      256     256    4096     AnySize ... skip
+    V-SFMT19937      256     256   16384     AnySize ... skip
+    V-SFMT19937      512      32       1      Scalar ... skip
+    V-SFMT19937      512      32      16     Block16 ... skip
+    V-SFMT19937      512      32    2496       State ... skip
+    V-SFMT19937      512      32       1     AnySize ... skip
+    V-SFMT19937      512      32       4     AnySize ... skip
+    V-SFMT19937      512      32      16     AnySize ... skip
+    V-SFMT19937      512      32      64     AnySize ... skip
+    V-SFMT19937      512      32     256     AnySize ... skip
+    V-SFMT19937      512      32     624     AnySize ... skip
+    V-SFMT19937      512      32    1024     AnySize ... skip
+    V-SFMT19937      512      32    4096     AnySize ... skip
+    V-SFMT19937      512      32   16384     AnySize ... skip
+    V-SFMT19937      512     128       1      Scalar ... skip
+    V-SFMT19937      512     128      16     Block16 ... skip
+    V-SFMT19937      512     128    2496       State ... skip
+    V-SFMT19937      512     128       1     AnySize ... skip
+    V-SFMT19937      512     128       4     AnySize ... skip
+    V-SFMT19937      512     128      16     AnySize ... skip
+    V-SFMT19937      512     128      64     AnySize ... skip
+    V-SFMT19937      512     128     256     AnySize ... skip
+    V-SFMT19937      512     128     624     AnySize ... skip
+    V-SFMT19937      512     128    1024     AnySize ... skip
+    V-SFMT19937      512     128    4096     AnySize ... skip
+    V-SFMT19937      512     128   16384     AnySize ... skip
+    V-SFMT19937      512     256       1      Scalar ... skip
+    V-SFMT19937      512     256      16     Block16 ... skip
+    V-SFMT19937      512     256    2496       State ... skip
+    V-SFMT19937      512     256       1     AnySize ... skip
+    V-SFMT19937      512     256       4     AnySize ... skip
+    V-SFMT19937      512     256      16     AnySize ... skip
+    V-SFMT19937      512     256      64     AnySize ... skip
+    V-SFMT19937      512     256     256     AnySize ... skip
+    V-SFMT19937      512     256     624     AnySize ... done in: 2.22s
+    V-SFMT19937      512     256    1024     AnySize ... skip
+    V-SFMT19937      512     256    4096     AnySize ... skip
+    V-SFMT19937      512     256   16384     AnySize ... skip
+    V-SFMT19937      512     512       1      Scalar ... skip
+    V-SFMT19937      512     512      16     Block16 ... skip
+    V-SFMT19937      512     512    2496       State ... done in: 1.53s
+    V-SFMT19937      512     512       1     AnySize ... skip
+    V-SFMT19937      512     512       4     AnySize ... skip
+    V-SFMT19937      512     512      16     AnySize ... skip
+    V-SFMT19937      512     512      64     AnySize ... skip
+    V-SFMT19937      512     512     256     AnySize ... skip
+    V-SFMT19937      512     512     624     AnySize ... skip
+    V-SFMT19937      512     512    1024     AnySize ... skip
+    V-SFMT19937      512     512    4096     AnySize ... skip
+    V-SFMT19937      512     512   16384     AnySize ... skip
+Iteration:  8: generating 15974400000 32-bits random numbers
+      Generator WordSize RegSize BlkSize   QueryMode
+   ORIG-MT19937       32      32       1      Scalar ... skip
+ ORIG-SFMT19937      128     128       1      Scalar ... skip
+ ORIG-SFMT19937      128     128    1024     AnySize ... skip
+ ORIG-SFMT19937      128     128    4096     AnySize ... skip
+ ORIG-SFMT19937      128     128   16384     AnySize ... skip
+    MKL-MT19937       32     512       1     AnySize ... skip
+    MKL-MT19937       32     512       4     AnySize ... skip
+    MKL-MT19937       32     512      16     AnySize ... skip
+    MKL-MT19937       32     512      64     AnySize ... skip
+    MKL-MT19937       32     512     256     AnySize ... done in: 4.36s
+    MKL-MT19937       32     512     624     AnySize ... done in: 3.95s
+    MKL-MT19937       32     512    1024     AnySize ... done in: 4.17s
+    MKL-MT19937       32     512    4096     AnySize ... skip
+    MKL-MT19937       32     512   16384     AnySize ... skip
+  MKL-SFMT19937      128     512       1     AnySize ... skip
+  MKL-SFMT19937      128     512       4     AnySize ... skip
+  MKL-SFMT19937      128     512      16     AnySize ... skip
+  MKL-SFMT19937      128     512      64     AnySize ... skip
+  MKL-SFMT19937      128     512     256     AnySize ... skip
+  MKL-SFMT19937      128     512     624     AnySize ... done in: 4.62s
+  MKL-SFMT19937      128     512    1024     AnySize ... done in: 4.14s
+  MKL-SFMT19937      128     512    4096     AnySize ... skip
+  MKL-SFMT19937      128     512   16384     AnySize ... skip
+      V-MT19937       32      32       1      Scalar ... skip
+      V-MT19937       32      32      16     Block16 ... skip
+      V-MT19937       32      32     624       State ... skip
+      V-MT19937       32      32       1     AnySize ... skip
+      V-MT19937       32      32       4     AnySize ... skip
+      V-MT19937       32      32      16     AnySize ... skip
+      V-MT19937       32      32      64     AnySize ... skip
+      V-MT19937       32      32     256     AnySize ... skip
+      V-MT19937       32      32     624     AnySize ... skip
+      V-MT19937       32      32    1024     AnySize ... skip
+      V-MT19937       32      32    4096     AnySize ... skip
+      V-MT19937       32      32   16384     AnySize ... skip
+      V-MT19937      128      32       1      Scalar ... skip
+      V-MT19937      128      32      16     Block16 ... skip
+      V-MT19937      128      32    2496       State ... skip
+      V-MT19937      128      32       1     AnySize ... skip
+      V-MT19937      128      32       4     AnySize ... skip
+      V-MT19937      128      32      16     AnySize ... skip
+      V-MT19937      128      32      64     AnySize ... skip
+      V-MT19937      128      32     256     AnySize ... skip
+      V-MT19937      128      32     624     AnySize ... skip
+      V-MT19937      128      32    1024     AnySize ... skip
+      V-MT19937      128      32    4096     AnySize ... skip
+      V-MT19937      128      32   16384     AnySize ... skip
+      V-MT19937      128     128       1      Scalar ... skip
+      V-MT19937      128     128      16     Block16 ... skip
+      V-MT19937      128     128    2496       State ... done in: 4.90s
+      V-MT19937      128     128       1     AnySize ... skip
+      V-MT19937      128     128       4     AnySize ... skip
+      V-MT19937      128     128      16     AnySize ... skip
+      V-MT19937      128     128      64     AnySize ... skip
+      V-MT19937      128     128     256     AnySize ... skip
+      V-MT19937      128     128     624     AnySize ... skip
+      V-MT19937      128     128    1024     AnySize ... skip
+      V-MT19937      128     128    4096     AnySize ... skip
+      V-MT19937      128     128   16384     AnySize ... skip
+      V-MT19937      256      32       1      Scalar ... skip
+      V-MT19937      256      32      16     Block16 ... skip
+      V-MT19937      256      32    4992       State ... skip
+      V-MT19937      256      32       1     AnySize ... skip
+      V-MT19937      256      32       4     AnySize ... skip
+      V-MT19937      256      32      16     AnySize ... skip
+      V-MT19937      256      32      64     AnySize ... skip
+      V-MT19937      256      32     256     AnySize ... skip
+      V-MT19937      256      32     624     AnySize ... skip
+      V-MT19937      256      32    1024     AnySize ... skip
+      V-MT19937      256      32    4096     AnySize ... skip
+      V-MT19937      256      32   16384     AnySize ... skip
+      V-MT19937      256     128       1      Scalar ... skip
+      V-MT19937      256     128      16     Block16 ... skip
+      V-MT19937      256     128    4992       State ... skip
+      V-MT19937      256     128       1     AnySize ... skip
+      V-MT19937      256     128       4     AnySize ... skip
+      V-MT19937      256     128      16     AnySize ... skip
+      V-MT19937      256     128      64     AnySize ... skip
+      V-MT19937      256     128     256     AnySize ... done in: 5.11s
+      V-MT19937      256     128     624     AnySize ... skip
+      V-MT19937      256     128    1024     AnySize ... skip
+      V-MT19937      256     128    4096     AnySize ... skip
+      V-MT19937      256     128   16384     AnySize ... skip
+      V-MT19937      256     256       1      Scalar ... skip
+      V-MT19937      256     256      16     Block16 ... done in: 3.10s
+      V-MT19937      256     256    4992       State ... done in: 3.09s
+      V-MT19937      256     256       1     AnySize ... skip
+      V-MT19937      256     256       4     AnySize ... skip
+      V-MT19937      256     256      16     AnySize ... skip
+      V-MT19937      256     256      64     AnySize ... skip
+      V-MT19937      256     256     256     AnySize ... skip
+      V-MT19937      256     256     624     AnySize ... skip
+      V-MT19937      256     256    1024     AnySize ... skip
+      V-MT19937      256     256    4096     AnySize ... skip
+      V-MT19937      256     256   16384     AnySize ... skip
+      V-MT19937      512      32       1      Scalar ... skip
+      V-MT19937      512      32      16     Block16 ... skip
+      V-MT19937      512      32    9984       State ... skip
+      V-MT19937      512      32       1     AnySize ... skip
+      V-MT19937      512      32       4     AnySize ... skip
+      V-MT19937      512      32      16     AnySize ... skip
+      V-MT19937      512      32      64     AnySize ... skip
+      V-MT19937      512      32     256     AnySize ... skip
+      V-MT19937      512      32     624     AnySize ... skip
+      V-MT19937      512      32    1024     AnySize ... skip
+      V-MT19937      512      32    4096     AnySize ... skip
+      V-MT19937      512      32   16384     AnySize ... skip
+      V-MT19937      512     128       1      Scalar ... skip
+      V-MT19937      512     128      16     Block16 ... skip
+      V-MT19937      512     128    9984       State ... done in: 5.31s
+      V-MT19937      512     128       1     AnySize ... skip
+      V-MT19937      512     128       4     AnySize ... skip
+      V-MT19937      512     128      16     AnySize ... skip
+      V-MT19937      512     128      64     AnySize ... skip
+      V-MT19937      512     128     256     AnySize ... skip
+      V-MT19937      512     128     624     AnySize ... skip
+      V-MT19937      512     128    1024     AnySize ... skip
+      V-MT19937      512     128    4096     AnySize ... skip
+      V-MT19937      512     128   16384     AnySize ... skip
+      V-MT19937      512     256       1      Scalar ... skip
+      V-MT19937      512     256      16     Block16 ... skip
+      V-MT19937      512     256    9984       State ... done in: 3.49s
+      V-MT19937      512     256       1     AnySize ... skip
+      V-MT19937      512     256       4     AnySize ... skip
+      V-MT19937      512     256      16     AnySize ... skip
+      V-MT19937      512     256      64     AnySize ... skip
+      V-MT19937      512     256     256     AnySize ... done in: 3.11s
+      V-MT19937      512     256     624     AnySize ... skip
+      V-MT19937      512     256    1024     AnySize ... skip
+      V-MT19937      512     256    4096     AnySize ... skip
+      V-MT19937      512     256   16384     AnySize ... skip
+      V-MT19937      512     512       1      Scalar ... skip
+      V-MT19937      512     512      16     Block16 ... skip
+      V-MT19937      512     512    9984       State ... done in: 2.99s
+      V-MT19937      512     512       1     AnySize ... skip
+      V-MT19937      512     512       4     AnySize ... skip
+      V-MT19937      512     512      16     AnySize ... skip
+      V-MT19937      512     512      64     AnySize ... skip
+      V-MT19937      512     512     256     AnySize ... skip
+      V-MT19937      512     512     624     AnySize ... done in: 2.65s
+      V-MT19937      512     512    1024     AnySize ... done in: 2.67s
+      V-MT19937      512     512    4096     AnySize ... skip
+      V-MT19937      512     512   16384     AnySize ... skip
+    V-SFMT19937      128      32       1      Scalar ... skip
+    V-SFMT19937      128      32      16     Block16 ... skip
+    V-SFMT19937      128      32     624       State ... skip
+    V-SFMT19937      128      32       1     AnySize ... skip
+    V-SFMT19937      128      32       4     AnySize ... skip
+    V-SFMT19937      128      32      16     AnySize ... skip
+    V-SFMT19937      128      32      64     AnySize ... skip
+    V-SFMT19937      128      32     256     AnySize ... skip
+    V-SFMT19937      128      32     624     AnySize ... skip
+    V-SFMT19937      128      32    1024     AnySize ... skip
+    V-SFMT19937      128      32    4096     AnySize ... skip
+    V-SFMT19937      128      32   16384     AnySize ... skip
+    V-SFMT19937      128     128       1      Scalar ... skip
+    V-SFMT19937      128     128      16     Block16 ... skip
+    V-SFMT19937      128     128     624       State ... skip
+    V-SFMT19937      128     128       1     AnySize ... skip
+    V-SFMT19937      128     128       4     AnySize ... skip
+    V-SFMT19937      128     128      16     AnySize ... skip
+    V-SFMT19937      128     128      64     AnySize ... skip
+    V-SFMT19937      128     128     256     AnySize ... skip
+    V-SFMT19937      128     128     624     AnySize ... skip
+    V-SFMT19937      128     128    1024     AnySize ... skip
+    V-SFMT19937      128     128    4096     AnySize ... skip
+    V-SFMT19937      128     128   16384     AnySize ... skip
+    V-SFMT19937      256      32       1      Scalar ... skip
+    V-SFMT19937      256      32      16     Block16 ... skip
+    V-SFMT19937      256      32    1248       State ... skip
+    V-SFMT19937      256      32       1     AnySize ... skip
+    V-SFMT19937      256      32       4     AnySize ... skip
+    V-SFMT19937      256      32      16     AnySize ... skip
+    V-SFMT19937      256      32      64     AnySize ... skip
+    V-SFMT19937      256      32     256     AnySize ... skip
+    V-SFMT19937      256      32     624     AnySize ... skip
+    V-SFMT19937      256      32    1024     AnySize ... skip
+    V-SFMT19937      256      32    4096     AnySize ... skip
+    V-SFMT19937      256      32   16384     AnySize ... skip
+    V-SFMT19937      256     128       1      Scalar ... skip
+    V-SFMT19937      256     128      16     Block16 ... skip
+    V-SFMT19937      256     128    1248       State ... skip
+    V-SFMT19937      256     128       1     AnySize ... skip
+    V-SFMT19937      256     128       4     AnySize ... skip
+    V-SFMT19937      256     128      16     AnySize ... skip
+    V-SFMT19937      256     128      64     AnySize ... skip
+    V-SFMT19937      256     128     256     AnySize ... skip
+    V-SFMT19937      256     128     624     AnySize ... skip
+    V-SFMT19937      256     128    1024     AnySize ... skip
+    V-SFMT19937      256     128    4096     AnySize ... skip
+    V-SFMT19937      256     128   16384     AnySize ... skip
+    V-SFMT19937      256     256       1      Scalar ... skip
+    V-SFMT19937      256     256      16     Block16 ... skip
+    V-SFMT19937      256     256    1248       State ... done in: 2.69s
+    V-SFMT19937      256     256       1     AnySize ... skip
+    V-SFMT19937      256     256       4     AnySize ... skip
+    V-SFMT19937      256     256      16     AnySize ... skip
+    V-SFMT19937      256     256      64     AnySize ... skip
+    V-SFMT19937      256     256     256     AnySize ... skip
+    V-SFMT19937      256     256     624     AnySize ... skip
+    V-SFMT19937      256     256    1024     AnySize ... skip
+    V-SFMT19937      256     256    4096     AnySize ... skip
+    V-SFMT19937      256     256   16384     AnySize ... skip
+    V-SFMT19937      512      32       1      Scalar ... skip
+    V-SFMT19937      512      32      16     Block16 ... skip
+    V-SFMT19937      512      32    2496       State ... skip
+    V-SFMT19937      512      32       1     AnySize ... skip
+    V-SFMT19937      512      32       4     AnySize ... skip
+    V-SFMT19937      512      32      16     AnySize ... skip
+    V-SFMT19937      512      32      64     AnySize ... skip
+    V-SFMT19937      512      32     256     AnySize ... skip
+    V-SFMT19937      512      32     624     AnySize ... skip
+    V-SFMT19937      512      32    1024     AnySize ... skip
+    V-SFMT19937      512      32    4096     AnySize ... skip
+    V-SFMT19937      512      32   16384     AnySize ... skip
+    V-SFMT19937      512     128       1      Scalar ... skip
+    V-SFMT19937      512     128      16     Block16 ... skip
+    V-SFMT19937      512     128    2496       State ... skip
+    V-SFMT19937      512     128       1     AnySize ... skip
+    V-SFMT19937      512     128       4     AnySize ... skip
+    V-SFMT19937      512     128      16     AnySize ... skip
+    V-SFMT19937      512     128      64     AnySize ... skip
+    V-SFMT19937      512     128     256     AnySize ... skip
+    V-SFMT19937      512     128     624     AnySize ... skip
+    V-SFMT19937      512     128    1024     AnySize ... skip
+    V-SFMT19937      512     128    4096     AnySize ... skip
+    V-SFMT19937      512     128   16384     AnySize ... skip
+    V-SFMT19937      512     256       1      Scalar ... skip
+    V-SFMT19937      512     256      16     Block16 ... skip
+    V-SFMT19937      512     256    2496       State ... skip
+    V-SFMT19937      512     256       1     AnySize ... skip
+    V-SFMT19937      512     256       4     AnySize ... skip
+    V-SFMT19937      512     256      16     AnySize ... skip
+    V-SFMT19937      512     256      64     AnySize ... skip
+    V-SFMT19937      512     256     256     AnySize ... skip
+    V-SFMT19937      512     256     624     AnySize ... done in: 2.22s
+    V-SFMT19937      512     256    1024     AnySize ... skip
+    V-SFMT19937      512     256    4096     AnySize ... skip
+    V-SFMT19937      512     256   16384     AnySize ... skip
+    V-SFMT19937      512     512       1      Scalar ... skip
+    V-SFMT19937      512     512      16     Block16 ... skip
+    V-SFMT19937      512     512    2496       State ... done in: 1.53s
+    V-SFMT19937      512     512       1     AnySize ... skip
+    V-SFMT19937      512     512       4     AnySize ... skip
+    V-SFMT19937      512     512      16     AnySize ... skip
+    V-SFMT19937      512     512      64     AnySize ... skip
+    V-SFMT19937      512     512     256     AnySize ... skip
+    V-SFMT19937      512     512     624     AnySize ... skip
+    V-SFMT19937      512     512    1024     AnySize ... skip
+    V-SFMT19937      512     512    4096     AnySize ... skip
+    V-SFMT19937      512     512   16384     AnySize ... skip
+Iteration:  9: generating 15974400000 32-bits random numbers
+      Generator WordSize RegSize BlkSize   QueryMode
+   ORIG-MT19937       32      32       1      Scalar ... skip
+ ORIG-SFMT19937      128     128       1      Scalar ... skip
+ ORIG-SFMT19937      128     128    1024     AnySize ... skip
+ ORIG-SFMT19937      128     128    4096     AnySize ... skip
+ ORIG-SFMT19937      128     128   16384     AnySize ... skip
+    MKL-MT19937       32     512       1     AnySize ... skip
+    MKL-MT19937       32     512       4     AnySize ... skip
+    MKL-MT19937       32     512      16     AnySize ... skip
+    MKL-MT19937       32     512      64     AnySize ... skip
+    MKL-MT19937       32     512     256     AnySize ... done in: 4.36s
+    MKL-MT19937       32     512     624     AnySize ... done in: 3.95s
+    MKL-MT19937       32     512    1024     AnySize ... done in: 4.17s
+    MKL-MT19937       32     512    4096     AnySize ... skip
+    MKL-MT19937       32     512   16384     AnySize ... skip
+  MKL-SFMT19937      128     512       1     AnySize ... skip
+  MKL-SFMT19937      128     512       4     AnySize ... skip
+  MKL-SFMT19937      128     512      16     AnySize ... skip
+  MKL-SFMT19937      128     512      64     AnySize ... skip
+  MKL-SFMT19937      128     512     256     AnySize ... skip
+  MKL-SFMT19937      128     512     624     AnySize ... done in: 4.59s
+  MKL-SFMT19937      128     512    1024     AnySize ... done in: 4.13s
+  MKL-SFMT19937      128     512    4096     AnySize ... skip
+  MKL-SFMT19937      128     512   16384     AnySize ... skip
+      V-MT19937       32      32       1      Scalar ... skip
+      V-MT19937       32      32      16     Block16 ... skip
+      V-MT19937       32      32     624       State ... skip
+      V-MT19937       32      32       1     AnySize ... skip
+      V-MT19937       32      32       4     AnySize ... skip
+      V-MT19937       32      32      16     AnySize ... skip
+      V-MT19937       32      32      64     AnySize ... skip
+      V-MT19937       32      32     256     AnySize ... skip
+      V-MT19937       32      32     624     AnySize ... skip
+      V-MT19937       32      32    1024     AnySize ... skip
+      V-MT19937       32      32    4096     AnySize ... skip
+      V-MT19937       32      32   16384     AnySize ... skip
+      V-MT19937      128      32       1      Scalar ... skip
+      V-MT19937      128      32      16     Block16 ... skip
+      V-MT19937      128      32    2496       State ... skip
+      V-MT19937      128      32       1     AnySize ... skip
+      V-MT19937      128      32       4     AnySize ... skip
+      V-MT19937      128      32      16     AnySize ... skip
+      V-MT19937      128      32      64     AnySize ... skip
+      V-MT19937      128      32     256     AnySize ... skip
+      V-MT19937      128      32     624     AnySize ... skip
+      V-MT19937      128      32    1024     AnySize ... skip
+      V-MT19937      128      32    4096     AnySize ... skip
+      V-MT19937      128      32   16384     AnySize ... skip
+      V-MT19937      128     128       1      Scalar ... skip
+      V-MT19937      128     128      16     Block16 ... skip
+      V-MT19937      128     128    2496       State ... done in: 4.90s
+      V-MT19937      128     128       1     AnySize ... skip
+      V-MT19937      128     128       4     AnySize ... skip
+      V-MT19937      128     128      16     AnySize ... skip
+      V-MT19937      128     128      64     AnySize ... skip
+      V-MT19937      128     128     256     AnySize ... skip
+      V-MT19937      128     128     624     AnySize ... skip
+      V-MT19937      128     128    1024     AnySize ... skip
+      V-MT19937      128     128    4096     AnySize ... skip
+      V-MT19937      128     128   16384     AnySize ... skip
+      V-MT19937      256      32       1      Scalar ... skip
+      V-MT19937      256      32      16     Block16 ... skip
+      V-MT19937      256      32    4992       State ... skip
+      V-MT19937      256      32       1     AnySize ... skip
+      V-MT19937      256      32       4     AnySize ... skip
+      V-MT19937      256      32      16     AnySize ... skip
+      V-MT19937      256      32      64     AnySize ... skip
+      V-MT19937      256      32     256     AnySize ... skip
+      V-MT19937      256      32     624     AnySize ... skip
+      V-MT19937      256      32    1024     AnySize ... skip
+      V-MT19937      256      32    4096     AnySize ... skip
+      V-MT19937      256      32   16384     AnySize ... skip
+      V-MT19937      256     128       1      Scalar ... skip
+      V-MT19937      256     128      16     Block16 ... skip
+      V-MT19937      256     128    4992       State ... skip
+      V-MT19937      256     128       1     AnySize ... skip
+      V-MT19937      256     128       4     AnySize ... skip
+      V-MT19937      256     128      16     AnySize ... skip
+      V-MT19937      256     128      64     AnySize ... skip
+      V-MT19937      256     128     256     AnySize ... done in: 4.97s
+      V-MT19937      256     128     624     AnySize ... skip
+      V-MT19937      256     128    1024     AnySize ... skip
+      V-MT19937      256     128    4096     AnySize ... skip
+      V-MT19937      256     128   16384     AnySize ... skip
+      V-MT19937      256     256       1      Scalar ... skip
+      V-MT19937      256     256      16     Block16 ... done in: 3.10s
+      V-MT19937      256     256    4992       State ... done in: 3.09s
+      V-MT19937      256     256       1     AnySize ... skip
+      V-MT19937      256     256       4     AnySize ... skip
+      V-MT19937      256     256      16     AnySize ... skip
+      V-MT19937      256     256      64     AnySize ... skip
+      V-MT19937      256     256     256     AnySize ... skip
+      V-MT19937      256     256     624     AnySize ... skip
+      V-MT19937      256     256    1024     AnySize ... skip
+      V-MT19937      256     256    4096     AnySize ... skip
+      V-MT19937      256     256   16384     AnySize ... skip
+      V-MT19937      512      32       1      Scalar ... skip
+      V-MT19937      512      32      16     Block16 ... skip
+      V-MT19937      512      32    9984       State ... skip
+      V-MT19937      512      32       1     AnySize ... skip
+      V-MT19937      512      32       4     AnySize ... skip
+      V-MT19937      512      32      16     AnySize ... skip
+      V-MT19937      512      32      64     AnySize ... skip
+      V-MT19937      512      32     256     AnySize ... skip
+      V-MT19937      512      32     624     AnySize ... skip
+      V-MT19937      512      32    1024     AnySize ... skip
+      V-MT19937      512      32    4096     AnySize ... skip
+      V-MT19937      512      32   16384     AnySize ... skip
+      V-MT19937      512     128       1      Scalar ... skip
+      V-MT19937      512     128      16     Block16 ... skip
+      V-MT19937      512     128    9984       State ... done in: 5.31s
+      V-MT19937      512     128       1     AnySize ... skip
+      V-MT19937      512     128       4     AnySize ... skip
+      V-MT19937      512     128      16     AnySize ... skip
+      V-MT19937      512     128      64     AnySize ... skip
+      V-MT19937      512     128     256     AnySize ... skip
+      V-MT19937      512     128     624     AnySize ... skip
+      V-MT19937      512     128    1024     AnySize ... skip
+      V-MT19937      512     128    4096     AnySize ... skip
+      V-MT19937      512     128   16384     AnySize ... skip
+      V-MT19937      512     256       1      Scalar ... skip
+      V-MT19937      512     256      16     Block16 ... skip
+      V-MT19937      512     256    9984       State ... done in: 3.49s
+      V-MT19937      512     256       1     AnySize ... skip
+      V-MT19937      512     256       4     AnySize ... skip
+      V-MT19937      512     256      16     AnySize ... skip
+      V-MT19937      512     256      64     AnySize ... skip
+      V-MT19937      512     256     256     AnySize ... done in: 3.40s
+      V-MT19937      512     256     624     AnySize ... skip
+      V-MT19937      512     256    1024     AnySize ... skip
+      V-MT19937      512     256    4096     AnySize ... skip
+      V-MT19937      512     256   16384     AnySize ... skip
+      V-MT19937      512     512       1      Scalar ... skip
+      V-MT19937      512     512      16     Block16 ... skip
+      V-MT19937      512     512    9984       State ... done in: 2.99s
+      V-MT19937      512     512       1     AnySize ... skip
+      V-MT19937      512     512       4     AnySize ... skip
+      V-MT19937      512     512      16     AnySize ... skip
+      V-MT19937      512     512      64     AnySize ... skip
+      V-MT19937      512     512     256     AnySize ... skip
+      V-MT19937      512     512     624     AnySize ... done in: 2.66s
+      V-MT19937      512     512    1024     AnySize ... done in: 2.67s
+      V-MT19937      512     512    4096     AnySize ... skip
+      V-MT19937      512     512   16384     AnySize ... skip
+    V-SFMT19937      128      32       1      Scalar ... skip
+    V-SFMT19937      128      32      16     Block16 ... skip
+    V-SFMT19937      128      32     624       State ... skip
+    V-SFMT19937      128      32       1     AnySize ... skip
+    V-SFMT19937      128      32       4     AnySize ... skip
+    V-SFMT19937      128      32      16     AnySize ... skip
+    V-SFMT19937      128      32      64     AnySize ... skip
+    V-SFMT19937      128      32     256     AnySize ... skip
+    V-SFMT19937      128      32     624     AnySize ... skip
+    V-SFMT19937      128      32    1024     AnySize ... skip
+    V-SFMT19937      128      32    4096     AnySize ... skip
+    V-SFMT19937      128      32   16384     AnySize ... skip
+    V-SFMT19937      128     128       1      Scalar ... skip
+    V-SFMT19937      128     128      16     Block16 ... skip
+    V-SFMT19937      128     128     624       State ... skip
+    V-SFMT19937      128     128       1     AnySize ... skip
+    V-SFMT19937      128     128       4     AnySize ... skip
+    V-SFMT19937      128     128      16     AnySize ... skip
+    V-SFMT19937      128     128      64     AnySize ... skip
+    V-SFMT19937      128     128     256     AnySize ... skip
+    V-SFMT19937      128     128     624     AnySize ... skip
+    V-SFMT19937      128     128    1024     AnySize ... skip
+    V-SFMT19937      128     128    4096     AnySize ... skip
+    V-SFMT19937      128     128   16384     AnySize ... skip
+    V-SFMT19937      256      32       1      Scalar ... skip
+    V-SFMT19937      256      32      16     Block16 ... skip
+    V-SFMT19937      256      32    1248       State ... skip
+    V-SFMT19937      256      32       1     AnySize ... skip
+    V-SFMT19937      256      32       4     AnySize ... skip
+    V-SFMT19937      256      32      16     AnySize ... skip
+    V-SFMT19937      256      32      64     AnySize ... skip
+    V-SFMT19937      256      32     256     AnySize ... skip
+    V-SFMT19937      256      32     624     AnySize ... skip
+    V-SFMT19937      256      32    1024     AnySize ... skip
+    V-SFMT19937      256      32    4096     AnySize ... skip
+    V-SFMT19937      256      32   16384     AnySize ... skip
+    V-SFMT19937      256     128       1      Scalar ... skip
+    V-SFMT19937      256     128      16     Block16 ... skip
+    V-SFMT19937      256     128    1248       State ... skip
+    V-SFMT19937      256     128       1     AnySize ... skip
+    V-SFMT19937      256     128       4     AnySize ... skip
+    V-SFMT19937      256     128      16     AnySize ... skip
+    V-SFMT19937      256     128      64     AnySize ... skip
+    V-SFMT19937      256     128     256     AnySize ... skip
+    V-SFMT19937      256     128     624     AnySize ... skip
+    V-SFMT19937      256     128    1024     AnySize ... skip
+    V-SFMT19937      256     128    4096     AnySize ... skip
+    V-SFMT19937      256     128   16384     AnySize ... skip
+    V-SFMT19937      256     256       1      Scalar ... skip
+    V-SFMT19937      256     256      16     Block16 ... skip
+    V-SFMT19937      256     256    1248       State ... done in: 2.69s
+    V-SFMT19937      256     256       1     AnySize ... skip
+    V-SFMT19937      256     256       4     AnySize ... skip
+    V-SFMT19937      256     256      16     AnySize ... skip
+    V-SFMT19937      256     256      64     AnySize ... skip
+    V-SFMT19937      256     256     256     AnySize ... skip
+    V-SFMT19937      256     256     624     AnySize ... skip
+    V-SFMT19937      256     256    1024     AnySize ... skip
+    V-SFMT19937      256     256    4096     AnySize ... skip
+    V-SFMT19937      256     256   16384     AnySize ... skip
+    V-SFMT19937      512      32       1      Scalar ... skip
+    V-SFMT19937      512      32      16     Block16 ... skip
+    V-SFMT19937      512      32    2496       State ... skip
+    V-SFMT19937      512      32       1     AnySize ... skip
+    V-SFMT19937      512      32       4     AnySize ... skip
+    V-SFMT19937      512      32      16     AnySize ... skip
+    V-SFMT19937      512      32      64     AnySize ... skip
+    V-SFMT19937      512      32     256     AnySize ... skip
+    V-SFMT19937      512      32     624     AnySize ... skip
+    V-SFMT19937      512      32    1024     AnySize ... skip
+    V-SFMT19937      512      32    4096     AnySize ... skip
+    V-SFMT19937      512      32   16384     AnySize ... skip
+    V-SFMT19937      512     128       1      Scalar ... skip
+    V-SFMT19937      512     128      16     Block16 ... skip
+    V-SFMT19937      512     128    2496       State ... skip
+    V-SFMT19937      512     128       1     AnySize ... skip
+    V-SFMT19937      512     128       4     AnySize ... skip
+    V-SFMT19937      512     128      16     AnySize ... skip
+    V-SFMT19937      512     128      64     AnySize ... skip
+    V-SFMT19937      512     128     256     AnySize ... skip
+    V-SFMT19937      512     128     624     AnySize ... skip
+    V-SFMT19937      512     128    1024     AnySize ... skip
+    V-SFMT19937      512     128    4096     AnySize ... skip
+    V-SFMT19937      512     128   16384     AnySize ... skip
+    V-SFMT19937      512     256       1      Scalar ... skip
+    V-SFMT19937      512     256      16     Block16 ... skip
+    V-SFMT19937      512     256    2496       State ... skip
+    V-SFMT19937      512     256       1     AnySize ... skip
+    V-SFMT19937      512     256       4     AnySize ... skip
+    V-SFMT19937      512     256      16     AnySize ... skip
+    V-SFMT19937      512     256      64     AnySize ... skip
+    V-SFMT19937      512     256     256     AnySize ... skip
+    V-SFMT19937      512     256     624     AnySize ... done in: 2.20s
+    V-SFMT19937      512     256    1024     AnySize ... skip
+    V-SFMT19937      512     256    4096     AnySize ... skip
+    V-SFMT19937      512     256   16384     AnySize ... skip
+    V-SFMT19937      512     512       1      Scalar ... skip
+    V-SFMT19937      512     512      16     Block16 ... skip
+    V-SFMT19937      512     512    2496       State ... done in: 1.53s
+    V-SFMT19937      512     512       1     AnySize ... skip
+    V-SFMT19937      512     512       4     AnySize ... skip
+    V-SFMT19937      512     512      16     AnySize ... skip
+    V-SFMT19937      512     512      64     AnySize ... skip
+    V-SFMT19937      512     512     256     AnySize ... skip
+    V-SFMT19937      512     512     624     AnySize ... skip
+    V-SFMT19937      512     512    1024     AnySize ... skip
+    V-SFMT19937      512     512    4096     AnySize ... skip
+    V-SFMT19937      512     512   16384     AnySize ... skip
+Iteration: 10: generating 15974400000 32-bits random numbers
+      Generator WordSize RegSize BlkSize   QueryMode
+   ORIG-MT19937       32      32       1      Scalar ... skip
+ ORIG-SFMT19937      128     128       1      Scalar ... skip
+ ORIG-SFMT19937      128     128    1024     AnySize ... skip
+ ORIG-SFMT19937      128     128    4096     AnySize ... skip
+ ORIG-SFMT19937      128     128   16384     AnySize ... skip
+    MKL-MT19937       32     512       1     AnySize ... skip
+    MKL-MT19937       32     512       4     AnySize ... skip
+    MKL-MT19937       32     512      16     AnySize ... skip
+    MKL-MT19937       32     512      64     AnySize ... skip
+    MKL-MT19937       32     512     256     AnySize ... done in: 4.24s
+    MKL-MT19937       32     512     624     AnySize ... done in: 4.87s
+    MKL-MT19937       32     512    1024     AnySize ... done in: 4.17s
+    MKL-MT19937       32     512    4096     AnySize ... skip
+    MKL-MT19937       32     512   16384     AnySize ... skip
+  MKL-SFMT19937      128     512       1     AnySize ... skip
+  MKL-SFMT19937      128     512       4     AnySize ... skip
+  MKL-SFMT19937      128     512      16     AnySize ... skip
+  MKL-SFMT19937      128     512      64     AnySize ... skip
+  MKL-SFMT19937      128     512     256     AnySize ... skip
+  MKL-SFMT19937      128     512     624     AnySize ... done in: 4.62s
+  MKL-SFMT19937      128     512    1024     AnySize ... done in: 4.14s
+  MKL-SFMT19937      128     512    4096     AnySize ... skip
+  MKL-SFMT19937      128     512   16384     AnySize ... skip
+      V-MT19937       32      32       1      Scalar ... skip
+      V-MT19937       32      32      16     Block16 ... skip
+      V-MT19937       32      32     624       State ... skip
+      V-MT19937       32      32       1     AnySize ... skip
+      V-MT19937       32      32       4     AnySize ... skip
+      V-MT19937       32      32      16     AnySize ... skip
+      V-MT19937       32      32      64     AnySize ... skip
+      V-MT19937       32      32     256     AnySize ... skip
+      V-MT19937       32      32     624     AnySize ... skip
+      V-MT19937       32      32    1024     AnySize ... skip
+      V-MT19937       32      32    4096     AnySize ... skip
+      V-MT19937       32      32   16384     AnySize ... skip
+      V-MT19937      128      32       1      Scalar ... skip
+      V-MT19937      128      32      16     Block16 ... skip
+      V-MT19937      128      32    2496       State ... skip
+      V-MT19937      128      32       1     AnySize ... skip
+      V-MT19937      128      32       4     AnySize ... skip
+      V-MT19937      128      32      16     AnySize ... skip
+      V-MT19937      128      32      64     AnySize ... skip
+      V-MT19937      128      32     256     AnySize ... skip
+      V-MT19937      128      32     624     AnySize ... skip
+      V-MT19937      128      32    1024     AnySize ... skip
+      V-MT19937      128      32    4096     AnySize ... skip
+      V-MT19937      128      32   16384     AnySize ... skip
+      V-MT19937      128     128       1      Scalar ... skip
+      V-MT19937      128     128      16     Block16 ... skip
+      V-MT19937      128     128    2496       State ... done in: 4.90s
+      V-MT19937      128     128       1     AnySize ... skip
+      V-MT19937      128     128       4     AnySize ... skip
+      V-MT19937      128     128      16     AnySize ... skip
+      V-MT19937      128     128      64     AnySize ... skip
+      V-MT19937      128     128     256     AnySize ... skip
+      V-MT19937      128     128     624     AnySize ... skip
+      V-MT19937      128     128    1024     AnySize ... skip
+      V-MT19937      128     128    4096     AnySize ... skip
+      V-MT19937      128     128   16384     AnySize ... skip
+      V-MT19937      256      32       1      Scalar ... skip
+      V-MT19937      256      32      16     Block16 ... skip
+      V-MT19937      256      32    4992       State ... skip
+      V-MT19937      256      32       1     AnySize ... skip
+      V-MT19937      256      32       4     AnySize ... skip
+      V-MT19937      256      32      16     AnySize ... skip
+      V-MT19937      256      32      64     AnySize ... skip
+      V-MT19937      256      32     256     AnySize ... skip
+      V-MT19937      256      32     624     AnySize ... skip
+      V-MT19937      256      32    1024     AnySize ... skip
+      V-MT19937      256      32    4096     AnySize ... skip
+      V-MT19937      256      32   16384     AnySize ... skip
+      V-MT19937      256     128       1      Scalar ... skip
+      V-MT19937      256     128      16     Block16 ... skip
+      V-MT19937      256     128    4992       State ... skip
+      V-MT19937      256     128       1     AnySize ... skip
+      V-MT19937      256     128       4     AnySize ... skip
+      V-MT19937      256     128      16     AnySize ... skip
+      V-MT19937      256     128      64     AnySize ... skip
+      V-MT19937      256     128     256     AnySize ... done in: 4.97s
+      V-MT19937      256     128     624     AnySize ... skip
+      V-MT19937      256     128    1024     AnySize ... skip
+      V-MT19937      256     128    4096     AnySize ... skip
+      V-MT19937      256     128   16384     AnySize ... skip
+      V-MT19937      256     256       1      Scalar ... skip
+      V-MT19937      256     256      16     Block16 ... done in: 3.13s
+      V-MT19937      256     256    4992       State ... done in: 3.09s
+      V-MT19937      256     256       1     AnySize ... skip
+      V-MT19937      256     256       4     AnySize ... skip
+      V-MT19937      256     256      16     AnySize ... skip
+      V-MT19937      256     256      64     AnySize ... skip
+      V-MT19937      256     256     256     AnySize ... skip
+      V-MT19937      256     256     624     AnySize ... skip
+      V-MT19937      256     256    1024     AnySize ... skip
+      V-MT19937      256     256    4096     AnySize ... skip
+      V-MT19937      256     256   16384     AnySize ... skip
+      V-MT19937      512      32       1      Scalar ... skip
+      V-MT19937      512      32      16     Block16 ... skip
+      V-MT19937      512      32    9984       State ... skip
+      V-MT19937      512      32       1     AnySize ... skip
+      V-MT19937      512      32       4     AnySize ... skip
+      V-MT19937      512      32      16     AnySize ... skip
+      V-MT19937      512      32      64     AnySize ... skip
+      V-MT19937      512      32     256     AnySize ... skip
+      V-MT19937      512      32     624     AnySize ... skip
+      V-MT19937      512      32    1024     AnySize ... skip
+      V-MT19937      512      32    4096     AnySize ... skip
+      V-MT19937      512      32   16384     AnySize ... skip
+      V-MT19937      512     128       1      Scalar ... skip
+      V-MT19937      512     128      16     Block16 ... skip
+      V-MT19937      512     128    9984       State ... done in: 5.31s
+      V-MT19937      512     128       1     AnySize ... skip
+      V-MT19937      512     128       4     AnySize ... skip
+      V-MT19937      512     128      16     AnySize ... skip
+      V-MT19937      512     128      64     AnySize ... skip
+      V-MT19937      512     128     256     AnySize ... skip
+      V-MT19937      512     128     624     AnySize ... skip
+      V-MT19937      512     128    1024     AnySize ... skip
+      V-MT19937      512     128    4096     AnySize ... skip
+      V-MT19937      512     128   16384     AnySize ... skip
+      V-MT19937      512     256       1      Scalar ... skip
+      V-MT19937      512     256      16     Block16 ... skip
+      V-MT19937      512     256    9984       State ... done in: 3.50s
+      V-MT19937      512     256       1     AnySize ... skip
+      V-MT19937      512     256       4     AnySize ... skip
+      V-MT19937      512     256      16     AnySize ... skip
+      V-MT19937      512     256      64     AnySize ... skip
+      V-MT19937      512     256     256     AnySize ... done in: 3.11s
+      V-MT19937      512     256     624     AnySize ... skip
+      V-MT19937      512     256    1024     AnySize ... skip
+      V-MT19937      512     256    4096     AnySize ... skip
+      V-MT19937      512     256   16384     AnySize ... skip
+      V-MT19937      512     512       1      Scalar ... skip
+      V-MT19937      512     512      16     Block16 ... skip
+      V-MT19937      512     512    9984       State ... done in: 3.00s
+      V-MT19937      512     512       1     AnySize ... skip
+      V-MT19937      512     512       4     AnySize ... skip
+      V-MT19937      512     512      16     AnySize ... skip
+      V-MT19937      512     512      64     AnySize ... skip
+      V-MT19937      512     512     256     AnySize ... skip
+      V-MT19937      512     512     624     AnySize ... done in: 2.61s
+      V-MT19937      512     512    1024     AnySize ... done in: 2.67s
+      V-MT19937      512     512    4096     AnySize ... skip
+      V-MT19937      512     512   16384     AnySize ... skip
+    V-SFMT19937      128      32       1      Scalar ... skip
+    V-SFMT19937      128      32      16     Block16 ... skip
+    V-SFMT19937      128      32     624       State ... skip
+    V-SFMT19937      128      32       1     AnySize ... skip
+    V-SFMT19937      128      32       4     AnySize ... skip
+    V-SFMT19937      128      32      16     AnySize ... skip
+    V-SFMT19937      128      32      64     AnySize ... skip
+    V-SFMT19937      128      32     256     AnySize ... skip
+    V-SFMT19937      128      32     624     AnySize ... skip
+    V-SFMT19937      128      32    1024     AnySize ... skip
+    V-SFMT19937      128      32    4096     AnySize ... skip
+    V-SFMT19937      128      32   16384     AnySize ... skip
+    V-SFMT19937      128     128       1      Scalar ... skip
+    V-SFMT19937      128     128      16     Block16 ... skip
+    V-SFMT19937      128     128     624       State ... skip
+    V-SFMT19937      128     128       1     AnySize ... skip
+    V-SFMT19937      128     128       4     AnySize ... skip
+    V-SFMT19937      128     128      16     AnySize ... skip
+    V-SFMT19937      128     128      64     AnySize ... skip
+    V-SFMT19937      128     128     256     AnySize ... skip
+    V-SFMT19937      128     128     624     AnySize ... skip
+    V-SFMT19937      128     128    1024     AnySize ... skip
+    V-SFMT19937      128     128    4096     AnySize ... skip
+    V-SFMT19937      128     128   16384     AnySize ... skip
+    V-SFMT19937      256      32       1      Scalar ... skip
+    V-SFMT19937      256      32      16     Block16 ... skip
+    V-SFMT19937      256      32    1248       State ... skip
+    V-SFMT19937      256      32       1     AnySize ... skip
+    V-SFMT19937      256      32       4     AnySize ... skip
+    V-SFMT19937      256      32      16     AnySize ... skip
+    V-SFMT19937      256      32      64     AnySize ... skip
+    V-SFMT19937      256      32     256     AnySize ... skip
+    V-SFMT19937      256      32     624     AnySize ... skip
+    V-SFMT19937      256      32    1024     AnySize ... skip
+    V-SFMT19937      256      32    4096     AnySize ... skip
+    V-SFMT19937      256      32   16384     AnySize ... skip
+    V-SFMT19937      256     128       1      Scalar ... skip
+    V-SFMT19937      256     128      16     Block16 ... skip
+    V-SFMT19937      256     128    1248       State ... skip
+    V-SFMT19937      256     128       1     AnySize ... skip
+    V-SFMT19937      256     128       4     AnySize ... skip
+    V-SFMT19937      256     128      16     AnySize ... skip
+    V-SFMT19937      256     128      64     AnySize ... skip
+    V-SFMT19937      256     128     256     AnySize ... skip
+    V-SFMT19937      256     128     624     AnySize ... skip
+    V-SFMT19937      256     128    1024     AnySize ... skip
+    V-SFMT19937      256     128    4096     AnySize ... skip
+    V-SFMT19937      256     128   16384     AnySize ... skip
+    V-SFMT19937      256     256       1      Scalar ... skip
+    V-SFMT19937      256     256      16     Block16 ... skip
+    V-SFMT19937      256     256    1248       State ... done in: 2.70s
+    V-SFMT19937      256     256       1     AnySize ... skip
+    V-SFMT19937      256     256       4     AnySize ... skip
+    V-SFMT19937      256     256      16     AnySize ... skip
+    V-SFMT19937      256     256      64     AnySize ... skip
+    V-SFMT19937      256     256     256     AnySize ... skip
+    V-SFMT19937      256     256     624     AnySize ... skip
+    V-SFMT19937      256     256    1024     AnySize ... skip
+    V-SFMT19937      256     256    4096     AnySize ... skip
+    V-SFMT19937      256     256   16384     AnySize ... skip
+    V-SFMT19937      512      32       1      Scalar ... skip
+    V-SFMT19937      512      32      16     Block16 ... skip
+    V-SFMT19937      512      32    2496       State ... skip
+    V-SFMT19937      512      32       1     AnySize ... skip
+    V-SFMT19937      512      32       4     AnySize ... skip
+    V-SFMT19937      512      32      16     AnySize ... skip
+    V-SFMT19937      512      32      64     AnySize ... skip
+    V-SFMT19937      512      32     256     AnySize ... skip
+    V-SFMT19937      512      32     624     AnySize ... skip
+    V-SFMT19937      512      32    1024     AnySize ... skip
+    V-SFMT19937      512      32    4096     AnySize ... skip
+    V-SFMT19937      512      32   16384     AnySize ... skip
+    V-SFMT19937      512     128       1      Scalar ... skip
+    V-SFMT19937      512     128      16     Block16 ... skip
+    V-SFMT19937      512     128    2496       State ... skip
+    V-SFMT19937      512     128       1     AnySize ... skip
+    V-SFMT19937      512     128       4     AnySize ... skip
+    V-SFMT19937      512     128      16     AnySize ... skip
+    V-SFMT19937      512     128      64     AnySize ... skip
+    V-SFMT19937      512     128     256     AnySize ... skip
+    V-SFMT19937      512     128     624     AnySize ... skip
+    V-SFMT19937      512     128    1024     AnySize ... skip
+    V-SFMT19937      512     128    4096     AnySize ... skip
+    V-SFMT19937      512     128   16384     AnySize ... skip
+    V-SFMT19937      512     256       1      Scalar ... skip
+    V-SFMT19937      512     256      16     Block16 ... skip
+    V-SFMT19937      512     256    2496       State ... skip
+    V-SFMT19937      512     256       1     AnySize ... skip
+    V-SFMT19937      512     256       4     AnySize ... skip
+    V-SFMT19937      512     256      16     AnySize ... skip
+    V-SFMT19937      512     256      64     AnySize ... skip
+    V-SFMT19937      512     256     256     AnySize ... skip
+    V-SFMT19937      512     256     624     AnySize ... done in: 2.20s
+    V-SFMT19937      512     256    1024     AnySize ... skip
+    V-SFMT19937      512     256    4096     AnySize ... skip
+    V-SFMT19937      512     256   16384     AnySize ... skip
+    V-SFMT19937      512     512       1      Scalar ... skip
+    V-SFMT19937      512     512      16     Block16 ... skip
+    V-SFMT19937      512     512    2496       State ... done in: 1.53s
+    V-SFMT19937      512     512       1     AnySize ... skip
+    V-SFMT19937      512     512       4     AnySize ... skip
+    V-SFMT19937      512     512      16     AnySize ... skip
+    V-SFMT19937      512     512      64     AnySize ... skip
+    V-SFMT19937      512     512     256     AnySize ... skip
+    V-SFMT19937      512     512     624     AnySize ... skip
+    V-SFMT19937      512     512    1024     AnySize ... skip
+    V-SFMT19937      512     512    4096     AnySize ... skip
+    V-SFMT19937      512     512   16384     AnySize ... skip
+
+                prng  g-bits  r-bits blksize   qrymode nruns    tmin    tmax    tavg    tdev   tavg/tdev  throughput
+        ORIG-MT19937      32      32       1    Scalar     2  42.819  42.905  42.862   0.060      0.141%       372.7
+      ORIG-SFMT19937     128     128       1    Scalar     2  13.914  13.992  13.953   0.055      0.396%      1144.9
+      ORIG-SFMT19937     128     128    1024   AnySize     2   5.254   5.277   5.266   0.016      0.304%      3033.8
+      ORIG-SFMT19937     128     128    4096   AnySize     2   4.683   4.730   4.706   0.034      0.713%      3394.2
+      ORIG-SFMT19937     128     128   16384   AnySize     2   4.668   4.677   4.673   0.006      0.132%      3418.6
+         MKL-MT19937      32     512       1   AnySize     2 300.281 300.301 300.291   0.014      0.005%        53.2
+         MKL-MT19937      32     512       4   AnySize     2  76.472  76.555  76.514   0.059      0.077%       208.8
+         MKL-MT19937      32     512      16   AnySize     2  16.980  17.055  17.018   0.053      0.313%       938.7
+         MKL-MT19937      32     512      64   AnySize     2   7.336   7.336   7.336   0.000      0.004%      2177.5
+         MKL-MT19937      32     512     256   AnySize    10   4.200   4.360   4.291   0.067      1.552%      3722.8
+         MKL-MT19937      32     512     624   AnySize    10   3.941   4.872   4.293   0.451     10.510%      3721.0
+         MKL-MT19937      32     512    1024   AnySize    10   3.763   4.174   4.067   0.176      4.317%      3927.5
+         MKL-MT19937      32     512    4096   AnySize     7   2.670   2.729   2.691   0.025      0.947%      5937.1
+         MKL-MT19937      32     512   16384   AnySize     2   2.454   2.462   2.458   0.006      0.226%      6498.4
+       MKL-SFMT19937     128     512       1   AnySize     2 258.089 258.162 258.125   0.051      0.020%        61.9
+       MKL-SFMT19937     128     512       4   AnySize     2  69.834  69.923  69.878   0.063      0.091%       228.6
+       MKL-SFMT19937     128     512      16   AnySize     2  20.541  20.809  20.675   0.189      0.916%       772.7
+       MKL-SFMT19937     128     512      64   AnySize     3   8.794   8.950   8.895   0.088      0.984%      1795.9
+       MKL-SFMT19937     128     512     256   AnySize     2   5.066   5.136   5.101   0.049      0.961%      3131.6
+       MKL-SFMT19937     128     512     624   AnySize    10   4.483   4.844   4.639   0.091      1.957%      3443.5
+       MKL-SFMT19937     128     512    1024   AnySize    10   4.128   4.297   4.156   0.050      1.210%      3843.6
+       MKL-SFMT19937     128     512    4096   AnySize     3   3.206   3.258   3.229   0.027      0.822%      4947.0
+       MKL-SFMT19937     128     512   16384   AnySize     2   2.980   2.988   2.984   0.005      0.170%      5353.2
+           V-MT19937      32      32       1   AnySize     2  40.456  40.465  40.461   0.006      0.014%       394.8
+           V-MT19937      32      32       1    Scalar     2  19.624  19.633  19.629   0.006      0.030%       813.8
+           V-MT19937      32      32       4   AnySize     2  25.009  25.011  25.010   0.002      0.006%       638.7
+           V-MT19937      32      32      16   AnySize     2  12.075  12.076  12.076   0.001      0.005%      1322.9
+           V-MT19937      32      32      16   Block16     2  10.563  10.564  10.564   0.001      0.007%      1512.2
+           V-MT19937      32      32      64   AnySize     2  10.624  10.628  10.626   0.002      0.023%      1503.3
+           V-MT19937      32      32     256   AnySize     2  10.566  10.567  10.567   0.001      0.006%      1511.8
+           V-MT19937      32      32     624   AnySize     2  10.553  10.557  10.555   0.003      0.029%      1513.4
+           V-MT19937      32      32     624     State     2  10.558  10.559  10.559   0.000      0.003%      1512.9
+           V-MT19937      32      32    1024   AnySize     2  10.638  10.645  10.642   0.005      0.045%      1501.1
+           V-MT19937      32      32    4096   AnySize     2  10.568  10.575  10.571   0.005      0.046%      1511.1
+           V-MT19937      32      32   16384   AnySize     2  10.583  10.594  10.588   0.007      0.069%      1508.7
+           V-MT19937     128      32       1   AnySize     2  48.121  48.138  48.130   0.012      0.026%       331.9
+           V-MT19937     128      32       1    Scalar     2  23.953  23.967  23.960   0.010      0.041%       666.7
+           V-MT19937     128      32       4   AnySize     2  27.692  27.700  27.696   0.005      0.020%       576.8
+           V-MT19937     128      32      16   AnySize     2  15.506  15.509  15.507   0.002      0.013%      1030.1
+           V-MT19937     128      32      16   Block16     2  13.821  13.827  13.824   0.004      0.032%      1155.6
+           V-MT19937     128      32      64   AnySize     2  14.114  14.117  14.116   0.002      0.015%      1131.7
+           V-MT19937     128      32     256   AnySize     2  14.009  14.026  14.017   0.012      0.084%      1139.6
+           V-MT19937     128      32     624   AnySize     2  13.846  13.856  13.851   0.007      0.049%      1153.3
+           V-MT19937     128      32    1024   AnySize     2  13.896  13.903  13.899   0.005      0.036%      1149.3
+           V-MT19937     128      32    2496     State     2  13.809  13.812  13.810   0.002      0.011%      1156.7
+           V-MT19937     128      32    4096   AnySize     2  13.871  13.880  13.875   0.006      0.043%      1151.3
+           V-MT19937     128      32   16384   AnySize     2  14.013  14.014  14.014   0.001      0.009%      1139.9
+           V-MT19937     128     128       1   AnySize     2  38.961  39.119  39.040   0.112      0.287%       409.2
+           V-MT19937     128     128       1    Scalar     2  15.105  15.115  15.110   0.007      0.048%      1057.2
+           V-MT19937     128     128       4   AnySize     2  18.437  18.572  18.505   0.096      0.519%       863.3
+           V-MT19937     128     128      16   AnySize     2   6.350   6.352   6.351   0.001      0.014%      2515.2
+           V-MT19937     128     128      16   Block16     2   4.923   4.926   4.924   0.002      0.043%      3244.2
+           V-MT19937     128     128      64   AnySize     2   5.189   5.190   5.189   0.001      0.012%      3078.3
+           V-MT19937     128     128     256   AnySize     5   4.958   5.079   4.992   0.049      0.989%      3199.9
+           V-MT19937     128     128     624   AnySize     2   4.917   4.919   4.918   0.001      0.020%      3248.3
+           V-MT19937     128     128    1024   AnySize     2   4.961   4.963   4.962   0.001      0.024%      3219.3
+           V-MT19937     128     128    2496     State    10   4.901   5.061   4.919   0.050      1.012%      3247.5
+           V-MT19937     128     128    4096   AnySize     2   4.957   4.962   4.960   0.004      0.079%      3220.8
+           V-MT19937     128     128   16384   AnySize     2   5.079   5.082   5.080   0.002      0.035%      3144.3
+           V-MT19937     256      32       1   AnySize     2  42.818  42.819  42.819   0.001      0.001%       373.1
+           V-MT19937     256      32       1    Scalar     2  21.256  21.258  21.257   0.001      0.005%       751.5
+           V-MT19937     256      32       4   AnySize     2  25.200  25.205  25.203   0.004      0.015%       633.8
+           V-MT19937     256      32      16   AnySize     2  13.568  13.574  13.571   0.004      0.030%      1177.1
+           V-MT19937     256      32      16   Block16     2  11.853  11.865  11.859   0.009      0.072%      1347.1
+           V-MT19937     256      32      64   AnySize     2  12.187  12.192  12.190   0.003      0.028%      1310.5
+           V-MT19937     256      32     256   AnySize     2  11.914  11.950  11.932   0.025      0.213%      1338.8
+           V-MT19937     256      32     624   AnySize     2  11.906  11.933  11.920   0.019      0.163%      1340.2
+           V-MT19937     256      32    1024   AnySize     2  11.909  11.909  11.909   0.000      0.001%      1341.3
+           V-MT19937     256      32    4096   AnySize     2  11.895  11.897  11.896   0.001      0.008%      1342.9
+           V-MT19937     256      32    4992     State     2  11.819  11.822  11.821   0.002      0.019%      1351.4
+           V-MT19937     256      32   16384   AnySize     2  12.190  12.194  12.192   0.003      0.023%      1310.3
+           V-MT19937     256     128       1   AnySize     2  40.742  40.757  40.750   0.010      0.025%       392.0
+           V-MT19937     256     128       1    Scalar     2  13.819  13.824  13.821   0.003      0.022%      1155.8
+           V-MT19937     256     128       4   AnySize     2  16.966  16.973  16.970   0.005      0.029%       941.3
+           V-MT19937     256     128      16   AnySize     2   6.320   6.320   6.320   0.001      0.009%      2527.6
+           V-MT19937     256     128      16   Block16     2   4.890   4.907   4.899   0.012      0.245%      3260.8
+           V-MT19937     256     128      64   AnySize     2   5.217   5.218   5.217   0.000      0.006%      3061.8
+           V-MT19937     256     128     256   AnySize    10   4.959   5.146   5.049   0.079      1.574%      3164.0
+           V-MT19937     256     128     624   AnySize     2   4.920   4.944   4.932   0.016      0.332%      3238.9
+           V-MT19937     256     128    1024   AnySize     2   4.947   4.956   4.951   0.006      0.127%      3226.3
+           V-MT19937     256     128    4096   AnySize     2   4.944   4.944   4.944   0.000      0.002%      3231.2
+           V-MT19937     256     128    4992     State     2   4.876   4.876   4.876   0.000      0.003%      3276.2
+           V-MT19937     256     128   16384   AnySize     2   5.211   5.214   5.213   0.002      0.042%      3064.4
+           V-MT19937     256     256       1   AnySize     2  38.726  38.755  38.740   0.020      0.052%       412.3
+           V-MT19937     256     256       1    Scalar     2  12.492  12.494  12.493   0.001      0.011%      1278.6
+           V-MT19937     256     256       4   AnySize     2  15.474  15.480  15.477   0.004      0.027%      1032.1
+           V-MT19937     256     256      16   AnySize     2   4.627   4.661   4.644   0.024      0.521%      3439.9
+           V-MT19937     256     256      16   Block16    10   3.103   3.392   3.135   0.091      2.887%      5094.9
+           V-MT19937     256     256      64   AnySize     2   3.511   3.515   3.513   0.003      0.085%      4547.6
+           V-MT19937     256     256     256   AnySize     2   3.168   3.180   3.174   0.008      0.250%      5032.9
+           V-MT19937     256     256     624   AnySize     2   3.156   3.193   3.175   0.026      0.821%      5031.5
+           V-MT19937     256     256    1024   AnySize     2   3.167   3.168   3.167   0.001      0.023%      5044.0
+           V-MT19937     256     256    4096   AnySize     2   3.157   3.159   3.158   0.002      0.049%      5058.9
+           V-MT19937     256     256    4992     State    10   3.086   3.278   3.107   0.060      1.930%      5141.7
+           V-MT19937     256     256   16384   AnySize     2   3.434   3.435   3.435   0.001      0.016%      4650.8
+           V-MT19937     512      32       1   AnySize     2  45.353  45.397  45.375   0.031      0.067%       352.1
+           V-MT19937     512      32       1    Scalar     2  25.116  25.129  25.123   0.009      0.036%       635.9
+           V-MT19937     512      32       4   AnySize     2  29.578  29.598  29.588   0.014      0.047%       539.9
+           V-MT19937     512      32      16   AnySize     2  17.671  17.724  17.698   0.037      0.210%       902.6
+           V-MT19937     512      32      16   Block16     2  15.741  15.755  15.748   0.009      0.060%      1014.4
+           V-MT19937     512      32      64   AnySize     2  17.099  17.145  17.122   0.033      0.190%       933.0
+           V-MT19937     512      32     256   AnySize     2  16.087  16.107  16.097   0.014      0.087%       992.4
+           V-MT19937     512      32     624   AnySize     2  15.987  16.009  15.998   0.016      0.099%       998.5
+           V-MT19937     512      32    1024   AnySize     2  16.138  16.139  16.139   0.000      0.001%       989.8
+           V-MT19937     512      32    4096   AnySize     2  16.623  16.632  16.627   0.006      0.038%       960.7
+           V-MT19937     512      32    9984     State     2  16.010  16.218  16.114   0.147      0.914%       991.3
+           V-MT19937     512      32   16384   AnySize     2  17.027  17.035  17.031   0.006      0.033%       937.9
+           V-MT19937     512     128       1   AnySize     2  37.653  37.654  37.653   0.000      0.001%       424.3
+           V-MT19937     512     128       1    Scalar     2  14.281  14.282  14.281   0.000      0.002%      1118.6
+           V-MT19937     512     128       4   AnySize     2  16.382  16.385  16.384   0.002      0.012%       975.0
+           V-MT19937     512     128      16   AnySize     2   6.495   6.522   6.509   0.020      0.301%      2454.3
+           V-MT19937     512     128      16   Block16     2   4.916   4.918   4.917   0.001      0.020%      3248.9
+           V-MT19937     512     128      64   AnySize     2   5.770   5.770   5.770   0.000      0.000%      2768.5
+           V-MT19937     512     128     256   AnySize     2   5.021   5.034   5.027   0.009      0.177%      3177.5
+           V-MT19937     512     128     624   AnySize     2   4.967   4.998   4.982   0.021      0.431%      3206.1
+           V-MT19937     512     128    1024   AnySize     2   4.980   5.025   5.002   0.032      0.639%      3193.4
+           V-MT19937     512     128    4096   AnySize     2   5.400   5.423   5.412   0.016      0.298%      2951.9
+           V-MT19937     512     128    9984     State    10   5.142   5.345   5.296   0.055      1.043%      3016.2
+           V-MT19937     512     128   16384   AnySize     2   5.898   5.911   5.905   0.009      0.150%      2705.4
+           V-MT19937     512     256       1   AnySize     2  35.626  35.641  35.633   0.011      0.030%       448.3
+           V-MT19937     512     256       1    Scalar     2  12.200  12.201  12.201   0.001      0.005%      1309.3
+           V-MT19937     512     256       4   AnySize     2  16.047  16.051  16.049   0.003      0.018%       995.4
+           V-MT19937     512     256      16   AnySize     2   4.799   4.804   4.802   0.004      0.079%      3326.8
+           V-MT19937     512     256      16   Block16     2   3.108   3.108   3.108   0.000      0.007%      5140.0
+           V-MT19937     512     256      64   AnySize     2   4.086   4.089   4.087   0.002      0.049%      3908.4
+           V-MT19937     512     256     256   AnySize    10   3.109   3.396   3.214   0.126      3.907%      4970.1
+           V-MT19937     512     256     624   AnySize     2   3.156   3.169   3.163   0.009      0.285%      5050.9
+           V-MT19937     512     256    1024   AnySize     4   3.144   3.209   3.180   0.027      0.846%      5022.9
+           V-MT19937     512     256    4096   AnySize     2   3.560   3.596   3.578   0.025      0.705%      4464.5
+           V-MT19937     512     256    9984     State    10   3.346   3.527   3.482   0.049      1.412%      4587.7
+           V-MT19937     512     256   16384   AnySize     2   4.066   4.077   4.071   0.008      0.193%      3923.8
+           V-MT19937     512     512       1   AnySize     2  35.277  35.279  35.278   0.002      0.005%       452.8
+           V-MT19937     512     512       1    Scalar     2  11.648  11.654  11.651   0.004      0.034%      1371.1
+           V-MT19937     512     512       4   AnySize     2  15.826  15.827  15.827   0.001      0.007%      1009.3
+           V-MT19937     512     512      16   AnySize     2   4.054   4.059   4.056   0.003      0.079%      3938.0
+           V-MT19937     512     512      16   Block16     2   2.587   2.591   2.589   0.003      0.107%      6169.3
+           V-MT19937     512     512      64   AnySize     2   3.550   3.554   3.552   0.003      0.084%      4496.8
+           V-MT19937     512     512     256   AnySize     2   2.676   2.686   2.681   0.007      0.265%      5959.0
+           V-MT19937     512     512     624   AnySize    10   2.593   2.674   2.633   0.027      1.042%      6066.8
+           V-MT19937     512     512    1024   AnySize    10   2.567   2.670   2.654   0.032      1.199%      6019.7
+           V-MT19937     512     512    4096   AnySize     4   3.032   3.090   3.070   0.026      0.857%      5202.9
+           V-MT19937     512     512    9984     State    10   2.841   3.031   2.983   0.051      1.721%      5355.1
+           V-MT19937     512     512   16384   AnySize     2   3.571   3.587   3.579   0.011      0.316%      4463.1
+         V-SFMT19937     128      32       1   AnySize     2  54.531  54.553  54.542   0.016      0.029%       292.9
+         V-SFMT19937     128      32       1    Scalar     2  26.810  26.812  26.811   0.002      0.006%       595.8
+         V-SFMT19937     128      32       4   AnySize     2  31.391  31.397  31.394   0.004      0.012%       508.8
+         V-SFMT19937     128      32      16   AnySize     2  20.427  20.438  20.432   0.008      0.037%       781.8
+         V-SFMT19937     128      32      16   Block16     2  18.631  18.656  18.644   0.018      0.095%       856.8
+         V-SFMT19937     128      32      64   AnySize     2  18.405  18.534  18.469   0.091      0.493%       864.9
+         V-SFMT19937     128      32     256   AnySize     2  18.303  18.405  18.354   0.072      0.391%       870.4
+         V-SFMT19937     128      32     624   AnySize     2  17.961  17.972  17.966   0.007      0.041%       889.1
+         V-SFMT19937     128      32     624     State     2  18.118  18.123  18.121   0.003      0.018%       881.6
+         V-SFMT19937     128      32    1024   AnySize     2  18.038  18.137  18.088   0.070      0.387%       883.2
+         V-SFMT19937     128      32    4096   AnySize     2  18.116  18.121  18.119   0.003      0.019%       881.6
+         V-SFMT19937     128      32   16384   AnySize     2  18.110  18.113  18.112   0.002      0.009%       882.0
+         V-SFMT19937     128     128       1   AnySize     2  27.831  27.843  27.837   0.008      0.030%       573.9
+         V-SFMT19937     128     128       1    Scalar     2  13.963  13.963  13.963   0.000      0.002%      1144.1
+         V-SFMT19937     128     128       4   AnySize     2  15.020  15.028  15.024   0.006      0.038%      1063.2
+         V-SFMT19937     128     128      16   AnySize     2   6.790   6.796   6.793   0.004      0.056%      2351.6
+         V-SFMT19937     128     128      16   Block16     2   5.516   5.517   5.516   0.001      0.015%      2895.9
+         V-SFMT19937     128     128      64   AnySize     2   5.252   5.255   5.254   0.002      0.035%      3040.6
+         V-SFMT19937     128     128     256   AnySize     2   5.208   5.259   5.234   0.036      0.690%      3052.2
+         V-SFMT19937     128     128     624   AnySize     2   5.094   5.107   5.101   0.009      0.182%      3131.8
+         V-SFMT19937     128     128     624     State     4   5.085   5.193   5.125   0.047      0.913%      3116.9
+         V-SFMT19937     128     128    1024   AnySize     2   5.121   5.142   5.132   0.015      0.286%      3112.9
+         V-SFMT19937     128     128    4096   AnySize     2   5.172   5.175   5.174   0.002      0.043%      3087.7
+         V-SFMT19937     128     128   16384   AnySize     2   5.160   5.167   5.164   0.005      0.103%      3093.6
+         V-SFMT19937     256      32       1   AnySize     2  48.077  48.173  48.125   0.068      0.142%       331.9
+         V-SFMT19937     256      32       1    Scalar     2  24.975  24.983  24.979   0.006      0.022%       639.5
+         V-SFMT19937     256      32       4   AnySize     2  28.479  28.487  28.483   0.005      0.019%       560.8
+         V-SFMT19937     256      32      16   AnySize     2  18.334  18.335  18.334   0.001      0.005%       871.3
+         V-SFMT19937     256      32      16   Block16     2  16.822  16.823  16.822   0.001      0.004%       949.6
+         V-SFMT19937     256      32      64   AnySize     2  16.529  16.533  16.531   0.003      0.018%       966.3
+         V-SFMT19937     256      32     256   AnySize     2  16.277  16.288  16.283   0.008      0.050%       981.1
+         V-SFMT19937     256      32     624   AnySize     2  16.140  16.143  16.141   0.003      0.017%       989.6
+         V-SFMT19937     256      32    1024   AnySize     2  16.167  16.176  16.172   0.007      0.041%       987.8
+         V-SFMT19937     256      32    1248     State     2  16.088  16.098  16.093   0.007      0.043%       992.7
+         V-SFMT19937     256      32    4096   AnySize     2  16.152  16.154  16.153   0.001      0.008%       988.9
+         V-SFMT19937     256      32   16384   AnySize     2  16.191  16.193  16.192   0.001      0.007%       986.6
+         V-SFMT19937     256     128       1   AnySize     2  34.364  34.425  34.394   0.043      0.125%       464.4
+         V-SFMT19937     256     128       1    Scalar     2  12.791  12.794  12.792   0.002      0.018%      1248.7
+         V-SFMT19937     256     128       4   AnySize     2  15.134  15.142  15.138   0.005      0.035%      1055.2
+         V-SFMT19937     256     128      16   AnySize     2   5.850   5.852   5.851   0.002      0.032%      2730.3
+         V-SFMT19937     256     128      16   Block16     2   4.384   4.384   4.384   0.000      0.008%      3644.0
+         V-SFMT19937     256     128      64   AnySize     2   4.291   4.295   4.293   0.003      0.080%      3721.0
+         V-SFMT19937     256     128     256   AnySize     3   4.031   4.096   4.055   0.035      0.873%      3939.5
+         V-SFMT19937     256     128     624   AnySize     2   3.900   3.906   3.903   0.004      0.105%      4092.7
+         V-SFMT19937     256     128    1024   AnySize     2   3.929   3.944   3.936   0.010      0.258%      4058.1
+         V-SFMT19937     256     128    1248     State     2   3.898   3.926   3.912   0.020      0.518%      4083.6
+         V-SFMT19937     256     128    4096   AnySize     2   3.935   3.938   3.937   0.002      0.053%      4057.9
+         V-SFMT19937     256     128   16384   AnySize     2   4.019   4.024   4.021   0.004      0.087%      3972.3
+         V-SFMT19937     256     256       1   AnySize     2  33.471  33.658  33.565   0.132      0.393%       475.9
+         V-SFMT19937     256     256       1    Scalar     2  11.666  11.674  11.670   0.005      0.044%      1368.8
+         V-SFMT19937     256     256       4   AnySize     2  13.883  13.933  13.908   0.036      0.256%      1148.6
+         V-SFMT19937     256     256      16   AnySize     2   4.628   4.632   4.630   0.003      0.069%      3450.3
+         V-SFMT19937     256     256      16   Block16     2   3.201   3.201   3.201   0.000      0.007%      4990.7
+         V-SFMT19937     256     256      64   AnySize     2   3.048   3.058   3.053   0.008      0.249%      5232.2
+         V-SFMT19937     256     256     256   AnySize     2   2.845   2.860   2.852   0.011      0.381%      5600.5
+         V-SFMT19937     256     256     624   AnySize     2   2.745   2.752   2.749   0.005      0.187%      5811.4
+         V-SFMT19937     256     256    1024   AnySize     2   2.753   2.762   2.758   0.007      0.241%      5792.5
+         V-SFMT19937     256     256    1248     State    10   2.689   2.777   2.702   0.027      0.989%      5912.7
+         V-SFMT19937     256     256    4096   AnySize     2   2.741   2.741   2.741   0.000      0.002%      5827.1
+         V-SFMT19937     256     256   16384   AnySize     2   2.778   2.779   2.779   0.000      0.017%      5749.2
+         V-SFMT19937     512      32       1   AnySize     2  57.787  57.805  57.796   0.013      0.022%       276.4
+         V-SFMT19937     512      32       1    Scalar     2  34.010  34.013  34.012   0.003      0.007%       469.7
+         V-SFMT19937     512      32       4   AnySize     2  36.324  36.325  36.325   0.001      0.002%       439.8
+         V-SFMT19937     512      32      16   AnySize     2  26.877  26.878  26.878   0.000      0.002%       594.3
+         V-SFMT19937     512      32      16   Block16     2  25.170  25.176  25.173   0.004      0.015%       634.6
+         V-SFMT19937     512      32      64   AnySize     2  25.568  25.571  25.570   0.002      0.010%       624.7
+         V-SFMT19937     512      32     256   AnySize     2  25.296  25.318  25.307   0.016      0.063%       631.2
+         V-SFMT19937     512      32     624   AnySize     2  25.182  25.199  25.190   0.013      0.050%       634.1
+         V-SFMT19937     512      32    1024   AnySize     2  25.166  25.183  25.174   0.012      0.049%       634.5
+         V-SFMT19937     512      32    2496     State     2  24.855  24.876  24.866   0.015      0.060%       642.4
+         V-SFMT19937     512      32    4096   AnySize     2  25.011  25.015  25.013   0.003      0.013%       638.6
+         V-SFMT19937     512      32   16384   AnySize     2  25.357  25.370  25.364   0.009      0.037%       629.8
+         V-SFMT19937     512     128       1   AnySize     2  36.000  36.037  36.019   0.026      0.073%       443.5
+         V-SFMT19937     512     128       1    Scalar     2  15.921  15.922  15.921   0.001      0.004%      1003.3
+         V-SFMT19937     512     128       4   AnySize     2  18.265  18.272  18.269   0.005      0.025%       874.4
+         V-SFMT19937     512     128      16   AnySize     2   8.799   8.801   8.800   0.002      0.018%      1815.3
+         V-SFMT19937     512     128      16   Block16     2   7.195   7.204   7.200   0.006      0.090%      2218.7
+         V-SFMT19937     512     128      64   AnySize     2   7.544   7.548   7.546   0.003      0.039%      2117.0
+         V-SFMT19937     512     128     256   AnySize     2   7.262   7.284   7.273   0.016      0.218%      2196.3
+         V-SFMT19937     512     128     624   AnySize     2   7.197   7.213   7.205   0.011      0.158%      2217.1
+         V-SFMT19937     512     128    1024   AnySize     2   7.163   7.173   7.168   0.007      0.099%      2228.5
+         V-SFMT19937     512     128    2496     State     2   6.844   6.911   6.877   0.048      0.691%      2322.8
+         V-SFMT19937     512     128    4096   AnySize     2   6.994   7.000   6.997   0.005      0.070%      2283.0
+         V-SFMT19937     512     128   16384   AnySize     2   7.399   7.401   7.400   0.002      0.021%      2158.8
+         V-SFMT19937     512     256       1   AnySize     2  30.570  30.822  30.696   0.178      0.581%       520.4
+         V-SFMT19937     512     256       1    Scalar     2  11.041  11.048  11.045   0.005      0.041%      1446.3
+         V-SFMT19937     512     256       4   AnySize     2  13.307  13.364  13.335   0.040      0.299%      1197.9
+         V-SFMT19937     512     256      16   AnySize     2   4.165   4.204   4.185   0.028      0.658%      3817.3
+         V-SFMT19937     512     256      16   Block16     2   2.627   2.629   2.628   0.001      0.032%      6078.4
+         V-SFMT19937     512     256      64   AnySize     2   2.619   2.634   2.627   0.011      0.405%      6081.1
+         V-SFMT19937     512     256     256   AnySize     2   2.359   2.384   2.372   0.018      0.749%      6735.4
+         V-SFMT19937     512     256     624   AnySize    10   2.200   2.353   2.225   0.046      2.075%      7179.2
+         V-SFMT19937     512     256    1024   AnySize     2   2.188   2.212   2.200   0.017      0.778%      7261.2
+         V-SFMT19937     512     256    2496     State     2   2.105   2.106   2.105   0.001      0.032%      7587.0
+         V-SFMT19937     512     256    4096   AnySize     2   2.155   2.179   2.167   0.017      0.788%      7371.7
+         V-SFMT19937     512     256   16384   AnySize     2   2.443   2.451   2.447   0.005      0.219%      6528.0
+         V-SFMT19937     512     512       1   AnySize     2  34.464  34.502  34.483   0.028      0.080%       463.3
+         V-SFMT19937     512     512       1    Scalar     2  10.643  10.644  10.643   0.000      0.002%      1500.9
+         V-SFMT19937     512     512       4   AnySize     2  12.968  12.981  12.975   0.009      0.069%      1231.2
+         V-SFMT19937     512     512      16   AnySize     2   3.549   3.552   3.551   0.002      0.055%      4498.8
+         V-SFMT19937     512     512      16   Block16     2   1.948   1.972   1.960   0.017      0.886%      8149.7
+         V-SFMT19937     512     512      64   AnySize     2   2.291   2.292   2.291   0.000      0.015%      6971.4
+         V-SFMT19937     512     512     256   AnySize     5   1.999   2.045   2.016   0.018      0.880%      7923.0
+         V-SFMT19937     512     512     624   AnySize     2   1.947   1.948   1.948   0.000      0.023%      8201.9
+         V-SFMT19937     512     512    1024   AnySize     2   1.916   1.916   1.916   0.000      0.014%      8337.2
+         V-SFMT19937     512     512    2496     State    10   1.532   1.655   1.546   0.038      2.472%     10333.4
+         V-SFMT19937     512     512    4096   AnySize     2   1.740   1.740   1.740   0.000      0.019%      9181.4
+         V-SFMT19937     512     512   16384   AnySize     2   1.903   1.904   1.903   0.001      0.027%      8392.3
