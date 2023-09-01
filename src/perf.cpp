@@ -127,54 +127,8 @@ bool alreadyHaveEnoughIter(const ResultKey& key)
     return !notEnough;
 }
 
-template <template <size_t, size_t> class Gen, size_t L, size_t I, VRandGenQueryMode QryMode>
-void vRandGenPerformance4(size_t blkSize)
-{
-    typedef Details::VRandGen<Gen<L, I>, QryMode> gen_t;
 
-    const Mode mode = GenTraits<Gen>::mode;
-
-    MYASSERT(((blkSize > 0) && ((nRandomPerf % blkSize) == 0)), "invalid blkSize " << blkSize);
-
-    ResultKey key(mode, L, I, blkSize, QryMode);
-
-    key.print();
-
-    if (alreadyHaveEnoughIter(key)) {
-        std::cout << "skip\n";
-        return;
-    }
-
-    AlignedVector<uint32_t, 64> aligneddst(blkSize);
-
-    // we provide a jump matrix, although it is redundant for the purpose of just measuring performace
-    gen_t mt(seedinit, seedlength, 0, nullptr, GenTraits<Gen>::matrix());
-
-    auto start = std::chrono::system_clock::now();
-
-    for (size_t i = 0, n = nRandomPerf / blkSize; i < n; ++i)
-        if constexpr (QryMode == QM_Scalar)
-            aligneddst[0] = mt.genrand_uint32();
-        else if constexpr (QryMode == QM_Block16)
-            mt.genrand_uint32_blk16(aligneddst.data());
-        else if constexpr (QryMode == QM_StateSize)
-            mt.genrand_uint32_stateBlk(aligneddst.data());
-        else if constexpr (QryMode == QM_Any)
-            mt.genrand_uint32_anySize(aligneddst.data(), blkSize);
-        else
-            NOT_IMPLEMENTED;
-
-    auto end = std::chrono::system_clock::now();
-    std::chrono::duration<double> elapsed_seconds = end - start;
-    double nSeconds = elapsed_seconds.count();
-
-    std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s" << std::endl;
-
-    addResult(key, nSeconds);
-}
-
-
-void originalPerformance()
+void mtOrigPerformance()
 {
     ResultKey key(orig, 32, 32, 1, QM_Scalar);
 
@@ -205,7 +159,7 @@ void originalPerformance()
 }
 
 template <bool ScalarQry>
-void sfmtPerformance(size_t BlkSize)
+void sfmtOrigPerformance(size_t BlkSize)
 {
     ResultKey key(sfmt, 128, 128, BlkSize, ScalarQry ? QM_Scalar : QM_Any);
     key.print();
@@ -302,6 +256,53 @@ void mklPerformance(MKL_INT GenCode, MKL_INT BlkSize)
 }
 #endif
 
+template <template <size_t, size_t> class Gen, size_t L, size_t I, VRandGenQueryMode QryMode>
+void vRandGenPerformance4(size_t blkSize)
+{
+    typedef Details::VRandGen<Gen<L, I>, QryMode> gen_t;
+
+    const Mode mode = GenTraits<Gen>::mode;
+
+    MYASSERT(((blkSize > 0) && ((nRandomPerf % blkSize) == 0)), "invalid blkSize " << blkSize);
+
+    ResultKey key(mode, L, I, blkSize, QryMode);
+
+    key.print();
+
+    if (alreadyHaveEnoughIter(key)) {
+        std::cout << "skip\n";
+        return;
+    }
+
+    AlignedVector<uint32_t, 64> aligneddst(blkSize);
+
+    // we provide a jump matrix, although it is redundant for the purpose of just measuring performace
+    gen_t mt(seedinit, seedlength, 0, nullptr, GenTraits<Gen>::matrix());
+
+    auto start = std::chrono::system_clock::now();
+
+    for (size_t i = 0, n = nRandomPerf / blkSize; i < n; ++i)
+        if constexpr (QryMode == QM_Scalar)
+            aligneddst[0] = mt.genrand_uint32();
+        else if constexpr (QryMode == QM_Block16)
+            mt.genrand_uint32_blk16(aligneddst.data());
+        else if constexpr (QryMode == QM_StateSize)
+            mt.genrand_uint32_stateBlk(aligneddst.data());
+        else if constexpr (QryMode == QM_Any)
+            mt.genrand_uint32_anySize(aligneddst.data(), blkSize);
+        else
+            NOT_IMPLEMENTED;
+
+    auto end = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end - start;
+    double nSeconds = elapsed_seconds.count();
+
+    std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s" << std::endl;
+
+    addResult(key, nSeconds);
+}
+
+
 template <template <size_t, size_t> class Gen, size_t L, size_t I, VRandGenQueryMode QM>
 void vRandGenPerformance3()
 {
@@ -347,9 +348,10 @@ void usage()
     std::cerr
         << "Invalid command line arguments\n"
         << "Example:\n"
-        << "perf [-n nRepeats] [-s slow]\n"
+        << "perf [-n nRepeats] [-s slow] [-m minRepeats]\n"
         << "  nRepeats defaults to 1\n"
         << "  slow must be 0 or 1, defaults to 0\n"
+        << "  minRepeats defaults to nRepeats\n"
         ;
 }
 
@@ -370,6 +372,7 @@ int main(int argc, const char** argv)
 # endif
 #endif
     size_t nRepeat = 1;
+    size_t minRepeat = 0;
     int slow = 1;
     // parse command line arguments
     for (int i = 1; i < argc; i += 2) {
@@ -379,12 +382,17 @@ int main(int argc, const char** argv)
             nRepeat = atoi(value);
         else if (key == "-s")
             slow = atoi(value);
+        else if (key == "-m")
+            minRepeat = atoi(value);
         else {
             usage();
             exit(1);
         }
     }
+    if (minRepeat = 0)
+        minRepeat = nRepeat;
     std::cout << "nRepeat = " << nRepeat << "\n";
+    std::cout << "nRepeat = " << minRepeat << "\n";
     std::cout << "slow = " << slow << "\n";
     if (slow)
         nRandomPerf *= 1000;
@@ -403,11 +411,11 @@ int main(int argc, const char** argv)
                 << "\n";
         }
 
-        originalPerformance();
-        sfmtPerformance<true>(1);
+        mtOrigPerformance();
+        sfmtOrigPerformance<true>(1);
         for (auto sz : anySize)
-            if(sz > 624)
-                sfmtPerformance<false>(sz);
+            if(sz >= 624)
+                sfmtOrigPerformance<false>(sz);
 #ifdef TEST_MKL
         for (auto sz : anySize)
             mklPerformance(VSL_BRNG_MT19937, (MKL_INT) sz);
