@@ -274,7 +274,7 @@ struct SimdRegister<128, 128>
     SimdRegister() : m_v(_mm_undefined_si128()) {}
     FORCE_INLINE SimdRegister(uint32_t v) : m_v(_mm_set1_epi32(v)) {}
     FORCE_INLINE SimdRegister(uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3) : m_v(_mm_setr_epi32(v0, v1, v2, v3)) {}
-    FORCE_INLINE SimdRegister(const void* p) : m_v(_mm_loadu_si128((const __m128i*)p)) {}
+    FORCE_INLINE SimdRegister(const void* p) : m_v(_mm_load_si128((const __m128i*)p)) {}
     FORCE_INLINE SimdRegister(__m128i v) : m_v(v) {}
 
     template <bool A>
