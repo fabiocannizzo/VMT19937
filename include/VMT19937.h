@@ -86,20 +86,25 @@ private:
     }
 
     template <bool Aligned>
-    static FORCE_INLINE void temperRefillBlock(const uint32_t *&st_, uint32_t *dst)
+    static FORCE_INLINE void temperRefillBlock_(const uint32_t * __restrict st, uint32_t * __restrict dst)
     {
         typedef SimdRegister<SIMD_N_BITS, SIMD_N_BITS> XVmax;
         const size_t n32PerIteration = sizeof(XVmax) / sizeof(uint32_t);
 
         TemperCst<XVmax> cst{};
-        const uint32_t* st = st_;
         for (size_t i = 0; i < s_n32InRndCache * sizeof(uint32_t) / sizeof(XVmax); ++i) {
             XVmax tmp = temper(XVmax(st), cst);
             tmp.template store<Aligned>((uint32_t*)(dst));
             dst += n32PerIteration;
             st += n32PerIteration;
         }
-        st_ = st;
+    }
+
+    template <bool Aligned>
+    static FORCE_INLINE void temperRefillBlock(const uint32_t*& st_, uint32_t* dst)
+    {
+        temperRefillBlock_<Aligned>(st_, dst);
+        st_ += s_n32InRndCache;
     }
 
     static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, const RefillCst& masks)
