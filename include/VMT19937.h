@@ -41,15 +41,16 @@ private:
     const static size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
     typedef SimdRegister<s_regLenBits, RegisterBitLenImpl> XV;
 
-    static const uint32_t s_n32InRndCache = 64 / sizeof(uint32_t); // exactly one cache line
+    static const uint32_t s_n32InRndCache = std::max<uint32_t>(64 / 4, 4 * RegisterBitLenImpl / 32); // exact multiple of 1 cache line
+    static_assert(s_n32InFullState % s_n32InRndCache == 0);
 
 protected:
     alignas(64) uint32_t m_state[s_N * s_n32inReg];    // the array of state vectors
 
 private:
     // This data members is necessary only if QueryMode==QM_Scalar
-    alignas(64) uint32_t m_rnd[s_n32InRndCache]; // buffer of tempered numbers with same size as a cache line
-    const uint32_t* m_prnd, * const m_rndEnd;
+    alignas(64) uint32_t m_rnd[s_n32InRndCache]; // buffer of tempered numbers
+    const uint32_t* m_prnd, * const m_prndEnd;
 
     // This data members are redundant if QueryMode==QM_StateSize
     const uint32_t*m_pst, * const m_pstEnd;    // m_pos==m_pstEnd means the state vector has been consumed and need to be regenerated
@@ -75,8 +76,8 @@ private:
     const static RefillCst s_refillCst;
 #endif
 
-    template <typename XVI>
-    static FORCE_INLINE XVI temper(XVI y, const TemperCst<XVI>& masks)
+    template <typename XVI, typename M>
+    static FORCE_INLINE XVI temper(XVI y, const M& masks)
     {
         y = y ^ (y >> 11);
         y = y ^ ((y << 7) & masks.m_mask1);
@@ -88,13 +89,20 @@ private:
     template <bool Aligned>
     static FORCE_INLINE void temperRefillBlock_(const uint32_t * __restrict st, uint32_t * __restrict dst)
     {
-        typedef SimdRegister<SIMD_N_BITS, SIMD_N_BITS> XVmax;
-        const size_t n32PerIteration = sizeof(XVmax) / sizeof(uint32_t);
+        const size_t LR = std::min<size_t>(s_regLenImplBits * 4, s_n32InRndCache * 32);
+        const size_t LC = std::min<size_t>(s_regLenImplBits, LR);
+        typedef SimdRegister<LR, s_regLenImplBits> XVmax;
+        typedef SimdRegister<LC, LC> XVcst;
+        const size_t n32PerIteration = LR / 32;
+        static_assert(n32PerIteration <= s_n32InRndCache);
+        static_assert(s_n32InRndCache % n32PerIteration == 0);
+        const size_t nIterations = s_n32InRndCache / n32PerIteration;
 
-        TemperCst<XVmax> cst{};
-        for (size_t i = 0; i < s_n32InRndCache * sizeof(uint32_t) / sizeof(XVmax); ++i) {
+        TemperCst<XVcst> cst{};
+
+        for (size_t i = 0; i < nIterations; ++i) {
             XVmax tmp = temper(XVmax(st), cst);
-            tmp.template store<Aligned>((uint32_t*)(dst));
+            tmp.template store<Aligned>(dst);
             dst += n32PerIteration;
             st += n32PerIteration;
         }
@@ -201,7 +209,7 @@ private:
 
     const uint32_t* endRnd() const
     {
-        return m_rndEnd;
+        return m_prndEnd;
     }
 
 
@@ -294,7 +302,7 @@ protected:
     // generates a random number on [0,0xffffffff] interval
     uint32_t FORCE_INLINE genrand_uint32()
     {
-        if ((reinterpret_cast<intptr_t>(m_prnd) % sizeof(m_rnd)) != 0)
+        if (m_prnd != endRnd())
             return *m_prnd++;
 
         if (m_pst != m_pstEnd)
@@ -304,20 +312,38 @@ protected:
         }
 
         temperRefillBlock<true>(m_pst, m_rnd);
-        m_prnd = m_rnd;
+        m_prnd = beginRnd() + 1;
 
-        return *m_prnd++;
+        return m_rnd[0];
     }
 
     // generates 16 uniform discrete random numbers in [0,0xffffffff] interval
     // for optimal performance the vector dst should be aligned on a 64 byte boundary
     void genrand_uint32_blk16(uint32_t* dst)
     {
+        if constexpr (s_n32InRndCache > 16) {
+            if (m_prnd != endRnd()) {
+                const uint32_t* e = m_prnd + 16;
+                std::copy(m_prnd, e, dst);
+                m_prnd = e;
+                return;
+            }
+        }
+
         if (m_pst != m_pstEnd)
             /* do nothing*/; // most likely case first
         else
             refill();
-        temperRefillBlock<false>(m_pst, dst);
+
+        if constexpr (s_n32InRndCache > 16) {
+            temperRefillBlock<true>(m_pst, m_rnd);
+            uint32_t* e = m_rnd + 16;
+            std::copy(m_rnd, e, dst);
+            m_prnd = e;
+        }
+        else {
+            temperRefillBlock<false>(m_pst, dst);
+        }
     }
 
     // generates a block of the same size as the state vector of uniform discrete random numbers in [0,0xffffffff] interval
@@ -326,9 +352,8 @@ protected:
     {
         refill();
         const uint32_t* pst = m_state;
-        for (size_t i = 0; i < s_n32InFullState / s_n32InRndCache; ++i, dst += s_n32InRndCache) {
+        for (size_t i = 0; i < s_n32InFullState / s_n32InRndCache; ++i, dst += s_n32InRndCache)
             temperRefillBlock<false>(pst, dst);
-        }
     }
 
     void genrand_uint32_anySize(uint32_t* dst, size_t n)
@@ -344,7 +369,7 @@ protected:
             return;
         }
 
-        // we are now aligned with Block16
+        // we are now aligned with rnd block
         if (size_t nAvailInState = std::distance(m_pst, end()); nAvailInState < n) {
             if (nAvailInState) {
                 n -= nAvailInState;
@@ -411,7 +436,7 @@ public:
     // constructors
     VMT19937Base()
         : m_prnd(nullptr)
-        , m_rndEnd(m_rnd + s_n32InRndCache)
+        , m_prndEnd(m_rnd + s_n32InRndCache)
         , m_pst(nullptr)
         , m_pstEnd(m_state + s_N * s_n32inReg)
     {}

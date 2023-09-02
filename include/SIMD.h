@@ -66,6 +66,8 @@ public:
     }
 
     friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v[i] = a.m_v[i] & b.m_v[i]; return r; }
+    template <typename XVI>
+    friend FORCE_INLINE XV operator&(const XV& a, const XVI& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v[i] = a.m_v[i] & b.m_v; return r; }
     friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v[i] = a.m_v[i] ^ b.m_v[i]; return r; }
     friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v[i] = a.m_v[i] | b.m_v[i]; return r; }
     friend FORCE_INLINE XV operator<<(const XV& a, const int n) { XV r; for (size_t i = 0; i < M; ++i) r.m_v[i] = a.m_v[i] << n; return r; }
