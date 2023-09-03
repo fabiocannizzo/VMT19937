@@ -110,7 +110,7 @@ public:
     }
 
     // generates a random number on [0,0xffffffff] interval
-    uint32_t FORCE_INLINE genrand_uint32()
+    FORCE_INLINE uint32_t genrand_uint32()
     {
         static_assert(QueryMode == QM_Scalar || QueryMode == QM_Any);
         return base_t::genrand_uint32();
@@ -118,7 +118,7 @@ public:
 
     // generates 16 uniform discrete random numbers in [0,0xffffffff] interval
     // for optimal performance the vector dst should be aligned on a 64 byte boundary
-    void genrand_uint32_blk16(uint32_t* dst)
+    FORCE_INLINE void genrand_uint32_blk16(uint32_t* dst)
     {
         static_assert(QueryMode == QM_Block16, "This function can only be invoked when query mode is QM_Block16");
         base_t::genrand_uint32_blk16(dst);
@@ -126,7 +126,7 @@ public:
 
     // generates a block of the same size as the state vector of uniform discrete random numbers in [0,0xffffffff] interval
     // for optimal performance the vector dst should be aligned on a 64 byte boundary
-    void genrand_uint32_stateBlk(uint32_t* dst)
+    FORCE_INLINE void genrand_uint32_stateBlk(uint32_t* dst)
     {
         static_assert(QueryMode == QM_StateSize, "This function can only be invoked when query mode is QM_StateSize");
         base_t::genrand_uint32_stateBlk(dst);
@@ -134,7 +134,7 @@ public:
 
     // generates a block of the same size as the state vector of uniform discrete random numbers in [0,0xffffffff] interval
     // for optimal performance the vector dst should be aligned on a 64 byte boundary
-    void genrand_uint32_anySize(uint32_t* dst, size_t n)
+    FORCE_INLINE void genrand_uint32_anySize(uint32_t* dst, size_t n)
     {
         static_assert(QueryMode == QM_Any, "This function can only be invoked when query mode is QM_Any");
         base_t::genrand_uint32_anySize(dst, n);
