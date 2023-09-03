@@ -65,10 +65,11 @@ private:
 
     struct RefillCst
     {
+        typedef SimdRegister<RegisterBitLenImpl, RegisterBitLenImpl> XVI;
         RefillCst() : m_upperMask(MT19937Params::s_upperMask), m_lowerMask(MT19937Params::s_lowerMask), m_matrixA(MT19937Params::s_matrixA) {}
-        const XV m_upperMask;
-        const XV m_lowerMask;
-        const XV m_matrixA;
+        const XVI m_upperMask;
+        const XVI m_lowerMask;
+        const XVI m_matrixA;
     };
 
     template <typename XVI, typename M>
@@ -115,7 +116,7 @@ private:
         // hence in the next line we can check if sp is odd
         // so that the operation is independent on the calculation of y
         // and the compiler is free to rearrange the code
-        XV r = sm ^ (y >> 1) ^ sp.ifOddValueElseZero(masks.m_matrixA);
+        XV r = sm ^ (y >> 1) ^ sp.ifOddCst32ElseZero(masks.m_matrixA);
         return r;
     }
 
