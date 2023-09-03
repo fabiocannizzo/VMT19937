@@ -45,7 +45,8 @@ private:
     const uint32_t* const m_state_end;
     const uint32_t* m_prnd;
 
-    static FORCE_INLINE XV advance1(const XV& xA, const XV& xB, const XV& xC, const XV& xD, const XV& bMask)
+    template <typename XVCst>
+    static FORCE_INLINE XV advance1(const XV& xA, const XV& xB, const XV& xC, const XV& xD, const XVCst& bMask)
     {
         const uint32_t SFMT_SL1 = 18;
         const uint32_t SFMT_SL2 = 1;
@@ -63,8 +64,8 @@ private:
         return (z ^ y);
     }
 
-    template <int nIter, int JA, int JB>
-    static FORCE_INLINE void unroll(uint32_t* p, XV& xC, XV& xD, const XV& bMask)
+    template <int nIter, int JA, int JB, typename XVCst>
+    static FORCE_INLINE void unroll(uint32_t* p, XV& xC, XV& xD, const XVCst& bMask)
     {
         if constexpr (nIter > 0) {
             XV xA(p + JA * s_n32inReg);
@@ -77,8 +78,8 @@ private:
         }
     }
 
-    template <int nUnroll, int nIter, int JB>
-    static FORCE_INLINE void advanceLoop(uint32_t*& p, XV& xC, XV& xD, const XV& bMask)
+    template <int nUnroll, int nIter, int JB, typename XVCst>
+    static FORCE_INLINE void advanceLoop(uint32_t*& p, XV& xC, XV& xD, const XVCst& bMask)
     {
         // unroll main iterations
         const size_t nMainIter = nIter / nUnroll;
@@ -104,7 +105,8 @@ private:
         // Create local copy of the constants and pass them to the function as arguments.
         // Since all functions invoked from here are forced inline, the function arguments
         // will not be passed as arguments via the stack, but reside in CPU registers
-        XV bMask(SFMT19937Params::s_SFMT_MSK1, SFMT19937Params::s_SFMT_MSK2, SFMT19937Params::s_SFMT_MSK3, SFMT19937Params::s_SFMT_MSK4);
+        SimdRegister<std::max<size_t>(128, s_regLenImplBits), s_regLenImplBits>
+            bMask(SFMT19937Params::s_SFMT_MSK1, SFMT19937Params::s_SFMT_MSK2, SFMT19937Params::s_SFMT_MSK3, SFMT19937Params::s_SFMT_MSK4);
 
         const int s_M = SFMT19937Params::s_M;
 
