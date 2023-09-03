@@ -37,8 +37,10 @@ private:
     const static size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
     typedef SimdRegister<s_regLenBits, RegisterBitLenImpl> XV;
 
-    static const uint32_t s_n32InRndCache = std::max<uint32_t>(64 / 4, 4 * RegisterBitLenImpl / 32); // exact multiple of 1 cache line
-    static_assert(s_n32InFullState % s_n32InRndCache == 0);
+    static const uint32_t s_cacheLineBits = 64*8;
+    static const uint32_t s_n32InRndCache = std::max<uint32_t>(s_cacheLineBits, 2*RegisterBitLenImpl) / 32;
+    static_assert(s_n32InFullState % s_n32InRndCache == 0, "full state size not divisible by cache size");
+    static_assert(s_n32InRndCache % (64/4) == 0, "cache size is not divisible by cache line size");
 
 protected:
     alignas(64) uint32_t m_state[s_N * s_n32inReg];    // the array of state vectors
@@ -82,16 +84,14 @@ private:
     template <bool Aligned>
     static FORCE_INLINE void temperRefillBlock_(const uint32_t * __restrict st, uint32_t * __restrict dst)
     {
-        const size_t LR = std::min<size_t>(s_regLenImplBits * 4, s_n32InRndCache * 32);
-        const size_t LC = std::min<size_t>(s_regLenImplBits, LR);
+        const size_t LR = std::min<size_t>(s_regLenImplBits * 2, s_n32InRndCache * 32);
         typedef SimdRegister<LR, s_regLenImplBits> XVmax;
-        typedef SimdRegister<LC, LC> XVcst;
         const size_t n32PerIteration = LR / 32;
         static_assert(n32PerIteration <= s_n32InRndCache);
         static_assert(s_n32InRndCache % n32PerIteration == 0);
         const size_t nIterations = s_n32InRndCache / n32PerIteration;
 
-        TemperCst<XVcst> cst{};
+        TemperCst<XVmax> cst{};
 
         for (size_t i = 0; i < nIterations; ++i) {
             XVmax tmp = temper(XVmax(st), cst);
