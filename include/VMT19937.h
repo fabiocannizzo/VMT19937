@@ -38,7 +38,7 @@ private:
     typedef SimdRegister<s_regLenBits, RegisterBitLenImpl> XV;
 
     static const uint32_t s_cacheLineBits = 64*8;
-    static const uint32_t s_n32InRndCache = std::max<uint32_t>(s_cacheLineBits, 2*RegisterBitLenImpl) / 32;
+    static const uint32_t s_n32InRndCache = std::max<uint32_t>(s_cacheLineBits, 4*RegisterBitLenImpl) / 32;
     static_assert(s_n32InFullState % s_n32InRndCache == 0, "full state size not divisible by cache size");
     static_assert(s_n32InRndCache % (64/4) == 0, "cache size is not divisible by cache line size");
 
@@ -84,7 +84,7 @@ private:
     template <bool Aligned>
     static FORCE_INLINE void temperRefillBlock_(const uint32_t * __restrict st, uint32_t * __restrict dst)
     {
-        const size_t LR = std::min<size_t>(s_regLenImplBits * 2, s_n32InRndCache * 32);
+        const size_t LR = std::min<size_t>(s_regLenImplBits * 4, s_n32InRndCache * 32);
         typedef SimdRegister<LR, s_regLenImplBits> XVmax;
         const size_t n32PerIteration = LR / 32;
         static_assert(n32PerIteration <= s_n32InRndCache);
@@ -290,7 +290,7 @@ protected:
     }
 
     // generates a random number on [0,0xffffffff] interval
-    uint32_t FORCE_INLINE genrand_uint32()
+    FORCE_INLINE uint32_t genrand_uint32()
     {
         if (m_prnd != endRnd())
             return *m_prnd++;
@@ -309,7 +309,7 @@ protected:
 
     // generates 16 uniform discrete random numbers in [0,0xffffffff] interval
     // for optimal performance the vector dst should be aligned on a 64 byte boundary
-    void genrand_uint32_blk16(uint32_t* dst)
+    FORCE_INLINE void genrand_uint32_blk16(uint32_t* dst)
     {
         if constexpr (s_n32InRndCache > 16) {
             if (m_prnd != endRnd()) {
