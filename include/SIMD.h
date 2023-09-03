@@ -153,11 +153,12 @@ public:
         return r;
     }
 
-    FORCE_INLINE XV ifOddValueElseZero(const XV& value) const
+    template <typename XVI>
+    FORCE_INLINE XV ifOddCst32ElseZero(const XVI& value) const
     {
         XV r;
         for (size_t i = 0; i < M; ++i)
-            r.m_v[i] = m_v[i].ifOddValueElseZero(value.m_v[i]);
+            r.m_v[i] = m_v[i].ifOddCst32ElseZero(value);
         return r;
     }
 
@@ -197,7 +198,7 @@ struct SimdRegister<32, 32>
 
     FORCE_INLINE bool eq(const XV& rhs) const { return m_v == rhs.m_v; }
 
-    FORCE_INLINE XV ifOddValueElseZero(const XV value) const
+    FORCE_INLINE XV ifOddCst32ElseZero(const XV cst32) const
     {
 #if 0 && defined(__GNUC__) && defined(__x86_64__)
         // force the use of cmov with gcc
@@ -207,15 +208,15 @@ struct SimdRegister<32, 32>
             "and $0x1, %[z]\n"
             "cmovne %[b], %[z]\n"
             : [z] "=r"(z)
-            : [a] "r"(m_v), [b] "r"(value.m_v)
+            : [a] "r"(m_v), [b] "r"(cst32.m_v)
             : "cc"
         );
         return z;
 #elif defined(_MSC_VER)
         const uint32_t lowestBit = m_v & 0x1;
-        return lowestBit ? value.m_v : 0;
+        return lowestBit ? cst32 : zero();
 #else
-        const uint32_t x[2] = { 0, value.m_v };
+        const uint32_t x[2] = { 0, cst32.m_v };
         const uint32_t lowestBit = m_v & 0x1;
         return x[lowestBit];
 #endif
@@ -256,7 +257,7 @@ struct MAY_ALIAS SimdRegister<64>
 
     FORCE_INLINE bool eq(const XV& rhs) const { return m_v == rhs.m_v; }
 
-    FORCE_INLINE XV ifOddValueElseZero(const XV& value) const
+    FORCE_INLINE XV ifOddCst32ElseZero(const XV& value) const
     {
         const uint64_t maskHi = m_v & (uint64_t(1) << 32) ? (uint64_t(0xFFFFFFFF) << 32) : 0;
         const uint64_t maskLo = m_v & 0x1 ? uint64_t(0xFFFFFFFF) : 0;
@@ -305,17 +306,17 @@ struct SimdRegister<128, 128>
 
     static FORCE_INLINE XV zero() { return _mm_setzero_si128(); }
 
-    FORCE_INLINE XV ifOddValueElseZero(const XV& value) const
+    FORCE_INLINE XV ifOddCst32ElseZero(const XV& cst32) const
     {
 #if 0
         const __m128 z = _mm_setzero_ps();
         const __m128 lowestBit = _mm_castsi128_ps(_mm_slli_epi32(m_v, 31));
-        return _mm_castps_si128(_mm_blendv_ps(z, _mm_castsi128_ps(value.m_v), lowestBit));
+        return _mm_castps_si128(_mm_blendv_ps(z, _mm_castsi128_ps(cst32.m_v), lowestBit));
 #else
         const __m128i z = zero().m_v;
         const __m128i lowestBit = _mm_slli_epi32(m_v, 31);
         const __m128i isOdd = _mm_cmpgt_epi32(z, lowestBit);
-        return _mm_and_si128(isOdd, value.m_v);
+        return _mm_and_si128(isOdd, cst32.m_v);
 #endif
     }
 
@@ -369,7 +370,7 @@ struct SimdRegister<256, 256>
 
     static FORCE_INLINE XV zero() { return _mm256_setzero_si256(); }
 
-    FORCE_INLINE XV ifOddValueElseZero(const XV& value) const
+    FORCE_INLINE XV ifOddCst32ElseZero(const XV& cst32) const
     {
         const __m256i z = zero().m_v;
         const __m256i lowestBit = _mm256_slli_epi32(m_v, 31); // move least significant bit to most significant bit
@@ -378,7 +379,7 @@ struct SimdRegister<256, 256>
         return _mm256_and_si256(value.m_v, isOdd);
 #else
         const __m256 mask = _mm256_castsi256_ps(lowestBit);
-        return _mm256_castps_si256(_mm256_blendv_ps(_mm256_castsi256_ps(z), _mm256_castsi256_ps(value.m_v), mask));
+        return _mm256_castps_si256(_mm256_blendv_ps(_mm256_castsi256_ps(z), _mm256_castsi256_ps(cst32.m_v), mask));
 #endif
     }
 
@@ -425,11 +426,11 @@ struct SimdRegister<512, 512>
 
     void broadcastLo128() { m_v = _mm512_broadcast_i32x4(_mm512_castsi512_si128(m_v)); }
 
-    FORCE_INLINE XV ifOddValueElseZero(const XV& value) const
+    FORCE_INLINE XV ifOddCst32ElseZero(const XV& cst32) const
     {
         const __m512i lowestBit = _mm512_slli_epi32(m_v, 31); // move least significant bit to most significant bit
         const __mmask16 isOdd = _mm512_movepi32_mask(lowestBit);
-        return _mm512_maskz_mov_epi32(isOdd, value.m_v);
+        return _mm512_maskz_mov_epi32(isOdd, cst32.m_v);
     }
 
     static FORCE_INLINE XV zero() { return _mm512_setzero_si512(); }
