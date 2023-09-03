@@ -6,10 +6,6 @@
 #include <cstdint>
 #include <cstddef>
 
-#ifndef VMT19937_STATIC_CONST
-#   define VMT19937_STATIC_CONST 0
-#endif
-
 namespace Details {
 
 template <size_t RegisterBitLen, size_t RegisterBitLenImpl>
@@ -72,9 +68,6 @@ private:
         const XV m_lowerMask;
         const XV m_matrixA;
     };
-#if (VMT19937_STATIC_CONST==1)
-    const static RefillCst s_refillCst;
-#endif
 
     template <typename XVI, typename M>
     static FORCE_INLINE XVI temper(XVI y, const M& masks)
@@ -173,11 +166,8 @@ private:
         // Create local copy of the constants and pass them to the function as arguments.
         // Since all functions invoked from here are forced inline, the function arguments
         // will not be passed as arguments via the stack, but reside in CPU registers
-#if (VMT19937_STATIC_CONST==1)
-        const RefillCst masks{ s_refillCst };  // use copy constructor
-#else
         const RefillCst masks;  // use default constructor
-#endif
+
         XV x0(stCur);
 
         // unroll first part of the loop (N-M) iterations
@@ -441,10 +431,5 @@ public:
         , m_pstEnd(m_state + s_N * s_n32inReg)
     {}
 };
-
-#if (VMT19937_STATIC_CONST==1)
-template <size_t RegisterBitLen>
-const typename VMT19937Base<RegisterBitLen>::RefillCst VMT19937Base<RegisterBitLen>::s_refillCst;
-#endif
 
 } // namespace Details
