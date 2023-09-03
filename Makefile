@@ -1,6 +1,11 @@
 # Examples:
 # make jumpmat
 # make NBITS=512
+# CPPFLAGS=-g make
+# CCPREFIX=x86_64-w64-mingw32- make
+
+CC=$(CCPREFIX)gcc
+CXX=$(CCPREFIX)g++
 
 ifndef NBITS
    $(info WARNING: NBITS not defined. Using default value: 128)
@@ -36,7 +41,9 @@ else ifeq ($(NBITS), 128)
    SIMD=-msse4.2
 endif
 
-BINDIR=bin-$(NBITS)
+BINDIR=bin-$(NBITS)-$(CC)
+$(info BINDIR: $(BINDIR))
+
 LOGDIR=logs/testu01
 
 COMMONFLAGS = -c -O3 $(SIMD)
@@ -92,14 +99,14 @@ endif
 $(BINDIR)/testu01.cpp.obj : CPPFLAGS += -I$(TESTU01_DIR)/include
 
 $(BINDIR)/%.cpp.obj : src/%.cpp $(HEADERS) Makefile | $(BINDIR)
-	g++ $(CPPFLAGS) -o $@ $<
+	$(CXX) $(CPPFLAGS) -o $@ $<
 
 $(MT_OBJ) : mt19937-original/mt19937ar.c Makefile | $(BINDIR)
-	gcc $(CFLAGS) -o $@ $<
+	$(CC) $(CFLAGS) -o $@ $<
 
 $(SFMT_OBJ) : CFLAGS += -DHAVE_SSE2
 $(SFMT_OBJ) : SFMT-src-1.5.1/SFMT.c Makefile | $(BINDIR)
-	gcc $(CFLAGS) $(SFMT_FLAGS) -o $@ $<
+	$(CC) $(CFLAGS) $(SFMT_FLAGS) -o $@ $<
 
 # extra dependencies and flags for specific executable
 $(BINDIR)/test.exe $(BINDIR)/perf.exe : $(MT_OBJ) $(SFMT_OBJ)
@@ -109,7 +116,7 @@ ifdef MKLROOT
 endif
 
 $(BINDIR)/%.exe : $(BINDIR)/%.cpp.obj
-	g++ -o $@ $^ $(LFLAGS)
+	$(CXX) -o $@ $^ $(LFLAGS)
 
 BITS=32 128 256 512
 TESTLOGS=$(patsubst %,$(LOGDIR)/SmallCrush-%.log,$(BITS)) $(patsubst %,$(LOGDIR)/Crush-%.log,$(BITS)) $(patsubst %,$(LOGDIR)/BigCrush-%.log,$(BITS))
