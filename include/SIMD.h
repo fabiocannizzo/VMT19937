@@ -10,6 +10,9 @@ namespace Details {
 template <size_t NumBits, size_t NumBitsImpl>
 struct SimdRegister
 {
+    static const size_t s_nRegBits = NumBits;
+    static const size_t s_nImplBits = NumBitsImpl;
+    static_assert(NumBits >= 2 * NumBitsImpl);
 private:
     static_assert((NumBits / NumBitsImpl > 1) && (NumBits % NumBitsImpl == 0), "NumBits must be a multiple of NumBitsImpl");
     static const size_t M = NumBits / NumBitsImpl;
@@ -171,6 +174,9 @@ public:
 template <>
 struct SimdRegister<32, 32>
 {
+    static const size_t s_nRegBits = 32;
+    static const size_t s_nImplBits = 32;
+
     uint32_t m_v;
 
     typedef SimdRegister<32, 32> XV;
@@ -267,6 +273,9 @@ struct MAY_ALIAS SimdRegister<64>
 template <>
 struct SimdRegister<128, 128>
 {
+    static const size_t s_nRegBits = 128;
+    static const size_t s_nImplBits = 128;
+
     __m128i m_v;
 
     typedef SimdRegister<128, 128> XV;
@@ -322,8 +331,11 @@ struct SimdRegister<128, 128>
 
 #if SIMD_N_BITS>=256
 template <>
-struct MAY_ALIAS SimdRegister<256, 256>
+struct SimdRegister<256, 256>
 {
+    static const size_t s_nRegBits = 256;
+    static const size_t s_nImplBits = 256;
+
     __m256i m_v;
 
     typedef SimdRegister<256, 256> XV;
@@ -381,8 +393,11 @@ struct MAY_ALIAS SimdRegister<256, 256>
 
 #if SIMD_N_BITS>=512
 template <>
-struct MAY_ALIAS SimdRegister<512, 512>
+struct SimdRegister<512, 512>
 {
+    static const size_t s_nRegBits = 512;
+    static const size_t s_nImplBits = 512;
+
     __m512i m_v;
 
     typedef SimdRegister<512, 512> XV;
