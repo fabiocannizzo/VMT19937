@@ -33,9 +33,11 @@ private:
         XVImpl* end() { return ar + M; }
     private:
         XVImpl ar[M];
-    } m_v;
+    };
 
 public:
+    Aux m_v;
+
     typedef SimdRegister<NumBits, NumBitsImpl> XV;
 
     SimdRegister() {}
@@ -70,7 +72,21 @@ public:
 
     friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v[i] = a.m_v[i] & b.m_v[i]; return r; }
     template <typename XVI>
-    friend FORCE_INLINE XV operator&(const XV& a, const XVI& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v[i] = a.m_v[i] & b.m_v; return r; }
+    friend FORCE_INLINE XV operator&(const XV& a, const XVI& b)
+    {
+        XV r;
+        if constexpr (XVI::s_nRegBits > XVI::s_nImplBits) {
+            const size_t N = XVI::s_nRegBits / XVI::s_nImplBits;
+            for (size_t i = 0; i < M / N; ++i)
+                for (size_t j = 0; j < N; ++j)
+                    r.m_v[i * N + j] = a.m_v[i * N + j] & b.m_v[j];
+        }
+        else {
+            for (size_t i = 0; i < M; ++i)
+                r.m_v[i] = a.m_v[i] & b;
+        }
+        return r;
+    }
     friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v[i] = a.m_v[i] ^ b.m_v[i]; return r; }
     friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < M; ++i) r.m_v[i] = a.m_v[i] | b.m_v[i]; return r; }
     friend FORCE_INLINE XV operator<<(const XV& a, const int n) { XV r; for (size_t i = 0; i < M; ++i) r.m_v[i] = a.m_v[i] << n; return r; }
