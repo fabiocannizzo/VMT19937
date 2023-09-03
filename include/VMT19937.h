@@ -171,10 +171,10 @@ private:
         XV x0(stCur);
 
         // unroll first part of the loop (N-M) iterations
-        advanceLoop<4, N - M, 1, M>(stCur, x0, masks);
+        advanceLoop<2, N - M, 1, M>(stCur, x0, masks);
 
         // unroll second part of the loop (M-1) iterations
-        advanceLoop<4, M - 1, 1, M - N>(stCur, x0, masks);
+        advanceLoop<2, M - 1, 1, M - N>(stCur, x0, masks);
 
         // last iteration
         advanceLoop<1, 1, 1 - N, M - N>(stCur, x0, masks);
