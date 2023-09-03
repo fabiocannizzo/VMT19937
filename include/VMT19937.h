@@ -120,40 +120,31 @@ private:
         return r;
     }
 
-    template <int nIter, int J0, int J1, int JM>
-    static FORCE_INLINE void unroll(uint32_t* p, XV& x0, const RefillCst& masks)
+    //template <int nIter>
+    static FORCE_INLINE void iteration(uint32_t* p, XV& x0, int J0, int J1, int JM, const RefillCst& masks)
     {
-        if constexpr (nIter > 0) {
-#ifdef DEBUG
-            if (!pJ0.eq(p[J0]))
-                THROW("how did this happen?");
-#endif
-            XV x1(p + J1 * s_n32inReg);
-            XV xM(p + JM * s_n32inReg);
-            XV tmp = advance1(x0, x1, xM, masks);
-            tmp.template store<true>(p + J0 * s_n32inReg);
-            x0 = x1;
-            unroll<nIter - 1, J0 + 1, J1 + 1, JM + 1>(p, x0, masks);
-        }
+        XV x1(p + J1 * s_n32inReg);
+        XV xM(p + JM * s_n32inReg);
+        XV tmp = advance1(x0, x1, xM, masks);
+        tmp.template store<true>(p + J0 * s_n32inReg);
+        x0 = x1;
     }
 
-    template <int nUnroll, int nIter, int J1, int JM>
-    static FORCE_INLINE void advanceLoop(uint32_t*& p, XV& x0, const RefillCst& masks)
+    template <int...Is>
+    static FORCE_INLINE uint32_t* advanceLoop(size_t nBlkIter, uint32_t* p, XV& x0, int J1, int JM, const RefillCst& masks, std::integer_sequence<int, Is...>&&)
     {
-         const size_t nBlockIter = nIter / nUnroll;
-         const size_t nResIter = nIter % nUnroll;
-        if constexpr (nBlockIter > 0) {
-            auto pend = p + nBlockIter * nUnroll * s_n32inReg;
-            // unroll the loop in blocks of nUnroll
+        const size_t nIterPerBlk = sizeof...(Is);
+        if constexpr (nIterPerBlk) {
+            const size_t n32PerBlk = nIterPerBlk * s_n32inReg;
+            auto pend = p + nBlkIter * n32PerBlk;
             do {
-                unroll<nUnroll, 0, J1, JM>(p, x0, masks);
-                p += nUnroll * s_n32inReg;
+                (iteration(p, x0, 0 + Is, J1 + Is, JM + Is, masks), ...);
+                p += n32PerBlk;
             } while (p != pend);
+            return pend;
         }
-        if constexpr (nResIter) {
-            unroll<nResIter, 0, J1, JM>(p, x0, masks);
-            p += nResIter * s_n32inReg;
-        }
+        else
+            return p;
     }
 
     void NO_INLINE refill()
@@ -171,14 +162,22 @@ private:
 
         XV x0(stCur);
 
+        const size_t nUnroll = 2;
+
         // unroll first part of the loop (N-M) iterations
-        advanceLoop<2, N - M, 1, M>(stCur, x0, masks);
+        const size_t n1 = (N - M) / nUnroll;
+        const size_t r1 = (N - M) % nUnroll;
+        stCur = advanceLoop(n1, stCur, x0, 1, M, masks, std::make_integer_sequence<int, nUnroll>{});
+        stCur = advanceLoop(r1, stCur, x0, 1, M, masks, std::make_integer_sequence<int, r1>{});
 
         // unroll second part of the loop (M-1) iterations
-        advanceLoop<2, M - 1, 1, M - N>(stCur, x0, masks);
+        const size_t n2 = (M - 1) / nUnroll;
+        const size_t r2 = (M - 1) % nUnroll;
+        stCur = advanceLoop(n2, stCur, x0, 1, M - N, masks, std::make_integer_sequence<int, nUnroll>{});
+        stCur = advanceLoop(r2, stCur, x0, 1, M - N, masks, std::make_integer_sequence<int, r2>{});
 
         // last iteration
-        advanceLoop<1, 1, 1 - N, M - N>(stCur, x0, masks);
+        advanceLoop(1, stCur, x0, 1 - N, M - N, masks, std::make_integer_sequence<int, 1>{});
 
         m_pst = begin();
     }
