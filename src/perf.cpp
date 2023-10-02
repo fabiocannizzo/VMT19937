@@ -334,13 +334,13 @@ void vRandGenPerformance2()
 template <template <size_t, size_t> class Gen, size_t L, size_t...Is>
 void vRandGenPerformance1()
 {
-    (vRandGenPerformance2<Gen, L, Is, QM_Scalar, QM_Block16, QM_StateSize, QM_Any>(), ...);
+    (vRandGenPerformance2<Gen, L, Is, /*QM_Scalar,*/ QM_Block16/*, QM_StateSize, QM_Any*/>(), ...);
 }
 
 template <template <size_t, size_t> class Gen, size_t...Ls>
 void vRandGenPerformance0()
 {
-    (vRandGenPerformance1<Gen, Ls, 32, 128, 256, 512>(), ...);
+    (vRandGenPerformance1<Gen, Ls, /*32,*/ 128, 256, 512>(), ...);
 }
 
 void usage()
@@ -391,8 +391,8 @@ int main(int argc, const char** argv)
     }
     if (minRepeat = 0)
         minRepeat = nRepeat;
-    std::cout << "nRepeat = " << nRepeat << "\n";
-    std::cout << "nRepeat = " << minRepeat << "\n";
+    std::cout << "nMaxRepeat = " << nRepeat << "\n";
+    std::cout << "nMinRepeat = " << minRepeat << "\n";
     std::cout << "slow = " << slow << "\n";
     if (slow)
         nRandomPerf *= 1000;
@@ -411,19 +411,19 @@ int main(int argc, const char** argv)
                 << "\n";
         }
 
-        mtOrigPerformance();
-        sfmtOrigPerformance<true>(1);
-        for (auto sz : anySize)
-            if(sz >= 624)
-                sfmtOrigPerformance<false>(sz);
+        //mtOrigPerformance();
+        //sfmtOrigPerformance<true>(1);
+        //for (auto sz : anySize)
+        //    if(sz >= 624)
+        //        sfmtOrigPerformance<false>(sz);
 #ifdef TEST_MKL
         for (auto sz : anySize)
             mklPerformance(VSL_BRNG_MT19937, (MKL_INT) sz);
         for (auto sz : anySize)
             mklPerformance(VSL_BRNG_SFMT19937, (MKL_INT) sz);
 #endif
-        vRandGenPerformance0<Details::VMT19937Base, 32, 128, 256, 512>();
-        vRandGenPerformance0<Details::VSFMT19937Base, 128, 256, 512>();
+        vRandGenPerformance0<Details::VMT19937Base, /*32, */128/*, 256, 512*/>();
+        //vRandGenPerformance0<Details::VSFMT19937Base, 128, 256, 512>();
     }
 
     const size_t spacing[] = { 20, 8, 8, 8, 10, 6, 8, 8, 8, 8, 11, 12 };

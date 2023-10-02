@@ -8,7 +8,7 @@ It combines the random streams of multiple MT19937 instances with state vectors 
 By evolving their vector states simultaneously, the new generator achieves perfect vectorization, fully leveraging on SIMD hardware capabilities.
 Comprehensive test results demonstrate that the throughput of the new generator scales approximately linearly with the width of the SIMD registers used.
 
-A paper describing in detail the implementation is available on [arXiv]{http://www.math.sci.hiroshima-u.ac.jp/m-mat/MT/MT2002/CODES/mt19937ar.c}
+A paper describing in detail the implementation is available on [arXiv](https://arxiv.org/abs/2309.16682)
 
 ## Description
 The VMT19937 generator is parametrized on 2 template parameters
