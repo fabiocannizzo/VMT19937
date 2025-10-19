@@ -9,7 +9,7 @@
 
 namespace Details {
 
-template <size_t RegisterBitLen, size_t RegisterBitLenImpl>
+template <size_t RegisterBitLen, size_t RegisterBitLenHw>
 class VSFMT19937Base
 {
     static const size_t s_nBits = SFMT19937Params::s_nBits;
@@ -22,7 +22,7 @@ public:
     static_assert(s_N == 156);
 
     static const size_t s_regLenBits = RegisterBitLen;
-    static const size_t s_regLenImplBits = RegisterBitLenImpl;
+    static const size_t s_regLenBitsHw = RegisterBitLenHw;
     static const size_t s_nStates = RegisterBitLen / s_wordSizeBits;
     static const size_t s_n32inReg = RegisterBitLen / 32;
     static const size_t s_n32InOneWord = s_wordSizeBits / 32;            // 4
@@ -35,7 +35,7 @@ public:
 private:
     const static size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
 
-    typedef SimdRegister<s_regLenBits, RegisterBitLenImpl> XV;
+    typedef SimdRegister<s_regLenBits, RegisterBitLenHw> XV;
 
 protected:
     alignas(64) uint32_t m_state[s_n32InFullState];    // the array of state vectors
@@ -105,7 +105,7 @@ private:
         // Create local copy of the constants and pass them to the function as arguments.
         // Since all functions invoked from here are forced inline, the function arguments
         // will not be passed as arguments via the stack, but reside in CPU registers
-        SimdRegister<std::max<size_t>(128, s_regLenImplBits), s_regLenImplBits>
+        SimdRegister<std::max<size_t>(128, s_regLenBitsHw), s_regLenBitsHw>
             bMask(SFMT19937Params::s_SFMT_MSK1, SFMT19937Params::s_SFMT_MSK2, SFMT19937Params::s_SFMT_MSK3, SFMT19937Params::s_SFMT_MSK4);
 
         const int s_M = SFMT19937Params::s_M;

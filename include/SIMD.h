@@ -7,44 +7,45 @@
 
 namespace Details {
 
-template <size_t NumBits, size_t NumBitsImpl>
+// SimdRegister is an abstraction of a SIMD regsiter of length NumBits
+// If NumBits is larger than NumBitsHw, then every operation is emulated via iteration over registers of size NumBitsHw
+template <size_t NumBits, size_t NumBitsHw>
 struct SimdRegister
 {
     static const size_t s_nRegBits = NumBits;
-    static const size_t s_nImplBits = NumBitsImpl;
-    static_assert(NumBits >= 2 * NumBitsImpl);
+    static const size_t s_nBitsHw = NumBitsHw;
 private:
-    static_assert((NumBits / NumBitsImpl > 1) && (NumBits % NumBitsImpl == 0), "NumBits must be a multiple of NumBitsImpl");
-    static const size_t M = NumBits / NumBitsImpl;
+    static_assert((NumBits / NumBitsHw > 1) && (NumBits % NumBitsHw == 0), "NumBits must be a multiple of NumBitsHw");
+    static const size_t M = NumBits / NumBitsHw;
     static const size_t N32 = NumBits / 32;
     static const size_t N128 = NumBits / 128;
-    typedef SimdRegister<NumBitsImpl, NumBitsImpl> XVImpl;
+    typedef SimdRegister<NumBitsHw, NumBitsHw> XVHw;
 
     struct Aux
     {
         Aux() : ar{ {} } {}
-        Aux(XVImpl v) { std::fill_n(ar, M, v); }
-        Aux(uint32_t v) : Aux(XVImpl(v)) {}
-        XVImpl& operator[](size_t i) { return ar[i]; }
-        const XVImpl& operator[](size_t i) const { return ar[i]; }
-        const XVImpl* begin() const { return ar; }
-        XVImpl* begin() { return ar; }
-        const XVImpl* end() const { return ar + M; }
-        XVImpl* end() { return ar + M; }
+        Aux(XVHw v) { std::fill_n(ar, M, v); }
+        Aux(uint32_t v) : Aux(XVHw(v)) {}
+        XVHw& operator[](size_t i) { return ar[i]; }
+        const XVHw& operator[](size_t i) const { return ar[i]; }
+        const XVHw* begin() const { return ar; }
+        XVHw* begin() { return ar; }
+        const XVHw* end() const { return ar + M; }
+        XVHw* end() { return ar + M; }
     private:
-        XVImpl ar[M];
+        XVHw ar[M];
     };
 
 public:
     Aux m_v;
 
-    typedef SimdRegister<NumBits, NumBitsImpl> XV;
+    typedef SimdRegister<NumBits, NumBitsHw> XV;
 
     SimdRegister() {}
     FORCE_INLINE SimdRegister(uint32_t v) : m_v(v) {}
     FORCE_INLINE SimdRegister(uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3)
     {
-        if constexpr (NumBitsImpl == 32) {
+        if constexpr (NumBitsHw == 32) {
             for (size_t i = 0; i < N128; ++i) {
                 m_v[0 + 4 * i] = v0;
                 m_v[1 + 4 * i] = v1;
@@ -53,20 +54,20 @@ public:
             }
         }
         else {
-            m_v = Aux(XVImpl(v0, v1, v2, v3));
+            m_v = Aux(XVHw(v0, v1, v2, v3));
         }
     }
     FORCE_INLINE SimdRegister(const uint32_t* p)
     {
-        for (size_t i = 0; i < M; ++i, p += sizeof(XVImpl) / sizeof(uint32_t))
-            m_v[i] = XVImpl(p);
+        for (size_t i = 0; i < M; ++i, p += sizeof(XVHw) / sizeof(uint32_t))
+            m_v[i] = XVHw(p);
     }
     FORCE_INLINE SimdRegister(const Aux& v) : m_v(v) {}
 
     template <bool A>
     FORCE_INLINE void store(uint32_t* p)
     {
-        for (size_t i = 0; i < M; ++i, p += sizeof(XVImpl) / sizeof(uint32_t))
+        for (size_t i = 0; i < M; ++i, p += sizeof(XVHw) / sizeof(uint32_t))
             m_v[i].template store<A>(p);
     }
 
@@ -75,8 +76,8 @@ public:
     friend FORCE_INLINE XV operator&(const XV& a, const XVI& b)
     {
         XV r;
-        if constexpr (XVI::s_nRegBits > XVI::s_nImplBits) {
-            const size_t N = XVI::s_nRegBits / XVI::s_nImplBits;
+        if constexpr (XVI::s_nRegBits > XVI::s_nBitsHw) {
+            const size_t N = XVI::s_nRegBits / XVI::s_nBitsHw;
             for (size_t i = 0; i < M / N; ++i)
                 for (size_t j = 0; j < N; ++j)
                     r.m_v[i * N + j] = a.m_v[i * N + j] & b.m_v[j];
@@ -97,12 +98,12 @@ public:
     {
         static_assert(N128 > 0);
         XV r;
-        if constexpr (NumBitsImpl == 32) {
+        if constexpr (NumBitsHw == 32) {
             for (size_t s = 0; s < N128; ++s) {
-                XVImpl current = a.m_v[4 * s];
+                XVHw current = a.m_v[4 * s];
                 r.m_v[4 * s] = current << 8;
                 for (size_t j = 1; j < 4; ++j) {
-                    XVImpl prev = current;
+                    XVHw prev = current;
                     current = a.m_v[4 * s + j];
                     r.m_v[4 * s + j] = (current << 8) | (prev >> 24);
                 }
@@ -110,7 +111,7 @@ public:
         }
         else {
             for (size_t i = 0; i < M; ++i)
-                r.m_v[i] = XVImpl::template shl128<nBytes>(a.m_v[i]);
+                r.m_v[i] = XVHw::template shl128<nBytes>(a.m_v[i]);
         }
         return r;
     }
@@ -120,11 +121,11 @@ public:
     {
         static_assert(N128 > 0);
         XV r;
-        if constexpr (NumBitsImpl == 32) {
+        if constexpr (NumBitsHw == 32) {
             for (size_t s = 0; s < N128; ++s) {
-                XVImpl current = a.m_v[4 * s];
+                XVHw current = a.m_v[4 * s];
                 for (size_t j = 0; j < 3; ++j) {
-                    XVImpl next = a.m_v[4 * s +  j + 1];
+                    XVHw next = a.m_v[4 * s +  j + 1];
                     r.m_v[4 * s + j] = (current >> 8) | (next << 24);
                     current = next;
                 }
@@ -133,7 +134,7 @@ public:
         }
         else {
             for (size_t i = 0; i < M; ++i)
-                r.m_v[i] = XVImpl::template shr128<nBytes>(a.m_v[i]);
+                r.m_v[i] = XVHw::template shr128<nBytes>(a.m_v[i]);
         }
         return r;
     }
@@ -141,7 +142,7 @@ public:
     FORCE_INLINE void broadcastLo128()
     {
         static_assert(N128 > 0);
-        if constexpr (NumBitsImpl == 32) {
+        if constexpr (NumBitsHw == 32) {
             for (size_t i = 0; i < N128; ++i)
                 for (size_t j = 0; j < 4; ++j)
                     m_v[4 * i + j] = m_v[j];
@@ -162,7 +163,7 @@ public:
 
     FORCE_INLINE static XV zero()
     {
-        XVImpl z(0);
+        XVHw z(0);
         XV r;
         for (auto& v : r.m_v)
             v = z;
@@ -180,7 +181,7 @@ public:
 
     FORCE_INLINE uint8_t parity() const
     {
-        XVImpl temp(m_v[0]);
+        XVHw temp(m_v[0]);
         for (size_t i = 1; i < M; ++i)
             temp = temp ^ m_v[i];
         return temp.parity();
@@ -192,7 +193,7 @@ template <>
 struct SimdRegister<32, 32>
 {
     static const size_t s_nRegBits = 32;
-    static const size_t s_nImplBits = 32;
+    static const size_t s_nBitsHw = 32;
 
     uint32_t m_v;
 
@@ -291,7 +292,7 @@ template <>
 struct SimdRegister<128, 128>
 {
     static const size_t s_nRegBits = 128;
-    static const size_t s_nImplBits = 128;
+    static const size_t s_nBitsHw = 128;
 
     __m128i m_v;
 
@@ -351,7 +352,7 @@ template <>
 struct SimdRegister<256, 256>
 {
     static const size_t s_nRegBits = 256;
-    static const size_t s_nImplBits = 256;
+    static const size_t s_nBitsHw = 256;
 
     __m256i m_v;
 
@@ -413,7 +414,7 @@ template <>
 struct SimdRegister<512, 512>
 {
     static const size_t s_nRegBits = 512;
-    static const size_t s_nImplBits = 512;
+    static const size_t s_nBitsHw = 512;
 
     __m512i m_v;
 

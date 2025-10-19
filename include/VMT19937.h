@@ -8,11 +8,10 @@
 
 namespace Details {
 
-template <size_t RegisterBitLen, size_t RegisterBitLenImpl>
+template <size_t RegisterBitLen, size_t RegisterBitLenHw>
 class VMT19937Base
 {
 
-    static const size_t s_nBits = MT19937Params::s_nBits;
     static const size_t s_wordSizeBits = MT19937Params::s_wordSizeBits;
 
     static_assert(RegisterBitLen >= s_wordSizeBits);
@@ -23,7 +22,7 @@ public:
     static_assert(s_N == 624);
 
     static const size_t s_regLenBits = RegisterBitLen;
-    static const size_t s_regLenImplBits = RegisterBitLenImpl;
+    static const size_t s_regLenBitsHw = RegisterBitLenHw;
     static const size_t s_nStates = RegisterBitLen / s_wordSizeBits;
     static const size_t s_n32inReg = RegisterBitLen / 32;
     static const size_t s_n32InOneWord = s_wordSizeBits / 32;            // 1
@@ -35,10 +34,10 @@ public:
 
 private:
     const static size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
-    typedef SimdRegister<s_regLenBits, RegisterBitLenImpl> XV;
+    typedef SimdRegister<s_regLenBits, RegisterBitLenHw> XV;
 
     static const uint32_t s_cacheLineBits = 64*8;
-    static const uint32_t s_n32InRndCache = std::max<uint32_t>(s_cacheLineBits, 4*RegisterBitLenImpl) / 32;
+    static const uint32_t s_n32InRndCache = std::max<uint32_t>(s_cacheLineBits, 4*RegisterBitLenHw) / 32;
     static_assert(s_n32InFullState % s_n32InRndCache == 0, "full state size not divisible by cache size");
     static_assert(s_n32InRndCache % (64/4) == 0, "cache size is not divisible by cache line size");
 
@@ -65,7 +64,7 @@ private:
 
     struct RefillCst
     {
-        typedef SimdRegister<RegisterBitLenImpl, RegisterBitLenImpl> XVI;
+        typedef SimdRegister<RegisterBitLenHw, RegisterBitLenHw> XVI;
         RefillCst() : m_upperMask(MT19937Params::s_upperMask), m_lowerMask(MT19937Params::s_lowerMask), m_matrixA(MT19937Params::s_matrixA) {}
         const XVI m_upperMask;
         const XVI m_lowerMask;
@@ -85,8 +84,8 @@ private:
     template <bool Aligned>
     static FORCE_INLINE void temperRefillBlock_(const uint32_t * __restrict st, uint32_t * __restrict dst)
     {
-        const size_t LR = std::min<size_t>(s_regLenImplBits * 4, s_n32InRndCache * 32);
-        typedef SimdRegister<LR, s_regLenImplBits> XVmax;
+        const size_t LR = std::min<size_t>(s_regLenBitsHw * 4, s_n32InRndCache * 32);
+        typedef SimdRegister<LR, s_regLenBitsHw> XVmax;
         const size_t n32PerIteration = LR / 32;
         static_assert(n32PerIteration <= s_n32InRndCache);
         static_assert(s_n32InRndCache % n32PerIteration == 0);
@@ -313,9 +312,10 @@ protected:
     {
         if constexpr (s_n32InRndCache > 16) {
             if (m_prnd != endRnd()) {
-                const uint32_t* e = m_prnd + 16;
-                std::copy(m_prnd, e, dst);
+                const uint32_t* b = m_prnd + 16;
+                const uint32_t* e = b + 16;
                 m_prnd = e;
+                std::copy(b, e, dst);
                 return;
             }
         }
