@@ -51,7 +51,7 @@ COMMONFLAGS = -c -O3 $(SIMD)
 SFMT_FLAGS = -DSFMT_MEXP=19937 -DHAVE_SSE2
 
 CFLAGS += $(COMMONFLAGS)
-CPPFLAGS += $(COMMONFLAGS) -O3 -std=c++17 -Iinclude $(SIMD)
+CPPFLAGS += $(COMMONFLAGS) -O3 -std=c++20 -Iinclude $(SIMD)
 
 HEADERS := $(wildcard include/*.h)
 $(info HEADERS: $(HEADERS))
