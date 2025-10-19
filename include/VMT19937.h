@@ -12,37 +12,35 @@ template <size_t RegisterBitLen, size_t RegisterBitLenHw>
 class VMT19937Base
 {
 
-    static const size_t s_wordSizeBits = MT19937Params::s_wordSizeBits;
+    static constexpr size_t s_wordSizeBits = MT19937Params::s_wordSizeBits;
 
     static_assert(RegisterBitLen >= s_wordSizeBits);
 
 public:
 
-    static const int s_N = MT19937Params::s_N;     // 624
+    static constexpr int s_N = MT19937Params::s_N;     // 624
     static_assert(s_N == 624);
 
-    static const size_t s_regLenBits = RegisterBitLen;
-    static const size_t s_regLenBitsHw = RegisterBitLenHw;
-    static const size_t s_nStates = RegisterBitLen / s_wordSizeBits;
-    static const size_t s_n32inReg = RegisterBitLen / 32;
-    static const size_t s_n32InOneWord = s_wordSizeBits / 32;            // 1
-    static const size_t s_n32InOneState = s_N * s_n32InOneWord;          // 624
-    const static size_t s_n32InFullState = s_n32InOneState * s_nStates;  // 624 * nStates
-    const static size_t s_nMatrixBits = MT19937Params::s_nMatrixBits;
+    static constexpr size_t s_regLenBits = RegisterBitLen;
+    static constexpr size_t s_regLenBitsHw = RegisterBitLenHw;
+    static constexpr size_t s_nStates = RegisterBitLen / s_wordSizeBits;
+    static constexpr size_t s_n32inReg = RegisterBitLen / 32;
+    static constexpr size_t s_n32InOneWord = s_wordSizeBits / 32;            // 1
+    static constexpr size_t s_n32InOneState = s_N * s_n32InOneWord;          // 624
+    static constexpr size_t s_n32InFullState = s_n32InOneState * s_nStates;  // 624 * nStates
+    static constexpr size_t s_nMatrixBits = MT19937Params::s_nMatrixBits;
 
-    typedef MT19937Matrix matrix_t;
+    using matrix_t = MT19937Matrix;
 
 private:
-    const static size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
-    typedef SimdRegister<s_regLenBits, RegisterBitLenHw> XV;
+    static constexpr size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
 
-    static const uint32_t s_cacheLineBits = 64*8;
-    static const uint32_t s_n32InRndCache = std::max<uint32_t>(s_cacheLineBits, 4*RegisterBitLenHw) / 32;
+    static constexpr uint32_t s_cacheLineBits = 64*8;
+    static constexpr uint32_t s_n32InRndCache = std::max<uint32_t>(s_cacheLineBits, 4*RegisterBitLenHw) / 32;
     static_assert(s_n32InFullState % s_n32InRndCache == 0, "full state size not divisible by cache size");
     static_assert(s_n32InRndCache % (64/4) == 0, "cache size is not divisible by cache line size");
 
-protected:
-    alignas(64) uint32_t m_state[s_N * s_n32inReg];    // the array of state vectors
+    using XV = SimdRegister<s_regLenBits, RegisterBitLenHw>;
 
 private:
     // This data members is necessary only if QueryMode==QM_Scalar
@@ -51,6 +49,9 @@ private:
 
     // This data members are redundant if QueryMode==QM_StateSize
     const uint32_t*m_pst, * const m_pstEnd;    // m_pos==m_pstEnd means the state vector has been consumed and need to be regenerated
+
+protected:
+    alignas(64) uint32_t m_state[s_N * s_n32inReg];    // the array of state vectors
 
 private:
 
@@ -64,7 +65,7 @@ private:
 
     struct RefillCst
     {
-        typedef SimdRegister<RegisterBitLenHw, RegisterBitLenHw> XVI;
+        using XVI = SimdRegister<RegisterBitLenHw, RegisterBitLenHw>;
         RefillCst() : m_upperMask(MT19937Params::s_upperMask), m_lowerMask(MT19937Params::s_lowerMask), m_matrixA(MT19937Params::s_matrixA) {}
         const XVI m_upperMask;
         const XVI m_lowerMask;
@@ -84,12 +85,12 @@ private:
     template <bool Aligned>
     static FORCE_INLINE void temperRefillBlock_(const uint32_t * __restrict st, uint32_t * __restrict dst)
     {
-        const size_t LR = std::min<size_t>(s_regLenBitsHw * 4, s_n32InRndCache * 32);
-        typedef SimdRegister<LR, s_regLenBitsHw> XVmax;
-        const size_t n32PerIteration = LR / 32;
+        constexpr size_t LR = std::min<size_t>(s_regLenBitsHw * 4, s_n32InRndCache * 32);
+        using XVmax = SimdRegister<LR, s_regLenBitsHw>;
+        constexpr size_t n32PerIteration = LR / 32;
         static_assert(n32PerIteration <= s_n32InRndCache);
         static_assert(s_n32InRndCache % n32PerIteration == 0);
-        const size_t nIterations = s_n32InRndCache / n32PerIteration;
+        constexpr size_t nIterations = s_n32InRndCache / n32PerIteration;
 
         TemperCst<XVmax> cst{};
 
@@ -132,9 +133,9 @@ private:
     template <int...Is>
     static FORCE_INLINE uint32_t* advanceLoop(size_t nBlkIter, uint32_t* p, XV& x0, int J1, int JM, const RefillCst& masks, std::integer_sequence<int, Is...>&&)
     {
-        const size_t nIterPerBlk = sizeof...(Is);
+        constexpr size_t nIterPerBlk = sizeof...(Is);
         if constexpr (nIterPerBlk) {
-            const size_t n32PerBlk = nIterPerBlk * s_n32inReg;
+            constexpr size_t n32PerBlk = nIterPerBlk * s_n32inReg;
             auto pend = p + nBlkIter * n32PerBlk;
             do {
                 (iteration(p, x0, 0 + Is, J1 + Is, JM + Is, masks), ...);
@@ -150,8 +151,8 @@ private:
     {
         uint32_t* stCur = m_state;
 
-        const int N = s_N;
-        const int M = Details::MT19937Params::s_M;
+        constexpr int N = s_N;
+        constexpr int M = Details::MT19937Params::s_M;
         static_assert(N == 624 && M == 397, "unrolling designed for these parameters");
 
         // Create local copy of the constants and pass them to the function as arguments.
@@ -161,17 +162,17 @@ private:
 
         XV x0(stCur);
 
-        const size_t nUnroll = 2;
+        constexpr size_t nUnroll = 2;
 
         // unroll first part of the loop (N-M) iterations
-        const size_t n1 = (N - M) / nUnroll;
-        const size_t r1 = (N - M) % nUnroll;
+        constexpr size_t n1 = (N - M) / nUnroll;
+        constexpr size_t r1 = (N - M) % nUnroll;
         stCur = advanceLoop(n1, stCur, x0, 1, M, masks, std::make_integer_sequence<int, nUnroll>{});
         stCur = advanceLoop(r1, stCur, x0, 1, M, masks, std::make_integer_sequence<int, r1>{});
 
         // unroll second part of the loop (M-1) iterations
-        const size_t n2 = (M - 1) / nUnroll;
-        const size_t r2 = (M - 1) % nUnroll;
+        constexpr size_t n2 = (M - 1) / nUnroll;
+        constexpr size_t r2 = (M - 1) % nUnroll;
         stCur = advanceLoop(n2, stCur, x0, 1, M - N, masks, std::make_integer_sequence<int, nUnroll>{});
         stCur = advanceLoop(r2, stCur, x0, 1, M - N, masks, std::make_integer_sequence<int, r2>{});
 
@@ -215,7 +216,7 @@ private:
     // initializes the first state with a seed
     void __reinit(uint32_t s)
     {
-        const uint32_t mask = uint32_t(1812433253UL);
+        constexpr uint32_t mask = uint32_t(1812433253UL);
         uint32_t prev = scalarState(0) = s;
         for (uint32_t i = 1; i < s_N; i++)
             prev = scalarState(i) = (mask * (prev ^ (prev >> 30)) + i);

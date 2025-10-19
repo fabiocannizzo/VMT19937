@@ -11,9 +11,9 @@ namespace Details
 template <typename GenBase, VRandGenQueryMode QueryMode>
 class VRandGen : public GenBase
 {
-    typedef GenBase base_t;
+    using base_t = GenBase;
 public:
-    typedef typename base_t::matrix_t matrix_t;
+    using matrix_t = typename base_t::matrix_t;
 private:
     void completeStateInitialization(size_t nCommonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
     {
@@ -75,7 +75,8 @@ private:
 
 
 public:
-    static const VRandGenQueryMode s_queryMode = QueryMode;
+    static constexpr VRandGenQueryMode s_queryMode = QueryMode;
+    static constexpr size_t s_n32InFullState = base_t::s_n32InFullState;
 
     VRandGen() {}
 
@@ -112,7 +113,7 @@ public:
     // generates a random number on [0,0xffffffff] interval
     FORCE_INLINE uint32_t genrand_uint32()
     {
-        static_assert(QueryMode == QM_Scalar || QueryMode == QM_Any);
+        static_assert(QueryMode == QM_Scalar || QueryMode == QM_Any, "This function can only be invoked when query mode is QM_Scalar or QM_Any");
         return base_t::genrand_uint32();
     }
 

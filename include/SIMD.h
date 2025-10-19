@@ -12,14 +12,14 @@ namespace Details {
 template <size_t NumBits, size_t NumBitsHw>
 struct SimdRegister
 {
-    static const size_t s_nRegBits = NumBits;
-    static const size_t s_nBitsHw = NumBitsHw;
+    static constexpr size_t s_nRegBits = NumBits;
+    static constexpr size_t s_nBitsHw = NumBitsHw;
 private:
     static_assert((NumBits / NumBitsHw > 1) && (NumBits % NumBitsHw == 0), "NumBits must be a multiple of NumBitsHw");
-    static const size_t M = NumBits / NumBitsHw;
-    static const size_t N32 = NumBits / 32;
-    static const size_t N128 = NumBits / 128;
-    typedef SimdRegister<NumBitsHw, NumBitsHw> XVHw;
+    static constexpr size_t M = NumBits / NumBitsHw;
+    static constexpr size_t N32 = NumBits / 32;
+    static constexpr size_t N128 = NumBits / 128;
+    using  XVHw = SimdRegister<NumBitsHw, NumBitsHw>;
 
     struct Aux
     {
@@ -39,7 +39,7 @@ private:
 public:
     Aux m_v;
 
-    typedef SimdRegister<NumBits, NumBitsHw> XV;
+    using XV = SimdRegister<NumBits, NumBitsHw>;
 
     SimdRegister() {}
     FORCE_INLINE SimdRegister(uint32_t v) : m_v(v) {}
@@ -64,7 +64,7 @@ public:
     }
     FORCE_INLINE SimdRegister(const Aux& v) : m_v(v) {}
 
-    template <bool A>
+    template <bool A = false>
     FORCE_INLINE void store(uint32_t* p)
     {
         for (size_t i = 0; i < M; ++i, p += sizeof(XVHw) / sizeof(uint32_t))
