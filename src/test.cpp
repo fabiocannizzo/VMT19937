@@ -220,7 +220,7 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
     const size_t s_n32InOneWord = Gen::s_n32InOneWord;
 
     std::cout << GenTraits<Gen>::name() << "< " << std::setw(3) << VecLen << ", "
-        << std::setw(7) << queryModeName(QryMode) << ", " << std::setw(3) << Gen::s_regLenImplBits << ">"
+        << std::setw(7) << queryModeName(QryMode) << ", " << std::setw(3) << Gen::s_regLenBitsHw << ">"
         << ", common jump of " << std::setw(4) << commonJumpSize << " repeated " << nCommonJumpRepeat << " times, sequence jump of " << std::setw(4) << sequenceJumpSize
         << ", block size " << std::setw(4);
     if (blkSize > 0)

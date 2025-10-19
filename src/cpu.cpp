@@ -175,4 +175,5 @@ void CpuInfo::print() const
               << ", Stepping: " << stepping << "\n";
     std::cout << "SIMD   : " << simd << "\n";
     std::cout << "Clock  : " << mhz << " MHz\n";
+    std::cout << "=======================\n";
 }

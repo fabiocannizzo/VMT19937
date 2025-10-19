@@ -1,6 +1,7 @@
 #pragma once
 
 #include "VRandGen.h"
+#include "cpu.h"
 
 inline const char* queryModeName(VRandGenQueryMode qm)
 {

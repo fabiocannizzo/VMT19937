@@ -4,9 +4,6 @@
 # CPPFLAGS=-g make
 # CCPREFIX=x86_64-w64-mingw32- make
 
-CC=$(CCPREFIX)gcc
-CXX=$(CCPREFIX)g++
-
 ifndef NBITS
    $(info WARNING: NBITS not defined. Using default value: 128)
    NBITS=128
@@ -32,6 +29,14 @@ endif
 
 PLATFORM := $(shell uname -s)
 $(info PLATFORM: $(PLATFORM))
+
+CYGWIN := $(findstring CYGWIN,$(PLATFORM))
+
+CC:=gcc
+CXX:=g++
+
+$(info CXX: $(CXX))
+$(info CC: $(CC))
 
 ifeq ($(NBITS), 512)
    SIMD=-mavx512f -mavx512bw -mavx512dq
@@ -60,6 +65,9 @@ $(info HEADERS: $(HEADERS))
 CPP_SRC=$(wildcard src/*.cpp)
 $(info C++ files: $(CPP_SRC))
 
+CPP_WITH_MAIN=$(shell git grep -l "int main" src)
+CPP_WITHOUT_MAIN=$(filter-out $(CPP_WITH_MAIN), $(CPP_SRC))
+
 CPP_OBJ=$(patsubst src/%.cpp,$(BINDIR)/%.cpp.obj,$(CPP_SRC))
 $(info C++ obj: $(CPP_OBJ))
 
@@ -74,7 +82,7 @@ $(info JUMP MATRIX FILES: $(JUMP_TARGETS))
 MT_OBJ = $(BINDIR)/mt19937ar.c.obj
 SFMT_OBJ = $(BINDIR)/SFMT.c.obj
 
-TARGETS := $(patsubst src/%.cpp,$(BINDIR)/%.exe,$(CPP_SRC))
+TARGETS := $(patsubst src/%.cpp,$(BINDIR)/%.exe,$(CPP_WITH_MAIN))
 ifeq ($(TESTU01_AVAIL), 0)
     TARGETS := $(filter-out $(BINDIR)/testu01.exe, $(TARGETS))
 endif
@@ -94,7 +102,7 @@ matrix : $(JUMP_TARGETS)
 # extra compilation flags specific files
 $(BINDIR)/perf.cpp.obj $(BINDIR)/test.cpp.obj : CPPFLAGS += $(SFMT_FLAGS)
 ifdef MKLROOT
-    $(BINDIR)/perf.cpp.obj : CPPFLAGS += -DTEST_MKL -I$(MKLROOT)/include
+    $(BINDIR)/perf.cpp.obj : CPPFLAGS += -I$(MKLROOT)/include
 endif
 $(BINDIR)/testu01.cpp.obj : CPPFLAGS += -I$(TESTU01_DIR)/include
 
@@ -110,6 +118,7 @@ $(SFMT_OBJ) : SFMT-src-1.5.1/SFMT.c Makefile | $(BINDIR)
 
 # extra dependencies and flags for specific executable
 $(BINDIR)/test.exe $(BINDIR)/perf.exe : $(MT_OBJ) $(SFMT_OBJ)
+$(BINDIR)/perf.exe : $(BINDIR)/cpu.cpp.obj
 $(BINDIR)/testu01.exe :	LFLAGS += -L$(TESTU01_DIR)/lib -ltestu01 -lprobdist -lmylib -lm
 ifdef MKLROOT
     $(BINDIR)/perf.exe : LFLAGS += -L$(MKLROOT)/lib/intel64 -Wl,--no-as-needed -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl

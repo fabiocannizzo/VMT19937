@@ -2,8 +2,11 @@
 
 #include "../SFMT-src-1.5.1/SFMT.h"
 
-#ifdef TEST_MKL
-#include "mkl.h"
+#if __has_include(<mkl.h>)
+#   define TEST_MKL 1
+#   include <mkl.h>
+#else
+#   define TEST_MKL 0
 #endif
 
 #include <iostream>
@@ -21,8 +24,12 @@ using namespace std;
 const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 
+
+bool testMkl = TEST_MKL;
+bool testOriginal = true;
+
 // this might be changed via cli arguments
-size_t nRandomPerf = size_t(624) * 32 * 800;
+size_t nRandom = size_t(624) * 32 * 800;
 
 extern "C" unsigned long genrand_int32();
 extern "C" void init_by_array(unsigned long init_key[], int key_length);
@@ -96,6 +103,11 @@ struct ResultValues
 
 std::map<ResultKey, ResultValues> results;
 
+void done(double nSeconds)
+{
+    std::cout << "done in: " << std::setw(8) << std::fixed << std::setprecision(2) << nSeconds << "s\n";
+}
+
 void addResult(const ResultKey& key, double seconds)
 {
     auto& res = results.insert({ key, ResultValues{} }).first->second;
@@ -148,12 +160,12 @@ void mtOrigPerformance()
     init_by_array(init, seedlength);
 
     auto start = std::chrono::system_clock::now();
-    for (size_t i = 0; i < nRandomPerf; ++i)
+    for (size_t i = 0; i < nRandom; ++i)
         dst[0] = genrand_int32();
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
     double nSeconds = elapsed_seconds.count();
-    std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s\n";
+    done(nSeconds);
 
     addResult(key, nSeconds);
 }
@@ -169,7 +181,7 @@ void sfmtOrigPerformance(size_t BlkSize)
     }
 
     MYASSERT((BlkSize == 1) || (BlkSize % 4 == 0 && BlkSize >= SFMT_N32), "BlkSize must be a multiple of 4 and >=156*128");
-    MYASSERT((nRandomPerf % BlkSize) == 0, "nRandomPerf must be a multiple of BlkSize");
+    MYASSERT((nRandom % BlkSize) == 0, "nRandom must be a multiple of BlkSize");
     AlignedVector<uint32_t, 64> aligneddst(BlkSize);
 
     sfmt_t sfmtgen;
@@ -177,7 +189,7 @@ void sfmtOrigPerformance(size_t BlkSize)
 
 
     auto start = std::chrono::system_clock::now();
-    for (size_t i = 0, n = nRandomPerf / BlkSize; i < n; ++i) {
+    for (size_t i = 0, n = nRandom / BlkSize; i < n; ++i) {
         if constexpr (ScalarQry)
             aligneddst[0] = sfmt_genrand_uint32(&sfmtgen);
         else
@@ -186,12 +198,12 @@ void sfmtOrigPerformance(size_t BlkSize)
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
     double nSeconds = elapsed_seconds.count();
-    std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s\n";
+    done(nSeconds);
 
     addResult(key, nSeconds);
 }
 
-#ifdef TEST_MKL
+#if TEST_MKL==1
 
 template <int N>
 struct MKLTraits
@@ -226,7 +238,7 @@ void mklPerformance(MKL_INT GenCode, MKL_INT BlkSize)
         default: THROW("how did we get here?");
     }
 
-    MYASSERT(nRandomPerf % BlkSize == 0, "incorrect count");
+    MYASSERT(nRandom % BlkSize == 0, "incorrect count");
 
     ResultKey key(mode, wordSize, SIMD_N_BITS, BlkSize, QM_Any);
     key.print();
@@ -242,12 +254,12 @@ void mklPerformance(MKL_INT GenCode, MKL_INT BlkSize)
     vslNewStream(&stream, GenCode, 5489);
 
     auto start = std::chrono::system_clock::now();
-    for (size_t i = 0, n = nRandomPerf / BlkSize; i < n; ++i)
+    for (size_t i = 0, n = nRandom / BlkSize; i < n; ++i)
         viRngUniformBits32(VSL_RNG_METHOD_UNIFORMBITS32_STD, stream, BlkSize, aligneddst.data());
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
     double nSeconds = elapsed_seconds.count();
-    std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s\n";
+    done(nSeconds);
 
     // Deleting the stream
     vslDeleteStream(&stream);
@@ -263,7 +275,7 @@ void vRandGenPerformance4(size_t blkSize)
 
     const Mode mode = GenTraits<Gen>::mode;
 
-    MYASSERT(((blkSize > 0) && ((nRandomPerf % blkSize) == 0)), "invalid blkSize " << blkSize);
+    MYASSERT(((blkSize > 0) && ((nRandom % blkSize) == 0)), "invalid blkSize " << blkSize);
 
     ResultKey key(mode, L, I, blkSize, QryMode);
 
@@ -276,12 +288,12 @@ void vRandGenPerformance4(size_t blkSize)
 
     AlignedVector<uint32_t, 64> aligneddst(blkSize);
 
-    // we provide a jump matrix, although it is redundant for the purpose of just measuring performace
+    // we provide a jump matrix, although it is redundant, just for the purpose of completeness
     gen_t mt(seedinit, seedlength, 0, nullptr, GenTraits<Gen>::matrix());
 
     auto start = std::chrono::system_clock::now();
 
-    for (size_t i = 0, n = nRandomPerf / blkSize; i < n; ++i)
+    for (size_t i = 0, n = nRandom / blkSize; i < n; ++i)
         if constexpr (QryMode == QM_Scalar)
             aligneddst[0] = mt.genrand_uint32();
         else if constexpr (QryMode == QM_Block16)
@@ -297,7 +309,7 @@ void vRandGenPerformance4(size_t blkSize)
     std::chrono::duration<double> elapsed_seconds = end - start;
     double nSeconds = elapsed_seconds.count();
 
-    std::cout << "done in: " << std::fixed << std::setprecision(2) << nSeconds << "s" << std::endl;
+    done(nSeconds);
 
     addResult(key, nSeconds);
 }
@@ -334,7 +346,7 @@ void vRandGenPerformance2()
 template <template <size_t, size_t> class Gen, size_t L, size_t...Is>
 void vRandGenPerformance1()
 {
-    (vRandGenPerformance2<Gen, L, Is, /*QM_Scalar,*/ QM_Block16/*, QM_StateSize, QM_Any*/>(), ...);
+    (vRandGenPerformance2<Gen, L, Is, QM_Scalar, QM_Block16, QM_StateSize, QM_Any>(), ...);
 }
 
 template <template <size_t, size_t> class Gen, size_t...Ls>
@@ -355,51 +367,74 @@ void usage()
         ;
 }
 
+void syntax()
+{
+    std::cout
+        << "perf [-n nRepeats] [--slow] [--no-mkl] [--no-original]\n"
+        << "  nRepeats: number of performance test iterations (default 1)\n"
+        << "  --no-mkl: skip MKL tests\n"
+        << "  --no-original: skip original implementations tests\n"
+        << "  --slow: increase the number of random numbers generated by 1000 times\n"
+        ;
+}
+
 int main(int argc, const char** argv)
 {
-#ifdef TEST_MKL
-# if (SIMD_N_BITS==128)
-    std::cout << "Force MKL dispatching to SSE2\n";
-    MYASSERT(mkl_enable_instructions(MKL_ENABLE_SSE4_2), "SSE2 not supported");
-# elif (SIMD_N_BITS==256)
-    std::cout << "set MKL dispacthing to AVX2\n";
-    MYASSERT(mkl_enable_instructions(MKL_ENABLE_AVX2), "AVX2 not supported");
-# elif (SIMD_N_BITS==512)
-    std::cout << "set MKL dispacthing to AVX512\n";
-    MYASSERT(mkl_enable_instructions(MKL_ENABLE_AVX512), "AVX512 not supported");
-# else
-   NOT_IMPLEMENTED;
-# endif
+    if (testMkl) {
+#if TEST_MKL==1
+#  if (SIMD_N_BITS==128)
+        std::cout << "Force MKL dispatching to SSE2\n";
+        MYASSERT(mkl_enable_instructions(MKL_ENABLE_SSE4_2), "SSE2 not supported");
+#  elif (SIMD_N_BITS==256)
+        std::cout << "set MKL dispacthing to AVX2\n";
+        MYASSERT(mkl_enable_instructions(MKL_ENABLE_AVX2), "AVX2 not supported");
+#  elif (SIMD_N_BITS==512)
+        std::cout << "set MKL dispacthing to AVX512\n";
+        MYASSERT(mkl_enable_instructions(MKL_ENABLE_AVX512), "AVX512 not supported");
+#  else
+        NOT_IMPLEMENTED;
+#  endif
 #endif
-    size_t nRepeat = 1;
-    size_t minRepeat = 0;
-    int slow = 1;
+    }
     // parse command line arguments
-    for (int i = 1; i < argc; i += 2) {
-        string key(argv[i]);
-        const char* value = argv[i + 1];
-        if (key == "-n")
-            nRepeat = atoi(value);
-        else if (key == "-s")
-            slow = atoi(value);
-        else if (key == "-m")
-            minRepeat = atoi(value);
-        else {
-            usage();
-            exit(1);
+   size_t nRepeat = 1;
+    try {
+        for (int i = 1; i < argc; ++i) {
+            string key(argv[i]);
+            if (key == "-n") {
+                const char* value = argv[++i];
+                nRepeat = stoul(string(value));
+            }
+            else if (key == "--no-mkl")
+                testMkl = false;
+            else if (key == "--no-original")
+                testOriginal = false;
+            else if (key == "--slow")
+                nRandom *= 1000;
+            else {
+                usage();
+                exit(1);
+            }
         }
     }
-    if (minRepeat = 0)
-        minRepeat = nRepeat;
-    std::cout << "nMaxRepeat = " << nRepeat << "\n";
-    std::cout << "nMinRepeat = " << minRepeat << "\n";
-    std::cout << "slow = " << slow << "\n";
-    if (slow)
-        nRandomPerf *= 1000;
+    catch (...) {
+        usage();
+        exit(1);
+    }
+
+    MYASSERT(nRepeat > 0, "nRepeat must be positive");
+    std::cout << "nRepeat = " << nRepeat << "\n";
+    std::cout << "nRandom = " << nRandom << "\n";
+    std::cout << (testMkl ? "including" : "skipping") << " MKL tests\n";
+    std::cout << (testOriginal ? "including" : "skipping") << " original implementation tests\n";
+
+    detectCpuInfo().print();
+    setCpuAffinity(1);
+    setPriorityHigh();
 
     for (size_t i = 0; i < nRepeat; ++i) {
         std::cout << "Iteration: " << std::setw(2) << i + 1 << ": "
-                  << "generating " << nRandomPerf << " 32-bits random numbers\n";
+                  << "generating " << nRandom << " 32-bits random numbers\n";
         {
             size_t m = 0;
             std::cout
@@ -411,16 +446,22 @@ int main(int argc, const char** argv)
                 << "\n";
         }
 
-        //mtOrigPerformance();
-        //sfmtOrigPerformance<true>(1);
-        //for (auto sz : anySize)
-        //    if(sz >= 624)
-        //        sfmtOrigPerformance<false>(sz);
-#ifdef TEST_MKL
-        for (auto sz : anySize)
-            mklPerformance(VSL_BRNG_MT19937, (MKL_INT) sz);
-        for (auto sz : anySize)
-            mklPerformance(VSL_BRNG_SFMT19937, (MKL_INT) sz);
+        if (testOriginal) {
+            // original Matsumoto - Tsukamoto MT19937 implementation
+            mtOrigPerformance();
+            sfmtOrigPerformance<true>(1);
+            for (auto sz : anySize)
+                if (sz >= 624)
+                    sfmtOrigPerformance<false>(sz);
+        }
+
+#if TEST_MKL==1
+        if (testMkl) {
+            for (auto sz : anySize)
+                mklPerformance(VSL_BRNG_MT19937, (MKL_INT)sz);
+            for (auto sz : anySize)
+                mklPerformance(VSL_BRNG_SFMT19937, (MKL_INT)sz);
+        }
 #endif
         vRandGenPerformance0<Details::VMT19937Base, /*32, */128/*, 256, 512*/>();
         //vRandGenPerformance0<Details::VSFMT19937Base, 128, 256, 512>();
@@ -455,7 +496,7 @@ int main(int argc, const char** argv)
             << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.avg
             << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.stdev
             << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.stdev /v.avg*100 << "%"
-            << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(1) << nRandomPerf / 1.0e6 / v.avg
+            << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(1) << nRandom / 1.0e6 / v.avg
             << "\n";
     }
 

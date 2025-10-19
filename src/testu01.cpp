@@ -30,10 +30,14 @@ enum Modes { SmallCrush = 0, Crush = 1, BigCrush = 2 };
 template <size_t NBITS>
 struct TestRunner
 {
-    typedef VMT19937<NBITS, QM_Scalar> gen_t;
+    using gen_t = VMT19937<NBITS, QM_Scalar>;
 
-    static const size_t M = NBITS / 32;
-    static const size_t ArrayIndex = M == 1 ? 0 : std::log2(M) - 1;
+    static constexpr size_t M = NBITS / 32;
+    static constexpr size_t LOG2 = M == 16 ? 4 : // log2(M) is not constexpr until C++26
+                                   M == 8  ? 3 :
+                                   M == 4  ? 2 :
+                                   M == 2  ? 1 : 0;
+    static constexpr size_t ArrayIndex = M == 1 ? 0 : LOG2 - 1;
 
     static gen_t* s_genptr;
 
