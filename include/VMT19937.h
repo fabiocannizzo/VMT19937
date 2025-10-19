@@ -92,7 +92,7 @@ private:
         static_assert(s_n32InRndCache % n32PerIteration == 0);
         constexpr size_t nIterations = s_n32InRndCache / n32PerIteration;
 
-        TemperCst<XVmax> cst{};
+        const TemperCst<XVmax> cst{};
 
         for (size_t i = 0; i < nIterations; ++i) {
             XVmax tmp = temper(XVmax(st), cst);
@@ -295,11 +295,8 @@ protected:
         if (m_prnd != endRnd())
             return *m_prnd++;
 
-        if (m_pst != m_pstEnd)
-            /* do nothing*/; // most likely case first
-        else {
+        if (m_pst == m_pstEnd) VM19937_UNLIKELY
             refill();
-        }
 
         temperRefillBlock<true>(m_pst, m_rnd);
         m_prnd = beginRnd() + 1;
@@ -321,9 +318,7 @@ protected:
             }
         }
 
-        if (m_pst != m_pstEnd)
-            /* do nothing*/; // most likely case first
-        else
+        if (m_pst == m_pstEnd) VM19937_UNLIKELY
             refill();
 
         if constexpr (s_n32InRndCache > 16) {

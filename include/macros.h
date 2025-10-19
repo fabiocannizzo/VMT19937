@@ -59,3 +59,9 @@
 #   define MAY_ALIAS
 #endif
 
+#if (__cplusplus < 202002L)
+#   define VM19937_UNLIKELY
+#else
+#   define VM19937_UNLIKELY [[unlikely]]
+#endif
+
