@@ -146,12 +146,12 @@ public:
 
 template < size_t RegisterBitLen = SIMD_N_BITS
          , VRandGenQueryMode QueryMode = QM_Any
-         , size_t RegisterBitLenImpl = std::min<size_t>(SIMD_N_BITS, RegisterBitLen)
+         , size_t RegisterBitLenHw = std::min<size_t>(SIMD_N_BITS, RegisterBitLen)
          >
-using VMT19937 = Details::VRandGen<Details::VMT19937Base<RegisterBitLen, RegisterBitLenImpl>, QueryMode>;
+using VMT19937 = Details::VRandGen<Details::VMT19937Base<RegisterBitLen, RegisterBitLenHw>, QueryMode>;
 
 template < size_t RegisterBitLen = SIMD_N_BITS
          , VRandGenQueryMode QueryMode = QM_Any
-         , size_t RegisterBitLenImpl = std::min<size_t>(SIMD_N_BITS, RegisterBitLen)
+         , size_t RegisterBitLenHw = std::min<size_t>(SIMD_N_BITS, RegisterBitLen)
          >
-using VSFMT19937 = Details::VRandGen<Details::VSFMT19937Base<RegisterBitLen, RegisterBitLenImpl>, QueryMode>;
+using VSFMT19937 = Details::VRandGen<Details::VSFMT19937Base<RegisterBitLen, RegisterBitLenHw>, QueryMode>;

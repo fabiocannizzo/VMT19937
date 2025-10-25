@@ -8,10 +8,14 @@
 
 namespace Details {
 
+// Example: RegisterBitLen=512, RegisterBitLenHw=128
+// Supports the scenario where (RegisterBitLen > RegisterBitLenHw) to make the code more portable:
+// We can choose to choose a generator with a large RegisterBitLen (e.g., 512) to maximize the number of states,
+// however we may dispatch differently depending on the harware available (e.g., use 128-bit SIMD on older hardware,
+// 256-bit SIMD on newer hardware, etc.)
 template <size_t RegisterBitLen, size_t RegisterBitLenHw>
 class VMT19937Base
 {
-
     static constexpr size_t s_wordSizeBits = MT19937Params::s_wordSizeBits;
 
     static_assert(RegisterBitLen >= s_wordSizeBits);
