@@ -25,8 +25,12 @@ const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 
 
+#define TEST_VMT 1
+#define TEST_ORIG 1
+
 bool testMkl = TEST_MKL;
 bool testOriginal = true;
+bool testVMT = true;
 
 // this might be changed via cli arguments
 size_t nRandom = size_t(624) * 32 * 800;
@@ -139,7 +143,7 @@ bool alreadyHaveEnoughIter(const ResultKey& key)
     return !notEnough;
 }
 
-
+#if TEST_ORIG==1
 void mtOrigPerformance()
 {
     ResultKey key(orig, 32, 32, 1, QM_Scalar);
@@ -169,6 +173,7 @@ void mtOrigPerformance()
 
     addResult(key, nSeconds);
 }
+#endif
 
 template <bool ScalarQry>
 void sfmtOrigPerformance(size_t BlkSize)
@@ -370,7 +375,7 @@ void usage()
 void syntax()
 {
     std::cout
-        << "perf [-n nRepeats] [--slow] [--no-mkl] [--no-original]\n"
+        << "perf [-n nRepeats] [--slow] [--no-mkl] [--no-original] [--no-vmt]\n"
         << "  nRepeats: number of performance test iterations (default 1)\n"
         << "  --no-mkl: skip MKL tests\n"
         << "  --no-original: skip original implementations tests\n"
@@ -409,6 +414,8 @@ int main(int argc, const char** argv)
                 testMkl = false;
             else if (key == "--no-original")
                 testOriginal = false;
+            else if (key == "--no-vmt")
+                testVMT = false;
             else if (key == "--slow")
                 nRandom *= 1000;
             else {
@@ -446,6 +453,7 @@ int main(int argc, const char** argv)
                 << "\n";
         }
 
+#if TEST_ORIG==1
         if (testOriginal) {
             // original Matsumoto - Tsukamoto MT19937 implementation
             mtOrigPerformance();
@@ -454,6 +462,7 @@ int main(int argc, const char** argv)
                 if (sz >= 624)
                     sfmtOrigPerformance<false>(sz);
         }
+#endif
 
 #if TEST_MKL==1
         if (testMkl) {
@@ -463,8 +472,12 @@ int main(int argc, const char** argv)
                 mklPerformance(VSL_BRNG_SFMT19937, (MKL_INT)sz);
         }
 #endif
-        vRandGenPerformance0<Details::VMT19937Base, /*32, */128/*, 256, 512*/>();
+#if TEST_VMT==1
+        if (testVMT) {
+            vRandGenPerformance0<Details::VMT19937Base, /*32, */128/*, 256, 512*/>();
+        }
         //vRandGenPerformance0<Details::VSFMT19937Base, 128, 256, 512>();
+#endif
     }
 
     const size_t spacing[] = { 20, 8, 8, 8, 10, 6, 8, 8, 8, 8, 11, 12 };
