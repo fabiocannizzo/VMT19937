@@ -10,32 +10,24 @@
 namespace Details {
 
 template <size_t RegisterBitLen, size_t RegisterBitLenHw>
-class VSFMT19937Base
+class VSFMT19937Base : public SFMT19937Params
 {
-    static const size_t s_nBits = SFMT19937Params::s_nBits;
-    static const size_t s_wordSizeBits = SFMT19937Params::s_wordSizeBits;
-
     static_assert(RegisterBitLen >= s_wordSizeBits);
 
 public:
-    static const int s_N = SFMT19937Params::s_N;     // 156
-    static_assert(s_N == 156);
+    static constexpr size_t s_regLenBits = RegisterBitLen;
+    static constexpr size_t s_regLenBitsHw = RegisterBitLenHw;
+    static constexpr size_t s_nStates = RegisterBitLen / s_wordSizeBits;
+    static constexpr size_t s_n32inReg = RegisterBitLen / 32;
 
-    static const size_t s_regLenBits = RegisterBitLen;
-    static const size_t s_regLenBitsHw = RegisterBitLenHw;
-    static const size_t s_nStates = RegisterBitLen / s_wordSizeBits;
-    static const size_t s_n32inReg = RegisterBitLen / 32;
-    static const size_t s_n32InOneWord = s_wordSizeBits / 32;            // 4
-    static const size_t s_n32InOneState = s_N * s_n32InOneWord;          // 624
-    const static size_t s_n32InFullState = s_n32InOneState * s_nStates;  // 624 * nStates
-    const static size_t s_nMatrixBits = SFMT19937Params::s_nMatrixBits;            // 19968
+    static constexpr size_t s_n32InFullState = s_n32InOneState * s_nStates;  // 624 * nStates
 
-    typedef BinaryMatrix<s_nMatrixBits> matrix_t;
+    using matrix_t = BinaryMatrix<s_nMatrixBits>;
 
 private:
-    const static size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
+    static constexpr size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
 
-    typedef SimdRegister<s_regLenBits, RegisterBitLenHw> XV;
+    using XV = SimdRegister<s_regLenBits, RegisterBitLenHw>;
 
 protected:
     alignas(64) uint32_t m_state[s_n32InFullState];    // the array of state vectors

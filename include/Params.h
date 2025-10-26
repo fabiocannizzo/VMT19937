@@ -26,12 +26,15 @@ struct MT19937Params
 
 struct SFMT19937Params
 {
-    static constexpr size_t s_nBits = 19937;
+    static constexpr size_t s_nBits = 19937;  // FIXME: confirm this value
 
     static constexpr size_t s_wordSizeBits = 128;
     static constexpr int s_N = s_nBits / s_wordSizeBits + (s_nBits % s_wordSizeBits != 0);  // 156
     static constexpr int s_M = 122;
-    static constexpr size_t s_nMatrixBits = s_N * s_wordSizeBits;
+    static constexpr size_t s_nMatrixBits = s_N * s_wordSizeBits;        // FIXME: confirm this value
+
+    static const size_t s_n32InOneWord = s_wordSizeBits / 32;            // 4
+    static const size_t s_n32InOneState = s_N * s_n32InOneWord;          // 624
 
     static constexpr uint32_t s_SFMT_MSK1 = 0xdfffffefU;
     static constexpr uint32_t s_SFMT_MSK2 = 0xddfecb7fU;
