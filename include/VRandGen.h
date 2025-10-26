@@ -9,11 +9,20 @@ namespace Details
 {
 
 template <typename GenBase, VRandGenQueryMode QueryMode>
-class VRandGen : public GenBase
+class VRandGen : protected GenBase
 {
     using base_t = GenBase;
 public:
     using matrix_t = typename base_t::matrix_t;
+
+    // re-export useful constants
+    static constexpr size_t s_regLenBits = base_t::s_regLenBits;
+    static constexpr size_t s_regLenBitsHw = base_t::s_regLenBitsHw;
+    static constexpr size_t s_n32InOneWord = base_t::s_n32InOneWord;
+    static constexpr size_t s_n32InFullState = base_t::s_n32InFullState;
+    static constexpr size_t s_nStates = base_t::s_nStates;
+    static constexpr VRandGenQueryMode s_queryMode = QueryMode;
+
 private:
     void completeStateInitialization(size_t nCommonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
     {
@@ -35,7 +44,7 @@ private:
         }
 
         // if there are multiple states, distance them using the sequentialJump matrix
-        if constexpr (base_t::s_nStates > 1) {
+        if constexpr (s_nStates > 1) {
             if (sequentialJump) {
                 // perform jump ahead of the s_regLenWords states
                 // State_0 = State_0
@@ -71,28 +80,41 @@ private:
                             base_t::m_state[w * base_t::s_n32inReg + s * base_t::s_n32InOneWord + j] = base_t::m_state[w * base_t::s_n32inReg + j];
             }
         }
+        else {
+            MYASSERT(!sequentialJump, "sequentialJump matrix should not be provided when there is only one state");
+        }
     }
 
-
 public:
-    static constexpr VRandGenQueryMode s_queryMode = QueryMode;
-    static constexpr size_t s_n32InFullState = base_t::s_n32InFullState;
-
     VRandGen() {}
 
+    // Initialize as follows:
+    // 1) initialize state 0 with seed
+    // 2) apply commonJump matrix nCommonJumpRepeat times to state 0
+    // 3) if multiple states are present, apply sequentialJump matrix to initialize the other states
+    // Note that the sequentialJump must be provided only for generators of the V-family, which have multiple states
     VRandGen(uint32_t seed, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
         : base_t()
     {
         reinit(seed, commonJumpRepeat, commonJump, sequentialJump);
     }
 
+    // Initialize as follows:
+    // 1) initialize state 0 with seeds array
+    // 2) apply commonJump matrix nCommonJumpRepeat times to state 0
+    // 3) if multiple states are present, apply sequentialJump matrix to initialize the other states
+    // Note that the sequentialJump must be provided only for generators of the V-family, which have multiple states
     VRandGen(const uint32_t seeds[], uint32_t n_seeds, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
         : base_t()
     {
         reinit(seeds, n_seeds, commonJumpRepeat, commonJump, sequentialJump);
     }
 
-    // initializes m_state[s_N] with a seed
+    // Re-initialize as follows:
+    // 1) initialize state 0 with seed
+    // 2) apply commonJump matrix nCommonJumpRepeat times to state 0
+    // 3) if multiple states are present, apply sequentialJump matrix to initialize the other states
+    // Note that the sequentialJump must be provided only for generators of the V-family, which have multiple states
     void reinit(uint32_t s, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
     {
         base_t::reinitMainState(s);
@@ -100,9 +122,11 @@ public:
         base_t::reinitPointers();
     }
 
-    // initialize by an array with array-length
-    // init_key is the array for initializing keys
-    // key_length is its length
+    // Re-initialize as follows:
+    // 1) initialize state 0 with seeds array
+    // 2) apply commonJump matrix nCommonJumpRepeat times to state 0
+    // 3) if multiple states are present, apply sequentialJump matrix to initialize the other states
+    // Note that the sequentialJump must be provided only for generators of the V-family, which have multiple states
     void reinit(const uint32_t* seeds, uint32_t nSeeds, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
     {
         base_t::reinitMainState(seeds, nSeeds);
