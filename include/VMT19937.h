@@ -13,15 +13,16 @@ namespace Details {
 // We can choose to choose a generator with a large RegisterBitLen (e.g., 512) to maximize the number of states,
 // however we may dispatch differently depending on the harware available (e.g., use 128-bit SIMD on older hardware,
 // 256-bit SIMD on newer hardware, etc.)
-template <size_t RegisterBitLen, size_t RegisterBitLenHw>
-class VMT19937Base : public MT19937Params
+template <size_t RegisterBitLen, size_t RegisterBitLenHw, bool MonoState>
+class MT19937Base : public MT19937Params
 {
     static_assert(RegisterBitLen >= s_wordSizeBits);
+    static_assert(!MonoState || RegisterBitLen == RegisterBitLenHw);
 
 public:
     static constexpr size_t s_regLenBits = RegisterBitLen;
     static constexpr size_t s_regLenBitsHw = RegisterBitLenHw;
-    static constexpr size_t s_nStates = RegisterBitLen / s_wordSizeBits;
+    static constexpr size_t s_nStates = MonoState ? 1 : RegisterBitLen / s_wordSizeBits;
     static constexpr size_t s_n32inReg = RegisterBitLen / 32;
     static constexpr size_t s_n32InFullState = s_n32InOneState * s_nStates;  // 624 * nStates
 
@@ -115,9 +116,10 @@ private:
         return r;
     }
 
-    //template <int nIter>
-    static FORCE_INLINE void iteration(uint32_t* p, XV& x0, int J0, int J1, int JM, const RefillCst& masks)
+    template <int J0, int J1, int JM>
+    static FORCE_INLINE void multiStateIteration(uint32_t* p, XV& x0, const RefillCst& masks)
     {
+        static_assert(!MonoState);
         XV x1(p + J1 * s_n32inReg);
         XV xM(p + JM * s_n32inReg);
         XV tmp = advance1(x0, x1, xM, masks);
@@ -125,15 +127,33 @@ private:
         x0 = x1;
     }
 
-    template <int...Is>
-    static FORCE_INLINE uint32_t* advanceLoop(size_t nBlkIter, uint32_t* p, XV& x0, int J1, int JM, const RefillCst& masks, std::integer_sequence<int, Is...>&&)
+    template <int J0, int J1, int JM>
+    static FORCE_INLINE void monoStateIteration(uint32_t* p, XV& x0, XV& xMlo, const RefillCst& masks)
     {
+        static_assert(MonoState);
+        constexpr int n32 = (int)s_n32inReg;
+        constexpr int x1Offset = ((J1 / n32) + (J1 > 0)) * n32;
+        XV x1(p + x1Offset);
+        constexpr int xMOffset = ((JM / n32) + (JM > 0)) * n32;
+        XV xMhi(p + xMOffset);
+        XV xP = XV::combine<4>(x0, x1);
+        XV xM = XV::combine<4*(s_M % s_n32inReg)>(xMlo, xMhi);
+        XV r = advance1(x0, xP, xM, masks);
+        r.template store<true>(p + J0 * s_n32inReg);
+        x0 = x1;
+        xMlo = xMhi;
+    }
+
+    template <int J1, int JM, int...Is>
+    static FORCE_INLINE uint32_t* advanceLoop(size_t nBlkIter, uint32_t* p, XV& x0, const RefillCst& masks, std::integer_sequence<int, Is...>&&)
+    {
+    	static_assert(!MonoState);
         constexpr size_t nIterPerBlk = sizeof...(Is);
         if constexpr (nIterPerBlk) {
             constexpr size_t n32PerBlk = nIterPerBlk * s_n32inReg;
             auto pend = p + nBlkIter * n32PerBlk;
             do {
-                (iteration(p, x0, 0 + Is, J1 + Is, JM + Is, masks), ...);
+                (multiStateIteration<Is, J1 + Is, JM + Is>(p, x0, masks), ...);
                 p += n32PerBlk;
             } while (p != pend);
             return pend;
@@ -147,7 +167,7 @@ private:
         uint32_t* stCur = m_state;
 
         constexpr int N = s_N;
-        constexpr int M = Details::MT19937Params::s_M;
+        constexpr int M = s_M;
         static_assert(N == 624 && M == 397, "unrolling designed for these parameters");
 
         // Create local copy of the constants and pass them to the function as arguments.
@@ -157,22 +177,40 @@ private:
 
         XV x0(stCur);
 
-        constexpr size_t nUnroll = 2;
+        if constexpr (!MonoState) {
+            constexpr size_t nUnroll = 2;
 
-        // unroll first part of the loop (N-M) iterations
-        constexpr size_t n1 = (N - M) / nUnroll;
-        constexpr size_t r1 = (N - M) % nUnroll;
-        stCur = advanceLoop(n1, stCur, x0, 1, M, masks, std::make_integer_sequence<int, nUnroll>{});
-        stCur = advanceLoop(r1, stCur, x0, 1, M, masks, std::make_integer_sequence<int, r1>{});
+            // unroll first part of the loop (N-M) iterations
+            constexpr size_t n1 = (N - M) / nUnroll;
+            constexpr size_t r1 = (N - M) % nUnroll;
+            stCur = advanceLoop<1, M>(n1, stCur, x0,masks, std::make_integer_sequence<int, nUnroll>{});
+            stCur = advanceLoop<1, M>(r1, stCur, x0, masks, std::make_integer_sequence<int, r1>{});
 
-        // unroll second part of the loop (M-1) iterations
-        constexpr size_t n2 = (M - 1) / nUnroll;
-        constexpr size_t r2 = (M - 1) % nUnroll;
-        stCur = advanceLoop(n2, stCur, x0, 1, M - N, masks, std::make_integer_sequence<int, nUnroll>{});
-        stCur = advanceLoop(r2, stCur, x0, 1, M - N, masks, std::make_integer_sequence<int, r2>{});
+            // unroll second part of the loop (M-1) iterations
+            constexpr size_t n2 = (M - 1) / nUnroll;
+            constexpr size_t r2 = (M - 1) % nUnroll;
+            stCur = advanceLoop<1, M - N>(n2, stCur, x0, masks, std::make_integer_sequence<int, nUnroll>{});
+            stCur = advanceLoop<1, M - N>(r2, stCur, x0, masks, std::make_integer_sequence<int, r2>{});
 
-        // last iteration
-        advanceLoop(1, stCur, x0, 1 - N, M - N, masks, std::make_integer_sequence<int, 1>{});
+            // last iteration
+            advanceLoop<1 - N, M - N>(1, stCur, x0, masks, std::make_integer_sequence<int, 1>{});
+        }
+        else {
+            XV XMlo(stCur + (s_M / s_n32inReg) * s_n32inReg);
+            constexpr size_t nIter1 = (N - M) / s_n32inReg;
+            auto* stEnd1 = stCur + nIter1 * s_n32inReg;
+            do {
+                monoStateIteration<0, 1, M>(stCur, x0, XMlo, masks);
+                stCur += s_n32inReg;
+            } while (stCur != stEnd1);
+            constexpr size_t nIter2 = (M - 1) / s_n32inReg;
+            auto* stEnd2 = stCur + nIter2 * s_n32inReg;
+            do {
+                monoStateIteration<0, 1, M - N>(stCur, x0, XMlo, masks);
+                stCur += s_n32inReg;
+            } while (stCur != stEnd2);
+            monoStateIteration<0, 1 - N, M - N>(stCur, x0, XMlo, masks);
+        }
 
         m_pst = begin();
     }
@@ -415,7 +453,7 @@ protected:
 public:
 
     // constructors
-    VMT19937Base()
+    MT19937Base()
         : m_prnd(nullptr)
         , m_prndEnd(m_rnd + s_n32InRndCache)
         , m_pst(nullptr)

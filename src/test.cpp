@@ -1,10 +1,12 @@
 #define VRANDGEN_TESTING 1
 
 #include "TestUtils.h"
+#include "SIMD.h"
 
 #include "../SFMT-src-1.5.1/SFMT.h"
 
 #include <utility>
+#include <numeric>
 
 const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
@@ -380,9 +382,57 @@ void test_VSFMT19937()
     equivalenceTests0<128, 256, 512>(jumpMatrix4, jumpMatrix512);
 }
 
+template <typename T>
+void printReg(std::string&& name, T v)
+{
+    constexpr unsigned n = sizeof(T);
+    alignas(sizeof(T)) unsigned char bytes[n];
+    std::copy_n((unsigned char*)&v, n, bytes);
+    std::cout << std::setw(3) << name << ": ";
+    for (unsigned i = 0; i < n; ++i)
+        std::cout << std::setw(3) << (int)bytes[i];
+    std::cout << '\n';
+}
+
+template <size_t I, typename T>
+void combineAndPrint(T a, T b)
+{
+    auto c = T::combine<I>(a, b);
+    printReg(std::to_string(I), c);
+}
+
+template <typename T, size_t...Is>
+void combineAndPrint(T a, T b, std::index_sequence<Is...>&&)
+{
+    (combineAndPrint<Is>(a, b), ...);
+}
+
+template <typename T>
+void testSimdCombine()
+{
+    std::cout << "\nTest SimdRegister<" << T::s_nRegBits << ", " << T::s_nBitsHw << ">::combine\n";
+    alignas(64) unsigned char data[128];
+    std::iota(data, data + 128, 0);
+
+    T v0((const T*)data);
+    T v1(((const T*)data)+1);
+
+    printReg("v0", v0);
+    printReg("v1", v1);
+
+    combineAndPrint(v0, v1, std::make_index_sequence<sizeof(T)+1>{});
+}
+
 int main()
 {
     try {
+        testSimdCombine<Details::SimdRegister<128,128>>();
+#if SIMD_N_BITS>=256
+        testSimdCombine<Details::SimdRegister<256, 256>>();
+#endif
+#if SIMD_N_BITS>=512
+        testSimdCombine<Details::SimdRegister<512, 512>>();
+#endif
         testEncoding();
         testSquareMatrix();
         test_VMT19937();

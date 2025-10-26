@@ -175,9 +175,19 @@ template < size_t RegisterBitLen = SIMD_N_BITS
          , VRandGenQueryMode QueryMode = QM_Any
          , size_t RegisterBitLenHw = std::min<size_t>(SIMD_N_BITS, RegisterBitLen)
          >
-struct VMT19937 : Details::VRandGen<Details::VMT19937Base<RegisterBitLen, RegisterBitLenHw>, QueryMode>
+struct VMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, false>, QueryMode>
 {
-    using base_t = Details::VRandGen<Details::VMT19937Base<RegisterBitLen, RegisterBitLenHw>, QueryMode>;
+    using base_t = Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, false>, QueryMode>;
+    using base_t::VRandGen; // reuse constructors
+};
+
+template < size_t RegisterBitLen = SIMD_N_BITS
+         , VRandGenQueryMode QueryMode = QM_Any
+         , size_t RegisterBitLenHw = std::min<size_t>(SIMD_N_BITS, RegisterBitLen)
+         >
+struct XMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, true>, QueryMode>
+{
+    using base_t = Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, true>, QueryMode>;
     using base_t::VRandGen; // reuse constructors
 };
 

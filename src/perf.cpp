@@ -7,7 +7,7 @@
 #include <chrono>
 #include <vector>
 #include <tuple>
-#include <map>
+#include <set>
 #include <numeric>
 #include <algorithm>
 #include <cmath>
@@ -16,6 +16,7 @@ using namespace std;
 
 #define TEST_MKL 1
 #define TEST_VMT 1
+#define TEST_XMT 1
 #define TEST_ORIG 1
 
 #if TEST_MKL==1
@@ -36,6 +37,7 @@ using namespace std;
 bool g_testMkl = TEST_MKL;
 bool g_testOriginal = true;
 bool g_testVMT = true;
+bool g_testXMT = true;
 size_t g_nRepeat = 1;
 std::string dir = "dat";
 
@@ -49,9 +51,9 @@ constexpr uint32_t s_seedinit[s_seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 extern "C" unsigned long genrand_int32();
 extern "C" void init_by_array(unsigned long init_key[], int key_length);
 
-enum Mode {orig, sfmt, mkl_mt, mkl_sfmt, vmt, vsfmt};
+enum GenMode {orig, sfmt, mkl_mt, mkl_sfmt, xmt, vmt, vsfmt};
 
-const char* modename[] = {"ORIG-MT19937", "ORIG-SFMT19937", "MKL-MT19937", "MKL-SFMT19937", "V-MT19937", "V-SFMT19937" };
+const char* modename[] = {"ORIG-MT19937", "ORIG-SFMT19937", "MKL-MT19937", "MKL-SFMT19937", "X-MT19937", "V-MT19937", "V-SFMT19937" };
 
 const size_t anySize[] = { 1, 4, 16, 64, 256, 624, 1024, 4096, 16384 };
 
@@ -60,102 +62,118 @@ struct GenTraits;
 
 // for maximum period, we should select the file based on the number of states
 // but these periods are so large anyway that who do not care!
-std::unique_ptr<Details::VMT19937Base<32, 32>::matrix_t> pmt(new Details::VMT19937Base<32, 32>::matrix_t(dir + "/mt/F19933.bits"));
+const auto pmt = std::make_unique<MT19937Matrix>(dir + "/mt/F19933.bits");
 // for maximum period, we should select the file based on the number of states
 // but these periods are so large anyway that who do not care!
-std::unique_ptr<Details::VSFMT19937Base<128, 32>::matrix_t> psfmt(new Details::VSFMT19937Base<128, 32>::matrix_t(dir + "/sfmt/F19935.bits"));
+const auto psfmt = std::make_unique<SFMT19937Matrix>(dir + "/sfmt/F19935.bits");
 
 
 template <size_t RegBitLen, VRandGenQueryMode QueryMode, size_t RegBitLenHw>
 struct GenTraits<VMT19937<RegBitLen, QueryMode, RegBitLenHw>>
 {
-    static const Mode mode = vmt;
-    static const auto* matrix() { return pmt.get(); }
+    static const GenMode mode = vmt;
+    static const MT19937Matrix* jumpMatrix() { return pmt.get(); }
+};
+
+template <size_t RegBitLen, VRandGenQueryMode QueryMode, size_t RegBitLenHw>
+struct GenTraits<XMT19937<RegBitLen, QueryMode, RegBitLenHw>>
+{
+    static const GenMode mode = xmt;
+    static const MT19937Matrix* jumpMatrix() { return nullptr; }
 };
 
 template <size_t RegBitLen, VRandGenQueryMode QueryMode, size_t RegBitLenHw>
 struct GenTraits<VSFMT19937<RegBitLen, QueryMode, RegBitLenHw>>
 {
-    static const Mode mode = vsfmt;
-    static const auto* matrix() { return psfmt.get(); }
+    static const GenMode mode = vsfmt;
+    static const SFMT19937Matrix* jumpMatrix() { return psfmt.get(); }
 };
 
 const size_t s_messageSpacing[] = { 15, 9, 8, 8, 12 };
 
-struct ResultKey
+struct Results
 {
-    ResultKey(Mode _mode, size_t _nb, size_t _ib, size_t _blk, VRandGenQueryMode _qryMode)
-        : mode(_mode), nBits(_nb), nImplBits(_ib), blkSize(_blk), qryMode(_qryMode) {}
-    Mode mode;
-    size_t nBits, nImplBits;
+    Results(GenMode _mode, size_t _nb, size_t _ib, size_t _blk, VRandGenQueryMode _qryMode)
+        : mode(_mode), nBits(_nb), nBitsHw(_ib), blkSize(_blk), qryMode(_qryMode), mi(0), ma(0), avg(0), stdev(0)
+    {}
+    GenMode mode;
+    size_t nBits, nBitsHw;
     size_t blkSize;
     VRandGenQueryMode qryMode;
+
+    mutable std::vector<double> singleRuns;
+    mutable double mi, ma, avg, stdev;
+
     void print() const
     {
         size_t i = 0;
         std::cout
             << std::setw(s_messageSpacing[i++]) << modename[mode]
             << std::setw(s_messageSpacing[i++]) << nBits
-            << std::setw(s_messageSpacing[i++]) << nImplBits
+            << std::setw(s_messageSpacing[i++]) << nBitsHw
             << std::setw(s_messageSpacing[i++]) << blkSize
             << std::setw(s_messageSpacing[i++]) << queryModeName(qryMode)
             << " ... ";
     }
-    bool operator<(const ResultKey& rhs) const
+
+    bool operator<(const Results& b) const
     {
-        return std::tuple(mode, nBits, nImplBits, blkSize, (int) qryMode) < std::tuple(rhs.mode, rhs.nBits, rhs.nImplBits, rhs.blkSize, (int) rhs.qryMode);
+        return std::tuple(mode, nBits, nBitsHw, blkSize, (int)qryMode) < std::tuple(b.mode, b.nBits, b.nBitsHw, b.blkSize, (int)b.qryMode);
     }
 };
 
-struct ResultValues
+struct FullCompare
 {
-    ResultValues() : mi(0), ma(0), avg(0), stdev(0) {}
-    std::vector<double> singleRuns;
-    double mi, ma, avg, stdev;
+    bool operator()(const Results& a, const Results& b) const
+    {
+        return std::tuple(a.nBitsHw, (int)a.qryMode, a.blkSize, a.avg) < std::tuple(b.nBitsHw, (int)b.qryMode, b.blkSize, b.avg);
+    }
 };
 
-std::map<ResultKey, ResultValues> results;
+
+std::set<Results> results;
 
 void done(double nSeconds)
 {
     std::cout << "done in: " << std::setw(8) << std::fixed << std::setprecision(2) << nSeconds << "s\n";
 }
 
-void addResult(const ResultKey& key, double seconds)
+// add results and update statistics
+void addResult(const Results& key, double seconds)
 {
-    auto& res = results.insert({ key, ResultValues{} }).first->second;
-    auto& v = res.singleRuns;
+    const Results& r = *results.insert(key).first;
+    auto& v = r.singleRuns;
     v.push_back(seconds);
     double f = v.front();
     double n = (double) v.size();
-    res.mi = f;
-    res.ma = f;
+    r.mi = f;
+    r.ma = f;
     double s = f, s2 = f*f;
     for (size_t i = 1; i < n; ++i) {
         f = v[i];
-        res.mi = std::min(res.mi, f);
-        res.ma = std::max(res.ma, f);
+        r.mi = std::min(r.mi, f);
+        r.ma = std::max(r.ma, f);
         s += f;
         s2 += f * f;
     }
-    res.avg = s / n;
+    r.avg = s / n;
     if (n > 1)
-        res.stdev = std::sqrt((s2 - s * res.avg) / (n - 1));
+        r.stdev = std::sqrt((s2 - s * r.avg) / (n - 1));
 }
 
-bool alreadyHaveEnoughIter(const ResultKey& key)
+bool alreadyHaveEnoughIter(const Results& key)
 {
     auto iter = results.find(key);
     bool notEnough = (iter == results.end())
-        || (iter->second.singleRuns.size() <= 1)
-        || (std::abs(iter->second.stdev / iter->second.avg) > 0.01);
+        || (iter->singleRuns.size() <= 1)
+        || (std::abs(iter->stdev / iter->avg) > 0.01);
     return !notEnough;
 }
 
 #if TEST_ORIG==1
 void mtOrigPerformance()
 {
-    ResultKey key(orig, 32, 32, 1, QM_Scalar);
+    Results key(orig, 32, 32, 1, QM_Scalar);
 
     key.print();
 
@@ -187,7 +205,7 @@ void mtOrigPerformance()
 template <bool ScalarQry>
 void sfmtOrigPerformance(size_t BlkSize)
 {
-    ResultKey key(sfmt, 128, 128, BlkSize, ScalarQry ? QM_Scalar : QM_Any);
+    Results key(sfmt, 128, 128, BlkSize, ScalarQry ? QM_Scalar : QM_Any);
     key.print();
     if (alreadyHaveEnoughIter(key)) {
         std::cout << "skip\n";
@@ -225,20 +243,20 @@ struct MKLTraits
 template <>
 struct MKLTraits<VSL_BRNG_MT19937>
 {
-    static const Mode s_mode = mkl_mt;
+    static const GenMode s_mode = mkl_mt;
     static const size_t s_wordSize = 32;
 };
 
 template <>
 struct MKLTraits<VSL_BRNG_SFMT19937>
 {
-    static const Mode s_mode = mkl_sfmt;
+    static const GenMode s_mode = mkl_sfmt;
     static const size_t s_wordSize = 128;
 };
 
 void mklPerformance(MKL_INT GenCode, MKL_INT BlkSize)
 {
-    Mode mode;
+    GenMode mode;
     size_t wordSize;
     switch (GenCode) {
         case VSL_BRNG_MT19937:
@@ -254,7 +272,7 @@ void mklPerformance(MKL_INT GenCode, MKL_INT BlkSize)
 
     MYASSERT(g_nRandom % BlkSize == 0, "incorrect count");
 
-    ResultKey key(mode, wordSize, SIMD_N_BITS, BlkSize, QM_Any);
+    Results key(mode, wordSize, SIMD_N_BITS, BlkSize, QM_Any);
     key.print();
 
     if (alreadyHaveEnoughIter(key)) {
@@ -283,13 +301,13 @@ void mklPerformance(MKL_INT GenCode, MKL_INT BlkSize)
 #endif
 
 template <typename Gen>
-void vRandGenPerformance4(size_t blkSize)
+void vRandGenPerformance5(size_t blkSize)
 {
-    const Mode mode = GenTraits<Gen>::mode;
+    const GenMode mode = GenTraits<Gen>::mode;
 
     MYASSERT(((blkSize > 0) && ((g_nRandom % blkSize) == 0)), "invalid blkSize " << blkSize);
 
-    ResultKey key(mode, Gen::s_regLenBits, Gen::s_regLenBitsHw, blkSize, Gen::s_queryMode);
+    Results key(mode, Gen::s_regLenBits, Gen::s_regLenBitsHw, blkSize, Gen::s_queryMode);
 
     key.print();
 
@@ -302,7 +320,7 @@ void vRandGenPerformance4(size_t blkSize)
 
     const Gen::matrix_t *jumpMatrixPtr = nullptr;
     if constexpr (Gen::s_nStates > 1)
-        jumpMatrixPtr = GenTraits<Gen>::matrix();
+        jumpMatrixPtr = GenTraits<Gen>::jumpMatrix();
     Gen mt(s_seedinit, s_seedlength, 0, nullptr, jumpMatrixPtr);
 
     auto start = std::chrono::system_clock::now();
@@ -330,7 +348,7 @@ void vRandGenPerformance4(size_t blkSize)
 
 
 template <typename Gen>
-void vRandGenPerformance3()
+void vRandGenPerformance4()
 {
     size_t blkSize;
     switch (Gen::s_queryMode) {
@@ -345,49 +363,55 @@ void vRandGenPerformance3()
         if (Gen::s_queryMode != QM_Any && !fst)
             break;
         fst = false;
-        vRandGenPerformance4<Gen>(Gen::s_queryMode != QM_Any?  blkSize: sz);
+        vRandGenPerformance5<Gen>(Gen::s_queryMode != QM_Any?  blkSize: sz);
     }
 }
 
-template <template <size_t, VRandGenQueryMode, size_t> class Gen, size_t L, size_t I, VRandGenQueryMode...QMs>
+template <GenMode Mode, size_t L, size_t I, VRandGenQueryMode QM>
+void vRandGenPerformance3()
+{
+    if constexpr (Mode == vmt)
+        vRandGenPerformance4<VMT19937<L, QM, I>>();
+    else if constexpr (Mode == xmt)
+        vRandGenPerformance4<XMT19937<L, QM, I>>();
+    else if constexpr (Mode == vsfmt)
+        vRandGenPerformance4<VSFMT19937<L, QM, I>>();
+    else
+        static_assert(false, "not implemented");
+}
+
+template <GenMode Mode, size_t L, size_t I, VRandGenQueryMode...QMs>
 void vRandGenPerformance2()
 {
-    if constexpr (I <= std::min<size_t>(L, SIMD_N_BITS))
-        (vRandGenPerformance3<Gen<L, QMs, I>>(), ...);
+    constexpr size_t M = std::min<size_t>(L, SIMD_N_BITS);
+    if constexpr (I <= M || (I == M && Mode != xmt))
+        (vRandGenPerformance3<Mode, L, I, QMs>(), ...);
 }
 
-template <template <size_t, VRandGenQueryMode, size_t> class Gen, size_t L, size_t...Is>
+template <GenMode Mode, size_t L, size_t...Is>
 void vRandGenPerformance1()
 {
-    (vRandGenPerformance2<Gen, L, Is, QM_Scalar, QM_Block16, QM_StateSize, QM_Any>(), ...);
+    (vRandGenPerformance2<Mode, L, Is, QM_Scalar, QM_Block16, QM_StateSize, QM_Any>(), ...);
 }
 
-template <template <size_t, VRandGenQueryMode, size_t> class Gen, size_t...Ls>
+template <GenMode Mode, size_t...Ls>
 void vRandGenPerformance0()
 {
-    (vRandGenPerformance1<Gen, Ls, /*32,*/ 128, 256, 512>(), ...);
-}
-
-void usage()
-{
-    std::cerr
-        << "Invalid command line arguments\n"
-        << "Example:\n"
-        << "perf [-n nRepeats] [-s slow] [-m minRepeats]\n"
-        << "  nRepeats defaults to 1\n"
-        << "  slow must be 0 or 1, defaults to 0\n"
-        << "  minRepeats defaults to nRepeats\n"
-        ;
+    (vRandGenPerformance1<Mode, Ls, /*32,*/ 128, 256, 512>(), ...);
 }
 
 void syntax()
 {
-    std::cout
-        << "perf [-n nRepeats] [--slow] [--no-mkl] [--no-original] [--no-vmt]\n"
-        << "  nRepeats: number of performance test iterations (default 1)\n"
+    std::cerr
+        << "Invalid command line arguments\n"
+        << "perf [-n nRepeats] [--slow] [--no-mkl] [--no-original] [--no-vmt] [--no-xmt] [--dir datpath]\n"
+        << "  -n nRepeats: number of performance test iterations (default 1)\n"
         << "  --no-mkl: skip MKL tests\n"
+        << "  --no-vmt: skip VMT tests\n"
+        << "  --no-xmt: skip XMT tests\n"
         << "  --no-original: skip original implementations tests\n"
         << "  --slow: increase the number of random numbers generated by 1000 times\n"
+        << "  --dir datpath: folder where to find jump matrix files"
         ;
 }
 
@@ -458,6 +482,8 @@ void parseCliArgs(int argc, const char** argv)
                 g_testOriginal = false;
             else if (key == "--no-vmt")
                 g_testVMT = false;
+            else if (key == "--no-xmt")
+                g_testVMT = false;
             else if (key == "--slow")
                 g_nRandom *= 1000;
             else if (key == "--dir") {
@@ -465,19 +491,18 @@ void parseCliArgs(int argc, const char** argv)
                 dir = argv[i];
             }
             else {
-                usage();
-                std::exit(-1);
+                THROW("Invalid command line argument: " << argv[i]);
             }
         }
         MYASSERT(g_nRepeat > 0, "nRepeat must be positive");
     }
     catch (const std::exception& ex) {
         std::cerr << "Error parsing command line arguments: " << ex.what() << "\n";
-        usage();
+        syntax();
         std::exit(-1);
     }
     catch (...) {
-        usage();
+        syntax();
         std::exit(-1);
     }
 }
@@ -537,11 +562,18 @@ int main(int argc, const char** argv)
 #endif
 #if TEST_VMT==1
             if (g_testVMT) {
-                vRandGenPerformance0<VMT19937, /*32, */128/*, 256, 512*/>();
+                vRandGenPerformance0<vmt, /*32, */128/*, 256, 512*/>();
             }
-            //vRandGenPerformance0<VSFMT19937, 128, 256, 512>();
+            //vRandGenPerformance0<vsfmt, 128, 256, 512>();
+#endif
+#if TEST_XMT==1
+            if (g_testXMT) {
+                vRandGenPerformance0<xmt, /*32, */128/*, 256, 512*/>();
+            }
 #endif
         }
+
+        std::set<Results, FullCompare> sortedResults(results.begin(), results.end());
 
         const size_t spacing[] = { 20, 8, 8, 8, 10, 6, 8, 8, 8, 8, 11, 12 };
         size_t s = 0;
@@ -559,20 +591,20 @@ int main(int argc, const char** argv)
             << std::setw(1 + spacing[s++]) << std::right << "tdev/tavg"
             << std::setw(spacing[s++]) << std::right << "throughput"
             << "\n";
-        for (auto& [k, v] : results) {
+        for (auto& r : sortedResults) {
             s = 0;
-            std::cout << std::setw(spacing[s++]) << std::right << modename[k.mode]
-                << std::setw(spacing[s++]) << std::right << k.nBits
-                << std::setw(spacing[s++]) << std::right << k.nImplBits
-                << std::setw(spacing[s++]) << std::right << k.blkSize
-                << std::setw(spacing[s++]) << std::right << queryModeName(k.qryMode)
-                << std::setw(spacing[s++]) << std::right << v.singleRuns.size()
-                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.mi
-                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.ma
-                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.avg
-                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.stdev
-                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.stdev / v.avg * 100 << "%"
-                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(1) << g_nRandom / 1.0e6 / v.avg
+            std::cout << std::setw(spacing[s++]) << std::right << modename[r.mode]
+                << std::setw(spacing[s++]) << std::right << r.nBits
+                << std::setw(spacing[s++]) << std::right << r.nBitsHw
+                << std::setw(spacing[s++]) << std::right << r.blkSize
+                << std::setw(spacing[s++]) << std::right << queryModeName(r.qryMode)
+                << std::setw(spacing[s++]) << std::right << r.singleRuns.size()
+                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << r.mi
+                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << r.ma
+                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << r.avg
+                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << r.stdev
+                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << r.stdev / r.avg * 100 << "%"
+                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(1) << g_nRandom / 1.0e6 / r.avg
                 << "\n";
         }
     }
