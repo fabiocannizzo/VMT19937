@@ -2,13 +2,6 @@
 
 #include "../SFMT-src-1.5.1/SFMT.h"
 
-#if __has_include(<mkl.h>)
-#   define TEST_MKL 1
-#   include <mkl.h>
-#else
-#   define TEST_MKL 1
-#endif
-
 #include <iostream>
 #include <iomanip>
 #include <chrono>
@@ -21,19 +14,36 @@
 
 using namespace std;
 
-const uint32_t seedlength = 4;
-const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
-
-
+#define TEST_MKL 1
 #define TEST_VMT 1
 #define TEST_ORIG 1
 
-bool testMkl = TEST_MKL;
-bool testOriginal = true;
-bool testVMT = true;
+#if TEST_MKL==1
+#   if __has_include(<mkl.h>)
+#       include <mkl.h>
+#   else
+#       pragma message "MKL not found, disabling MKL tests"
+#       undef TEST_MKL
+#       define TEST_MKL 0
+#   endif
+#endif
+
+#if TEST_ORIG==1
+#   include "../SFMT-src-1.5.1/SFMT.h"
+#endif
+
+// global variables
+bool g_testMkl = TEST_MKL;
+bool g_testOriginal = true;
+bool g_testVMT = true;
+size_t g_nRepeat = 1;
 
 // this might be changed via cli arguments
-size_t nRandom = size_t(624) * 32 * 800;
+size_t g_nRandom = size_t(624) * 32 * 800;
+
+constexpr uint32_t s_seedlength = 4;
+constexpr uint32_t s_seedinit[s_seedlength] = { 0x123, 0x234, 0x345, 0x456 };
+
 
 extern "C" unsigned long genrand_int32();
 extern "C" void init_by_array(unsigned long init_key[], int key_length);
@@ -157,14 +167,14 @@ void mtOrigPerformance()
 
     std::vector<uint32_t> dst(1);
 
-    unsigned long init[seedlength];
-    for (size_t i = 0; i < seedlength; ++i)
-        init[i] = seedinit[i];
+    unsigned long init[s_seedlength];
+    for (size_t i = 0; i < s_seedlength; ++i)
+        init[i] = s_seedinit[i];
 
-    init_by_array(init, seedlength);
+    init_by_array(init, s_seedlength);
 
     auto start = std::chrono::system_clock::now();
-    for (size_t i = 0; i < nRandom; ++i)
+    for (size_t i = 0; i < g_nRandom; ++i)
         dst[0] = genrand_int32();
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
@@ -186,7 +196,7 @@ void sfmtOrigPerformance(size_t BlkSize)
     }
 
     MYASSERT((BlkSize == 1) || (BlkSize % 4 == 0 && BlkSize >= SFMT_N32), "BlkSize must be a multiple of 4 and >=156*128");
-    MYASSERT((nRandom % BlkSize) == 0, "nRandom must be a multiple of BlkSize");
+    MYASSERT((g_nRandom % BlkSize) == 0, "nRandom must be a multiple of BlkSize");
     AlignedVector<uint32_t, 64> aligneddst(BlkSize);
 
     sfmt_t sfmtgen;
@@ -194,7 +204,7 @@ void sfmtOrigPerformance(size_t BlkSize)
 
 
     auto start = std::chrono::system_clock::now();
-    for (size_t i = 0, n = nRandom / BlkSize; i < n; ++i) {
+    for (size_t i = 0, n = g_nRandom / BlkSize; i < n; ++i) {
         if constexpr (ScalarQry)
             aligneddst[0] = sfmt_genrand_uint32(&sfmtgen);
         else
@@ -243,7 +253,7 @@ void mklPerformance(MKL_INT GenCode, MKL_INT BlkSize)
         default: THROW("how did we get here?");
     }
 
-    MYASSERT(nRandom % BlkSize == 0, "incorrect count");
+    MYASSERT(g_nRandom % BlkSize == 0, "incorrect count");
 
     ResultKey key(mode, wordSize, SIMD_N_BITS, BlkSize, QM_Any);
     key.print();
@@ -259,7 +269,7 @@ void mklPerformance(MKL_INT GenCode, MKL_INT BlkSize)
     vslNewStream(&stream, GenCode, 5489);
 
     auto start = std::chrono::system_clock::now();
-    for (size_t i = 0, n = nRandom / BlkSize; i < n; ++i)
+    for (size_t i = 0, n = g_nRandom / BlkSize; i < n; ++i)
         viRngUniformBits32(VSL_RNG_METHOD_UNIFORMBITS32_STD, stream, BlkSize, aligneddst.data());
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
@@ -278,7 +288,7 @@ void vRandGenPerformance4(size_t blkSize)
 {
     const Mode mode = GenTraits<Gen>::mode;
 
-    MYASSERT(((blkSize > 0) && ((nRandom % blkSize) == 0)), "invalid blkSize " << blkSize);
+    MYASSERT(((blkSize > 0) && ((g_nRandom % blkSize) == 0)), "invalid blkSize " << blkSize);
 
     ResultKey key(mode, Gen::s_regLenBits, Gen::s_regLenBitsHw, blkSize, Gen::s_queryMode);
 
@@ -292,11 +302,11 @@ void vRandGenPerformance4(size_t blkSize)
     AlignedVector<uint32_t, 64> aligneddst(blkSize);
 
     // we provide a jump matrix, although it is redundant, just for the purpose of completeness
-    Gen mt(seedinit, seedlength, 0, nullptr, GenTraits<Gen>::matrix());
+    Gen mt(s_seedinit, s_seedlength, 0, nullptr, GenTraits<Gen>::matrix());
 
     auto start = std::chrono::system_clock::now();
 
-    for (size_t i = 0, n = nRandom / blkSize; i < n; ++i)
+    for (size_t i = 0, n = g_nRandom / blkSize; i < n; ++i)
         if constexpr (Gen::s_queryMode == QM_Scalar)
             aligneddst[0] = mt.genrand_uint32();
         else if constexpr (Gen::s_queryMode == QM_Block16)
@@ -380,134 +390,193 @@ void syntax()
         ;
 }
 
-int main(int argc, const char** argv)
+// CPU initialization
+void initCpu()
 {
-    if (testMkl) {
-#if TEST_MKL==1
-#  if (SIMD_N_BITS==128)
-        std::cout << "Force MKL dispatching to SSE2\n";
-        MYASSERT(mkl_enable_instructions(MKL_ENABLE_SSE4_2), "SSE2 not supported");
-#  elif (SIMD_N_BITS==256)
-        std::cout << "set MKL dispacthing to AVX2\n";
-        MYASSERT(mkl_enable_instructions(MKL_ENABLE_AVX2), "AVX2 not supported");
-#  elif (SIMD_N_BITS==512)
-        std::cout << "set MKL dispacthing to AVX512\n";
-        MYASSERT(mkl_enable_instructions(MKL_ENABLE_AVX512), "AVX512 not supported");
-#  else
-        NOT_IMPLEMENTED;
-#  endif
-#endif
+    try {
+        detectCpuInfo().print();
+        setCpuAffinity(1);
+        setPriorityHigh();
     }
+    catch (const std::exception& ex) {
+        std::cerr << "Error during CPU initialization: " << ex.what() << "\n";
+        std::exit(-1);
+    }
+    catch (...) {
+        std::cerr << "Unknown error during CPU initialization\n";
+        std::exit(-1);
+    }
+}
+
+// init MKL dispatching
+void initMKL()
+{
+#if TEST_MKL==1
+    if (g_testMkl) {
+        try {
+#  if (SIMD_N_BITS==128)
+            std::cout << "Force MKL dispatching to SSE2\n";
+            MYASSERT(mkl_enable_instructions(MKL_ENABLE_SSE4_2), "SSE2 not supported");
+#  elif (SIMD_N_BITS==256)
+            std::cout << "set MKL dispacthing to AVX2\n";
+            MYASSERT(mkl_enable_instructions(MKL_ENABLE_AVX2), "AVX2 not supported");
+#  elif (SIMD_N_BITS==512)
+            std::cout << "set MKL dispacthing to AVX512\n";
+            MYASSERT(mkl_enable_instructions(MKL_ENABLE_AVX512), "AVX512 not supported");
+#  else
+            NOT_IMPLEMENTED;
+#  endif
+        }
+        catch (const std::exception& ex) {
+            std::cerr << "Error during MKL initialization: " << ex.what() << "\n";
+            std::exit(-1);
+        }
+        catch (...) {
+            std::cerr << "Unknown error during MKL initialization\n";
+            std::exit(-1);
+        }
+    }
+#endif
+}
+
+void parseCliArgs(int argc, const char** argv)
+{
     // parse command line arguments
-   size_t nRepeat = 1;
+    g_nRepeat = 1;
     try {
         for (int i = 1; i < argc; ++i) {
             string key(argv[i]);
             if (key == "-n") {
                 const char* value = argv[++i];
-                nRepeat = stoul(string(value));
+                g_nRepeat = stoul(string(value));
             }
             else if (key == "--no-mkl")
-                testMkl = false;
+                g_testMkl = false;
             else if (key == "--no-original")
-                testOriginal = false;
+                g_testOriginal = false;
             else if (key == "--no-vmt")
-                testVMT = false;
+                g_testVMT = false;
             else if (key == "--slow")
-                nRandom *= 1000;
+                g_nRandom *= 1000;
             else {
                 usage();
-                exit(1);
+                std::exit(-1);
             }
         }
+        MYASSERT(g_nRepeat > 0, "nRepeat must be positive");
+    }
+    catch (const std::exception& ex) {
+        std::cerr << "Error parsing command line arguments: " << ex.what() << "\n";
+        usage();
+        std::exit(-1);
     }
     catch (...) {
         usage();
-        exit(1);
+        std::exit(-1);
     }
+}
 
-    MYASSERT(nRepeat > 0, "nRepeat must be positive");
-    std::cout << "nRepeat = " << nRepeat << "\n";
-    std::cout << "nRandom = " << nRandom << "\n";
-    std::cout << (testMkl ? "including" : "skipping") << " MKL tests\n";
-    std::cout << (testOriginal ? "including" : "skipping") << " original implementation tests\n";
+int main(int argc, const char** argv)
+{
+    // detect CPU and set affinity and priority
+    initCpu();
 
-    detectCpuInfo().print();
-    setCpuAffinity(1);
-    setPriorityHigh();
+    // init MKL dispatching
+    initMKL();
 
-    for (size_t i = 0; i < nRepeat; ++i) {
-        std::cout << "Iteration: " << std::setw(2) << i + 1 << ": "
-                  << "generating " << nRandom << " 32-bits random numbers\n";
-        {
-            size_t m = 0;
-            std::cout
-                << std::setw(messageSpacing[m++]) << "Generator"
-                << std::setw(messageSpacing[m++]) << "WordSize"
-                << std::setw(messageSpacing[m++]) << "RegSize"
-                << std::setw(messageSpacing[m++]) << "BlkSize"
-                << std::setw(messageSpacing[m++]) << "QueryMode"
-                << "\n";
-        }
+    // parse command line arguments
+    parseCliArgs(argc, argv);
+
+    // print some test information
+    std::cout << "nRepeat = " << g_nRepeat << "\n";
+    std::cout << "nRandom = " << g_nRandom << "\n";
+    std::cout << (g_testMkl ? "including" : "skipping") << " MKL tests\n";
+    std::cout << (g_testOriginal ? "including" : "skipping") << " original implementation tests\n";
+
+    // run all tests
+    try {
+
+        for (size_t i = 0; i < g_nRepeat; ++i) {
+            std::cout << "Iteration: " << std::setw(2) << i + 1 << ": "
+                << "generating " << g_nRandom << " 32-bits random numbers\n";
+            {
+                size_t m = 0;
+                std::cout
+                    << std::setw(messageSpacing[m++]) << "Generator"
+                    << std::setw(messageSpacing[m++]) << "WordSize"
+                    << std::setw(messageSpacing[m++]) << "RegSize"
+                    << std::setw(messageSpacing[m++]) << "BlkSize"
+                    << std::setw(messageSpacing[m++]) << "QueryMode"
+                    << "\n";
+            }
 
 #if TEST_ORIG==1
-        if (testOriginal) {
-            // original Matsumoto - Tsukamoto MT19937 implementation
-            mtOrigPerformance();
-            sfmtOrigPerformance<true>(1);
-            for (auto sz : anySize)
-                if (sz >= 624)
-                    sfmtOrigPerformance<false>(sz);
-        }
+            if (g_testOriginal) {
+                // original Matsumoto - Tsukamoto MT19937 implementation
+                mtOrigPerformance();
+                sfmtOrigPerformance<true>(1);
+                for (auto sz : anySize)
+                    if (sz >= 624)
+                        sfmtOrigPerformance<false>(sz);
+            }
 #endif
 
 #if TEST_MKL==1
-        if (testMkl) {
-            for (auto sz : anySize)
-                mklPerformance(VSL_BRNG_MT19937, (MKL_INT)sz);
-            for (auto sz : anySize)
-                mklPerformance(VSL_BRNG_SFMT19937, (MKL_INT)sz);
-        }
+            if (g_testMkl) {
+                for (auto sz : anySize)
+                    mklPerformance(VSL_BRNG_MT19937, (MKL_INT)sz);
+                for (auto sz : anySize)
+                    mklPerformance(VSL_BRNG_SFMT19937, (MKL_INT)sz);
+            }
 #endif
 #if TEST_VMT==1
-        if (testVMT) {
-            vRandGenPerformance0<VMT19937, /*32, */128/*, 256, 512*/>();
-        }
-        vRandGenPerformance0<VSFMT19937, 128, 256, 512>();
+            if (g_testVMT) {
+                vRandGenPerformance0<VMT19937, /*32, */128/*, 256, 512*/>();
+            }
+            //vRandGenPerformance0<VSFMT19937, 128, 256, 512>();
 #endif
-    }
+        }
 
-    const size_t spacing[] = { 20, 8, 8, 8, 10, 6, 8, 8, 8, 8, 11, 12 };
-    size_t s = 0;
-    std::cout << "\n"
-        << std::setw(spacing[s++]) << std::right << "prng"
-        << std::setw(spacing[s++]) << std::right << "g-bits"
-        << std::setw(spacing[s++]) << std::right << "r-bits"
-        << std::setw(spacing[s++]) << std::right << "blksize"
-        << std::setw(spacing[s++]) << std::right << "qrymode"
-        << std::setw(spacing[s++]) << std::right << "nruns"
-        << std::setw(spacing[s++]) << std::right << "tmin"
-        << std::setw(spacing[s++]) << std::right << "tmax"
-        << std::setw(spacing[s++]) << std::right << "tavg"
-        << std::setw(spacing[s++]) << std::right << "tdev"
-        << std::setw(1+spacing[s++]) << std::right << "tdev/tavg"
-        << std::setw(spacing[s++]) << std::right << "throughput"
-        << "\n";
-    for (auto& [k, v] : results) {
-        s = 0;
-        std::cout << std::setw(spacing[s++]) << std::right << modename[k.mode]
-            << std::setw(spacing[s++]) << std::right << k.nBits
-            << std::setw(spacing[s++]) << std::right << k.nImplBits
-            << std::setw(spacing[s++]) << std::right << k.blkSize
-            << std::setw(spacing[s++]) << std::right << queryModeName(k.qryMode)
-            << std::setw(spacing[s++]) << std::right << v.singleRuns.size()
-            << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.mi
-            << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.ma
-            << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.avg
-            << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.stdev
-            << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.stdev /v.avg*100 << "%"
-            << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(1) << nRandom / 1.0e6 / v.avg
+        const size_t spacing[] = { 20, 8, 8, 8, 10, 6, 8, 8, 8, 8, 11, 12 };
+        size_t s = 0;
+        std::cout << "\n"
+            << std::setw(spacing[s++]) << std::right << "prng"
+            << std::setw(spacing[s++]) << std::right << "g-bits"
+            << std::setw(spacing[s++]) << std::right << "r-bits"
+            << std::setw(spacing[s++]) << std::right << "blksize"
+            << std::setw(spacing[s++]) << std::right << "qrymode"
+            << std::setw(spacing[s++]) << std::right << "nruns"
+            << std::setw(spacing[s++]) << std::right << "tmin"
+            << std::setw(spacing[s++]) << std::right << "tmax"
+            << std::setw(spacing[s++]) << std::right << "tavg"
+            << std::setw(spacing[s++]) << std::right << "tdev"
+            << std::setw(1 + spacing[s++]) << std::right << "tdev/tavg"
+            << std::setw(spacing[s++]) << std::right << "throughput"
             << "\n";
+        for (auto& [k, v] : results) {
+            s = 0;
+            std::cout << std::setw(spacing[s++]) << std::right << modename[k.mode]
+                << std::setw(spacing[s++]) << std::right << k.nBits
+                << std::setw(spacing[s++]) << std::right << k.nImplBits
+                << std::setw(spacing[s++]) << std::right << k.blkSize
+                << std::setw(spacing[s++]) << std::right << queryModeName(k.qryMode)
+                << std::setw(spacing[s++]) << std::right << v.singleRuns.size()
+                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.mi
+                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.ma
+                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.avg
+                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.stdev
+                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << v.stdev / v.avg * 100 << "%"
+                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(1) << g_nRandom / 1.0e6 / v.avg
+                << "\n";
+        }
+    }
+    catch (const std::exception& ex) {
+        std::cerr << "Error: " << ex.what() << "\n";
+        return -1;
+    }
+    catch (...) {
+        std::cerr << "Unknown error\n";
+        return -1;
     }
 
     return 0;

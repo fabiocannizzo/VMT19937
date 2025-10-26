@@ -19,6 +19,9 @@ struct MT19937Params
     static constexpr uint32_t s_matrixA = 0x9908b0dfUL;   // constant vector a
     static constexpr uint32_t s_upperMask = 0x80000000UL; // most significant w-r bits
     static constexpr uint32_t s_lowerMask = 0x7fffffffUL; // least significant r bits
+
+    static constexpr size_t s_n32InOneWord = s_wordSizeBits / 32;            // 1
+    static constexpr size_t s_n32InOneState = s_N * s_n32InOneWord;          // 624
 };
 
 struct SFMT19937Params

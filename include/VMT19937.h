@@ -23,10 +23,7 @@ public:
     static constexpr size_t s_regLenBitsHw = RegisterBitLenHw;
     static constexpr size_t s_nStates = RegisterBitLen / s_wordSizeBits;
     static constexpr size_t s_n32inReg = RegisterBitLen / 32;
-    static constexpr size_t s_n32InOneWord = s_wordSizeBits / 32;            // 1
-    static constexpr size_t s_n32InOneState = s_N * s_n32InOneWord;          // 624
     static constexpr size_t s_n32InFullState = s_n32InOneState * s_nStates;  // 624 * nStates
-    static constexpr size_t s_nMatrixBits = s_nMatrixBits;
 
     using matrix_t = MT19937Matrix;
 
