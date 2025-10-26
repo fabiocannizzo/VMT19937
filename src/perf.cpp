@@ -6,7 +6,7 @@
 #   define TEST_MKL 1
 #   include <mkl.h>
 #else
-#   define TEST_MKL 0
+#   define TEST_MKL 1
 #endif
 
 #include <iostream>

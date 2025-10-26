@@ -14,17 +14,11 @@ namespace Details {
 // however we may dispatch differently depending on the harware available (e.g., use 128-bit SIMD on older hardware,
 // 256-bit SIMD on newer hardware, etc.)
 template <size_t RegisterBitLen, size_t RegisterBitLenHw>
-class VMT19937Base
+class VMT19937Base : public MT19937Params
 {
-    static constexpr size_t s_wordSizeBits = MT19937Params::s_wordSizeBits;
-
     static_assert(RegisterBitLen >= s_wordSizeBits);
 
 public:
-
-    static constexpr int s_N = MT19937Params::s_N;     // 624
-    static_assert(s_N == 624);
-
     static constexpr size_t s_regLenBits = RegisterBitLen;
     static constexpr size_t s_regLenBitsHw = RegisterBitLenHw;
     static constexpr size_t s_nStates = RegisterBitLen / s_wordSizeBits;
@@ -32,7 +26,7 @@ public:
     static constexpr size_t s_n32InOneWord = s_wordSizeBits / 32;            // 1
     static constexpr size_t s_n32InOneState = s_N * s_n32InOneWord;          // 624
     static constexpr size_t s_n32InFullState = s_n32InOneState * s_nStates;  // 624 * nStates
-    static constexpr size_t s_nMatrixBits = MT19937Params::s_nMatrixBits;
+    static constexpr size_t s_nMatrixBits = s_nMatrixBits;
 
     using matrix_t = MT19937Matrix;
 
@@ -62,7 +56,7 @@ private:
     template <typename XVI>
     struct TemperCst
     {
-        TemperCst() : m_mask1(MT19937Params::s_temperMask1), m_mask2(MT19937Params::s_temperMask2) {}
+        TemperCst() : m_mask1(s_temperMask1), m_mask2(s_temperMask2) {}
         const XVI m_mask1;
         const XVI m_mask2;
     };
@@ -70,7 +64,7 @@ private:
     struct RefillCst
     {
         using XVI = SimdRegister<RegisterBitLenHw, RegisterBitLenHw>;
-        RefillCst() : m_upperMask(MT19937Params::s_upperMask), m_lowerMask(MT19937Params::s_lowerMask), m_matrixA(MT19937Params::s_matrixA) {}
+        RefillCst() : m_upperMask(s_upperMask), m_lowerMask(s_lowerMask), m_matrixA(s_matrixA) {}
         const XVI m_upperMask;
         const XVI m_lowerMask;
         const XVI m_matrixA;
@@ -429,7 +423,9 @@ public:
         , m_prndEnd(m_rnd + s_n32InRndCache)
         , m_pst(nullptr)
         , m_pstEnd(m_state + s_N * s_n32inReg)
-    {}
+    {
+    }
 };
+
 
 } // namespace Details
