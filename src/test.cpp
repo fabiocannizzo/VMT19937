@@ -231,7 +231,11 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
 
     std::vector<uint32_t> aligneddst(nRandomTest);
 
-    std::unique_ptr<Gen> mt( new Gen(seedinit, seedlength, nCommonJumpRepeat, commonJump.p.get(), seqJump.p.get()));
+    const M*jumpMat = nullptr;
+    if constexpr (s_nStates > 1)
+        jumpMat = seqJump.p.get();
+
+    std::unique_ptr<Gen> mt( new Gen(seedinit, seedlength, nCommonJumpRepeat, commonJump.p.get(), jumpMat));
 
     uint32_t* dst = aligneddst.data();
     if constexpr (QryMode != QM_Any) {

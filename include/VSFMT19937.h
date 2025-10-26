@@ -22,7 +22,7 @@ public:
 
     static constexpr size_t s_n32InFullState = s_n32InOneState * s_nStates;  // 624 * nStates
 
-    using matrix_t = BinaryMatrix<s_nMatrixBits>;
+    using matrix_t = SFMT19937Matrix;
 
 private:
     static constexpr size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition

@@ -37,7 +37,7 @@ bool g_testMkl = TEST_MKL;
 bool g_testOriginal = true;
 bool g_testVMT = true;
 size_t g_nRepeat = 1;
-std::string dir = "dat/mt";
+std::string dir = "dat";
 
 // this might be changed via cli arguments
 size_t g_nRandom = size_t(624) * 32 * 800;
@@ -60,17 +60,16 @@ struct GenTraits;
 
 // for maximum period, we should select the file based on the number of states
 // but these periods are so large anyway that who do not care!
-std::unique_ptr<Details::VMT19937Base<32, 32>::matrix_t> pmt(new Details::VMT19937Base<32, 32>::matrix_t(dir + "/F19933.bits"));
+std::unique_ptr<Details::VMT19937Base<32, 32>::matrix_t> pmt(new Details::VMT19937Base<32, 32>::matrix_t(dir + "/mt/F19933.bits"));
 // for maximum period, we should select the file based on the number of states
 // but these periods are so large anyway that who do not care!
-std::unique_ptr<Details::VSFMT19937Base<128, 32>::matrix_t> psfmt(new Details::VSFMT19937Base<128, 32>::matrix_t("dat/sfmt/F19935.bits"));
+std::unique_ptr<Details::VSFMT19937Base<128, 32>::matrix_t> psfmt(new Details::VSFMT19937Base<128, 32>::matrix_t(dir + "/sfmt/F19935.bits"));
 
 
 template <size_t RegBitLen, VRandGenQueryMode QueryMode, size_t RegBitLenHw>
 struct GenTraits<VMT19937<RegBitLen, QueryMode, RegBitLenHw>>
 {
     static const Mode mode = vmt;
-    static const char* name() { return "VMT19937"; }
     static const auto* matrix() { return pmt.get(); }
 };
 
@@ -78,11 +77,10 @@ template <size_t RegBitLen, VRandGenQueryMode QueryMode, size_t RegBitLenHw>
 struct GenTraits<VSFMT19937<RegBitLen, QueryMode, RegBitLenHw>>
 {
     static const Mode mode = vsfmt;
-    static const char* name() { return "VSFMT19937"; }
     static const auto* matrix() { return psfmt.get(); }
 };
 
-const size_t messageSpacing[] = { 15, 9, 8, 8, 12 };
+const size_t s_messageSpacing[] = { 15, 9, 8, 8, 12 };
 
 struct ResultKey
 {
@@ -96,11 +94,11 @@ struct ResultKey
     {
         size_t i = 0;
         std::cout
-            << std::setw(messageSpacing[i++]) << modename[mode]
-            << std::setw(messageSpacing[i++]) << nBits
-            << std::setw(messageSpacing[i++]) << nImplBits
-            << std::setw(messageSpacing[i++]) << blkSize
-            << std::setw(messageSpacing[i++]) << queryModeName(qryMode)
+            << std::setw(s_messageSpacing[i++]) << modename[mode]
+            << std::setw(s_messageSpacing[i++]) << nBits
+            << std::setw(s_messageSpacing[i++]) << nImplBits
+            << std::setw(s_messageSpacing[i++]) << blkSize
+            << std::setw(s_messageSpacing[i++]) << queryModeName(qryMode)
             << " ... ";
     }
     bool operator<(const ResultKey& rhs) const
@@ -302,8 +300,10 @@ void vRandGenPerformance4(size_t blkSize)
 
     AlignedVector<uint32_t, 64> aligneddst(blkSize);
 
-    // we provide a jump matrix, although it is redundant, just for the purpose of completeness
-    Gen mt(s_seedinit, s_seedlength, 0, nullptr, GenTraits<Gen>::matrix());
+    const Gen::matrix_t *jumpMatrixPtr = nullptr;
+    if constexpr (Gen::s_nStates > 1)
+        jumpMatrixPtr = GenTraits<Gen>::matrix();
+    Gen mt(s_seedinit, s_seedlength, 0, nullptr, jumpMatrixPtr);
 
     auto start = std::chrono::system_clock::now();
 
@@ -508,11 +508,11 @@ int main(int argc, const char** argv)
             {
                 size_t m = 0;
                 std::cout
-                    << std::setw(messageSpacing[m++]) << "Generator"
-                    << std::setw(messageSpacing[m++]) << "WordSize"
-                    << std::setw(messageSpacing[m++]) << "RegSize"
-                    << std::setw(messageSpacing[m++]) << "BlkSize"
-                    << std::setw(messageSpacing[m++]) << "QueryMode"
+                    << std::setw(s_messageSpacing[m++]) << "Generator"
+                    << std::setw(s_messageSpacing[m++]) << "WordSize"
+                    << std::setw(s_messageSpacing[m++]) << "RegSize"
+                    << std::setw(s_messageSpacing[m++]) << "BlkSize"
+                    << std::setw(s_messageSpacing[m++]) << "QueryMode"
                     << "\n";
             }
 

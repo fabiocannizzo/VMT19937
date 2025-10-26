@@ -42,6 +42,9 @@ private:
             // copy to the state vector shifting all bits to the right by 31
             base_t::vectorToState(0, (const uint32_t*)tmp.rowBegin(nCommonJumpRepeat % 2));
         }
+        else {
+            MYASSERT(!commonJump, "commonJump is provided but nCommonJumpRepeat==0");
+        }
 
         // if there are multiple states, distance them using the sequentialJump matrix
         if constexpr (s_nStates > 1) {
