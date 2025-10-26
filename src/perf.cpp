@@ -37,6 +37,7 @@ bool g_testMkl = TEST_MKL;
 bool g_testOriginal = true;
 bool g_testVMT = true;
 size_t g_nRepeat = 1;
+std::string dir = "dat/mt";
 
 // this might be changed via cli arguments
 size_t g_nRandom = size_t(624) * 32 * 800;
@@ -59,7 +60,7 @@ struct GenTraits;
 
 // for maximum period, we should select the file based on the number of states
 // but these periods are so large anyway that who do not care!
-std::unique_ptr<Details::VMT19937Base<32, 32>::matrix_t> pmt(new Details::VMT19937Base<32, 32>::matrix_t("dat/mt/F19933.bits"));
+std::unique_ptr<Details::VMT19937Base<32, 32>::matrix_t> pmt(new Details::VMT19937Base<32, 32>::matrix_t(dir + "/F19933.bits"));
 // for maximum period, we should select the file based on the number of states
 // but these periods are so large anyway that who do not care!
 std::unique_ptr<Details::VSFMT19937Base<128, 32>::matrix_t> psfmt(new Details::VSFMT19937Base<128, 32>::matrix_t("dat/sfmt/F19935.bits"));
@@ -447,7 +448,8 @@ void parseCliArgs(int argc, const char** argv)
         for (int i = 1; i < argc; ++i) {
             string key(argv[i]);
             if (key == "-n") {
-                const char* value = argv[++i];
+            	MYASSERT(++i < argc, "-n must be followed by a number");
+                const char* value = argv[i];
                 g_nRepeat = stoul(string(value));
             }
             else if (key == "--no-mkl")
@@ -458,6 +460,10 @@ void parseCliArgs(int argc, const char** argv)
                 g_testVMT = false;
             else if (key == "--slow")
                 g_nRandom *= 1000;
+            else if (key == "--dir") {
+            	MYASSERT(++i < argc, "--dir must be followed by a path");
+                dir = argv[i];
+            }
             else {
                 usage();
                 std::exit(-1);
