@@ -79,7 +79,7 @@ $(info HEADERS: $(HEADERS))
 CPP_SRC=$(wildcard src/*.cpp)
 $(info C++ files: $(CPP_SRC))
 
-CPP_WITH_MAIN=$(shell git grep -l "int main" src)
+CPP_WITH_MAIN=$(shell grep -l "int main" $(CPP_SRC))
 CPP_WITHOUT_MAIN=$(filter-out $(CPP_WITH_MAIN), $(CPP_SRC))
 
 CPP_OBJ=$(patsubst src/%.cpp,$(BINDIR)/%.cpp.obj,$(CPP_SRC))
