@@ -1,7 +1,5 @@
 #include "TestUtils.h"
 
-#include "../SFMT-src-1.5.1/SFMT.h"
-
 #include <iostream>
 #include <iomanip>
 #include <chrono>
@@ -30,6 +28,8 @@ using namespace std;
 #endif
 
 #if TEST_ORIG==1
+#   define HAVE_SSE2
+#   define SFMT_MEXP 19937
 #   include "../SFMT-src-1.5.1/SFMT.h"
 #endif
 

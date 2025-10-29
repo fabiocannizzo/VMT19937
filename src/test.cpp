@@ -3,6 +3,8 @@
 #include "TestUtils.h"
 #include "SIMD.h"
 
+#define HAVE_SSE2
+#define SFMT_MEXP 19937
 #include "../SFMT-src-1.5.1/SFMT.h"
 
 #include <utility>
@@ -375,9 +377,13 @@ void test_XMT19937()
     pmatrix_t noJump;
     pmatrix_t jumpMatrix1(new matrix_t, 1);                                          // jump ahead 1 element
     pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/mt/F00009.bits")), 512);    // jump ahead 2^9 (512) elements
-    //pmatrix_t jumpMatrixPeriod(new matrix_t(std::string("./dat/mt/F19937.bits")), 1);   // jump ahead 2^19937 elements
+    pmatrix_t jumpMatrixPeriod(new matrix_t(std::string("./dat/mt/F19937.bits")), 1);   // jump ahead 2^19937 elements
 
     equivalenceTests0<XMT, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
+
+    // since the period is 2^19937-1, after applying a jump matrix of 2^19937, we restart the sequence from step 1
+    std::cout << "VMT19937: a jump of size 2^19937 is equivalent to a jump of size 1\n";
+    testEquivalence<XMT, 128, 128, QM_Scalar>(1, jumpMatrixPeriod, noJump);
 }
 
 void test_VSFMT19937()
