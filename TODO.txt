@@ -7,13 +7,11 @@ Support Neon architecture
 Review file name: VMT19937 (also contains XMT19937)
 ?MT19937: review static definitions and template arguments, e.g. s_n32InReg
 ?MT19937: review static definitions and template arguments, what is the meaning of using as HWLen 32? Can it be extended to XMT?
-test: can we merge tests for XMT and VMT
 review SFMT19937 matrix parameters
 matrices: review serialization (add metadata about geometry)
 Review README page
 Introduce dynamic dispatching
 Rename repo?
-Perf test: add flags to disable query modes
 Makefile add support for MSVC compiler: add cmake support ?
 Add GitHub actions for CI
 Review paper

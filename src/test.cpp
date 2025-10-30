@@ -33,7 +33,8 @@ struct GenTraits<VMT, L, I, QM>
 template <size_t L, size_t I, QryMode QM>
 struct GenTraits<XMT, L, I, QM>
 {
-    typedef XMT19937<L, QM == QM_Block16, I> gen_t;
+    static_assert(L == I);
+    typedef XMT19937<L, QM == QM_Block16> gen_t;
 };
 
 template <size_t L, size_t I, QryMode QM>

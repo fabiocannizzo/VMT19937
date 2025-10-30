@@ -172,11 +172,10 @@ struct VMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, Registe
 
 template < size_t RegisterBitLen = SIMD_N_BITS
          , bool QryBlk16 = false
-         , size_t RegisterBitLenHw = std::min<size_t>(SIMD_N_BITS, RegisterBitLen)
          >
-struct XMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, true, QryBlk16>, QryBlk16>
+struct XMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLen, true, QryBlk16>, QryBlk16>
 {
-    using base_t = Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLenHw, true, QryBlk16>, QryBlk16>;
+    using base_t = Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterBitLen, true, QryBlk16>, QryBlk16>;
     using base_t::VRandGen; // reuse constructors
 };
 

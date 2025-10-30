@@ -87,8 +87,8 @@ struct GenTraits<xmt>
     static const GenMode mode = xmt;
     static const MT19937Matrix* jumpMatrix() { return nullptr; }
 
-    template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw>
-    using gen_t = XMT19937<RegBitLen, QM == QM_Block16, RegBitLenHw>;
+    template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw, std::enable_if_t<RegBitLen == RegBitLenHw, int> = 0>
+    using gen_t = XMT19937<RegBitLen, QM == QM_Block16>;
 };
 
 template <>
