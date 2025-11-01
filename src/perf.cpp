@@ -15,6 +15,7 @@ using namespace std;
 
 #define TEST_MKL 1
 #define TEST_VMT 1
+#define TEST_VSFMT 1
 #define TEST_XMT 1
 #define TEST_ORIG 1
 
@@ -39,6 +40,7 @@ bool g_testMkl = TEST_MKL;
 bool g_testOriginal = true;
 bool g_testVMT = true;
 bool g_testXMT = true;
+bool g_testSFMT = true;
 bool g_testQry1 = true;
 bool g_testQryN = true;
 bool g_testQry16 = true;
@@ -405,12 +407,13 @@ void syntax()
 {
     std::cerr
         << "Invalid command line arguments\n"
-        << "perf [-n nRepeats] [-s nRndScaler] [--no-mkl] [--no-original] [--no-vmt]\n"
+        << "perf [-n nRepeats] [-s nRndScaler] [--no-mkl] [--no-original] [--no-vmt] [--no-sfmt]\n"
         << "     [--no - xmt][--dir datpath][--no - qry1][--no - qry16][--no - qryN][--stdev 1.0]\n"
         << "  -n nRepeats: number of performance test iterations (default 1)\n"
         << "  --no-mkl: skip MKL tests\n"
         << "  --no-vmt: skip VMT tests\n"
         << "  --no-xmt: skip XMT tests\n"
+        << "  --no-sfmt: skip SFMT tests\n"
         << "  --no-qry1: skip scalar query tests\n"
         << "  --no-qry16: skip block-16 query tests\n"
         << "  --no-qryN: skip vectorial query tests\n"
@@ -488,6 +491,8 @@ void parseCliArgs(int argc, const char** argv)
                 g_testOriginal = false;
             else if (key == "--no-vmt")
                 g_testVMT = false;
+            else if (key == "--no-sfmt")
+                g_testSFMT = false;
             else if (key == "--no-xmt")
                 g_testVMT = false;
             else if (key == "--no-qry1")
@@ -577,10 +582,15 @@ int main(int argc, const char** argv)
             if (g_testOriginal) {
                 // original Matsumoto - Tsukamoto MT19937 implementation
                 mtOrigPerformance();
-                sfmtOrigPerformance<true>(1);
-                for (auto sz : anySize)
-                    if (sz >= 624)
-                        sfmtOrigPerformance<false>(sz);
+                if (g_testSFMT) {
+                    if (g_testQry1)
+                        sfmtOrigPerformance<true>(1);
+                    if (g_testQryN) {
+                        for (auto sz : anySize)
+                            if (sz >= 624)
+                                sfmtOrigPerformance<false>(sz);
+                    }
+                }
             }
 #endif
 
@@ -588,19 +598,25 @@ int main(int argc, const char** argv)
             if (g_testMkl) {
                 for (auto sz : anySize)
                     mklPerformance(VSL_BRNG_MT19937, (MKL_INT)sz);
-                for (auto sz : anySize)
-                    mklPerformance(VSL_BRNG_SFMT19937, (MKL_INT)sz);
+                if (g_testSFMT) {
+                    for (auto sz : anySize)
+                        mklPerformance(VSL_BRNG_SFMT19937, (MKL_INT)sz);
+                }
             }
 #endif
 #if TEST_VMT==1
             if (g_testVMT) {
-                vRandGenPerformance0<vmt, /*32, */128/*, 256, 512*/>();
+                vRandGenPerformance0<vmt, /*32, 128, 256, 512*/ SIMD_N_BITS>();
             }
-            //vRandGenPerformance0<vsfmt, 128, 256, 512>();
+#endif
+#if TEST_VSFMT==1
+            if (g_testSFMT) {
+                vRandGenPerformance0<vsfmt, /*32, 128, 256, 512*/ SIMD_N_BITS>();
+            }
 #endif
 #if TEST_XMT==1
             if (g_testXMT) {
-                vRandGenPerformance0<xmt, /*32, */128/*, 256, 512*/>();
+                vRandGenPerformance0<xmt, /*32, 128, 256, 512*/ SIMD_N_BITS>();
             }
 #endif
             size_t nResAfter = nResults();
