@@ -62,7 +62,7 @@ enum GenMode {orig, sfmt, mkl_mt, mkl_sfmt, xmt, vmt, vsfmt};
 
 const char* modename[] = {"ORIG-MT19937", "ORIG-SFMT19937", "MKL-MT19937", "MKL-SFMT19937", "X-MT19937", "V-MT19937", "V-SFMT19937" };
 
-const size_t anySize[] = { 1, 4, 16, 64, 256, 624, 1024, 4096, 16384 };
+const size_t anySize[] = {/* 1, 4, 16, 64, 256, 624, 1024, 4096,*/ 16384 };
 
 template <GenMode G>
 struct GenTraits;
@@ -74,6 +74,8 @@ const auto pmt = std::make_unique<MT19937Matrix>(dir + "/mt/F19933.bits");
 // but these periods are so large anyway that who do not care!
 const auto psfmt = std::make_unique<SFMT19937Matrix>(dir + "/sfmt/F19935.bits");
 
+// use the same destination memory in all tests to avoid spurious difference in test results due to memory layout
+AlignedVector<uint32_t, 64> aligneddst(anySize[sizeof(anySize)/sizeof(anySize[0])-1]);
 
 template <>
 struct GenTraits<vmt>
@@ -233,7 +235,6 @@ void sfmtOrigPerformance(size_t BlkSize)
 
     MYASSERT((BlkSize == 1) || (BlkSize % 4 == 0 && BlkSize >= SFMT_N32), "BlkSize must be a multiple of 4 and >=156*128");
     MYASSERT((g_nRandom % BlkSize) == 0, "nRandom must be a multiple of BlkSize");
-    AlignedVector<uint32_t, 64> aligneddst(BlkSize);
 
     sfmt_t sfmtgen;
     sfmt_init_gen_rand(&sfmtgen,12345);
@@ -299,8 +300,6 @@ void mklPerformance(MKL_INT GenCode, MKL_INT BlkSize)
         return;
     }
 
-    AlignedVector<uint32_t, 64> aligneddst(BlkSize);
-
     VSLStreamStatePtr stream;
     vslNewStream(&stream, GenCode, 5489);
 
@@ -332,8 +331,6 @@ void vRandGenPerformance5(size_t blkSize)
         std::cout << "skip\n";
         return;
     }
-
-    AlignedVector<uint32_t, 64> aligneddst(blkSize);
 
     using Gen = typename GenTraits<Mode>::template gen_t<L, QM, I>;
 

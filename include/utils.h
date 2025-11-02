@@ -43,7 +43,7 @@ class AlignedVector
 
 public:
     AlignedVector() : m_data(nullptr), m_n(0) {}
-    AlignedVector(size_t n) : m_data(nullptr), m_n(0) { init(n); }
+    AlignedVector(size_t n) : AlignedVector() { init(n); }
     ~AlignedVector() { deallocate(); }
 
     void init(size_t n)
