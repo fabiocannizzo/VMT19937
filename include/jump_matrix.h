@@ -26,11 +26,23 @@ struct BinarySquareMatrix : BinaryMatrix<N, N>
     template <size_t NRows, size_t nColumns, size_t...Is>
     static void transpose16x8(buffer_t& buffer, const base_t& src, size_t rowBitIndex, size_t colBitIndex,  std::index_sequence<Is...>&&)
     {
-        //const size_t simdBits = 128;
-        //const size_t nRowsPerBlk = simdBits / s_nBitColsPerBlk;
-
         static_assert(s_nBitColsPerBlk == 8);
 
+#if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__)
+        // Portable/NEON fallback: bit by bit for the 8xN block
+        for (size_t cb = 0; cb < nColumns; ++cb) {
+            uint16_t mask = 0;
+            for (size_t i = 0; i < sizeof...(Is); ++i) {
+                if (i < NRows) {
+                    if (src.getBit(rowBitIndex + i, colBitIndex + cb)) {
+                        mask |= (uint16_t)(1 << i);
+                    }
+                }
+            }
+            uint16_t* pc = (uint16_t*)buffer.rowBegin(cb);
+            pc[rowBitIndex / (8 * sizeof(uint16_t))] = mask;
+        }
+#else
         const size_t n = sizeof...(Is) - 1;
         auto cs = _mm_set_epi8((n - Is < NRows ? src.template getWordU<uint8_t>(rowBitIndex + (n - Is), colBitIndex) : 0)...);
 
@@ -39,6 +51,7 @@ struct BinarySquareMatrix : BinaryMatrix<N, N>
             uint16_t* pc = (uint16_t*)buffer.rowBegin(cb);
             pc[rowBitIndex / (8 * sizeof(uint16_t))] = (uint16_t)mask;
         }
+#endif
     }
 
     // transpose columns from colBitIndex to colBitIndex+nBitColsPerBlk-1 and copies then to colBuffer

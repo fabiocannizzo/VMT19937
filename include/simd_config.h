@@ -20,12 +20,18 @@
 #   define SIMD_N_BITS 128
 #elif defined(__SSE2__)
 #   error SSE4.2 is needed
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__)
+#   define SIMD_N_BITS 128
 #endif
 
 #ifdef SIMD_N_BITS
-#   include <immintrin.h>
-#   ifdef _MSC_VER
-#       include <intrin.h>
+#   if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__)
+#       include <arm_neon.h>
+#   else
+#       include <immintrin.h>
+#       ifdef _MSC_VER
+#           include <intrin.h>
+#       endif
 #   endif
 #else
 #error "SIMD_N_BITS not defined"

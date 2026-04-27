@@ -30,7 +30,6 @@ using namespace std;
 #endif
 
 #if TEST_ORIG==1
-#   define HAVE_SSE2
 #   define SFMT_MEXP 19937
 #   include "../SFMT-src-1.5.1/SFMT.h"
 #endif
@@ -156,6 +155,9 @@ void done(double nSeconds)
     std::cout << "done in: " << std::setw(8) << std::fixed << std::setprecision(2) << nSeconds << "s\n";
 }
 
+struct Results;
+bool alreadyHaveEnoughIter(const Results& key);
+
 // add results and update statistics
 void addResult(const Results& key, double seconds)
 {
@@ -179,7 +181,7 @@ void addResult(const Results& key, double seconds)
         r.stdev = std::sqrt((s2 - s * r.avg) / (n - 1));
 }
 
-__declspec(noinline)
+NO_INLINE
 bool alreadyHaveEnoughIter(const Results& key)
 {
     auto iter = results.find(key);

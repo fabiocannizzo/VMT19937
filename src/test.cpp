@@ -3,7 +3,6 @@
 #include "TestUtils.h"
 #include "SIMD.h"
 
-#define HAVE_SSE2
 #define SFMT_MEXP 19937
 #include "../SFMT-src-1.5.1/SFMT.h"
 
@@ -407,6 +406,8 @@ void printReg(std::string&& name, T v)
     std::cout << '\n';
 }
 
+#define MYASSERT_XV_EQ(a, b, msg) MYASSERT(a.eq(b), msg)
+
 template <size_t n32, typename T>
 void testAlignR32(const unsigned char *data, T a, T b)
 {
@@ -439,9 +440,79 @@ void testSimdAlignR32(std::index_sequence<n32s...>&&)
     (testAlignR32<n32s>(data, v0, v1), ...);
 }
 
+void test_SIMD_special_methods()
+{
+    std::cout << "\n--- SIMD special methods tests ---\n";
+
+    using XV = Details::SimdRegister<128, 128>;
+
+    // Test alignr32
+    {
+        XV a(1, 2, 3, 4);
+        XV b(5, 6, 7, 8);
+
+        XV r0 = XV::alignr32<0>(a, b);
+        MYASSERT(r0.eq(a), "alignr32<0> failed");
+
+        XV r1 = XV::alignr32<1>(a, b);
+        MYASSERT(r1.eq(XV(2, 3, 4, 5)), "alignr32<1> failed");
+
+        XV r2 = XV::alignr32<2>(a, b);
+        MYASSERT(r2.eq(XV(3, 4, 5, 6)), "alignr32<2> failed");
+
+        XV r3 = XV::alignr32<3>(a, b);
+        MYASSERT(r3.eq(XV(4, 5, 6, 7)), "alignr32<3> failed");
+
+        XV r4 = XV::alignr32<4>(a, b);
+        MYASSERT(r4.eq(b), "alignr32<4> failed");
+    }
+
+    // Test shl128 / shr128
+    {
+        XV a(0x01020304u, 0x05060708u, 0x090A0B0Cu, 0x0D0E0F10u);
+
+        XV l4 = XV::shl128<4>(a);
+        MYASSERT(l4.eq(XV(0, 0x01020304u, 0x05060708u, 0x090A0B0Cu)), "shl128<4> failed");
+
+        XV r4 = XV::shr128<4>(a);
+        MYASSERT(r4.eq(XV(0x05060708u, 0x090A0B0Cu, 0x0D0E0F10u, 0)), "shr128<4> failed");
+
+        XV l8 = XV::shl128<8>(a);
+        MYASSERT(l8.eq(XV(0, 0, 0x01020304u, 0x05060708u)), "shl128<8> failed");
+
+        XV r8 = XV::shr128<8>(a);
+        MYASSERT(r8.eq(XV(0x090A0B0Cu, 0x0D0E0F10u, 0, 0)), "shr128<8> failed");
+    }
+
+    // Test ifOddCst32ElseZero
+    {
+        XV a(1, 2, 3, 4); // odd, even, odd, even
+        XV cst(0xAAAAAAAAu);
+        XV res = a.ifOddCst32ElseZero(cst);
+        MYASSERT(res.eq(XV(0xAAAAAAAAu, 0, 0xAAAAAAAAu, 0)), "ifOddCst32ElseZero failed");
+    }
+
+
+    // Test parity
+    {
+        XV a(1, 0, 0, 0);
+        MYASSERT(a.parity() == 1, "parity failed (1)");
+
+        XV b(1, 1, 0, 0);
+        MYASSERT(b.parity() == 0, "parity failed (0)");
+
+        XV c(0x12345678u, 0x87654321u, 0x11223344u, 0x44332211u);
+        uint32_t p = popcnt(0x12345678u) ^ popcnt(0x87654321u) ^ popcnt(0x11223344u) ^ popcnt(0x44332211u);
+        MYASSERT(c.parity() == (uint8_t)(p & 1), "parity failed (complex)");
+    }
+
+    std::cout << "SIMD special methods tests passed!\n";
+}
+
 int main()
 {
     try {
+        test_SIMD_special_methods();
 #if 0
         testSimdAlignR32(std::make_index_sequence<128 / 32 + 1>{});
 #if SIMD_N_BITS>=256

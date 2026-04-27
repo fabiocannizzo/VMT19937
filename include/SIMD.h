@@ -326,6 +326,83 @@ struct MAY_ALIAS SimdRegister<64>
 */
 
 #if SIMD_N_BITS>=128
+#if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__)
+template <>
+struct SimdRegister<128, 128, void> : VirtualRegBase<128, 128>
+{
+    uint32x4_t m_v;
+
+    typedef SimdRegister<128, 128> XV;
+
+    SimdRegister() {}
+    FORCE_INLINE SimdRegister(uint32_t v) : m_v(vdupq_n_u32(v)) {}
+    FORCE_INLINE SimdRegister(uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3)
+    {
+        alignas(16) uint32_t data[4] = { v0, v1, v2, v3 };
+        m_v = vld1q_u32(data);
+    }
+    FORCE_INLINE SimdRegister(const void* p) : m_v(vld1q_u32((const uint32_t*)p)) {}
+    FORCE_INLINE SimdRegister(uint32x4_t v) : m_v(v) {}
+
+    template <bool A>
+    FORCE_INLINE void store(uint32_t* dst) { vst1q_u32(dst, m_v); }
+
+    friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { return vandq_u32(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { return veorq_u32(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { return vorrq_u32(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return vshlq_u32(a.m_v, vdupq_n_s32(n)); }
+    friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return vshrq_n_u32(a.m_v, n); }
+
+    FORCE_INLINE bool eq(const XV& rhs) const
+    {
+        uint32x4_t cmp = vceqq_u32(m_v, rhs.m_v);
+        // All bits must be 1 for each lane
+        return vgetq_lane_u32(cmp, 0) == 0xFFFFFFFFU &&
+               vgetq_lane_u32(cmp, 1) == 0xFFFFFFFFU &&
+               vgetq_lane_u32(cmp, 2) == 0xFFFFFFFFU &&
+               vgetq_lane_u32(cmp, 3) == 0xFFFFFFFFU;
+    }
+
+    template <unsigned n32FromSecond>
+    static FORCE_INLINE XV alignr32(const XV& a, const XV& b)
+    {
+        static_assert(n32FromSecond <= 4, "n32FromSecond must be <=4 with NEON");
+        if constexpr (n32FromSecond == 0) return a;
+        else if constexpr (n32FromSecond == 4) return b;
+        else return vextq_u32(a.m_v, b.m_v, n32FromSecond);
+    }
+
+    template <int n>
+    static FORCE_INLINE XV shl128(const XV& a)
+    {
+        if constexpr (n == 0) return a;
+        else if constexpr (n >= 16) return zero();
+        else return vreinterpretq_u32_u8(vextq_u8(vdupq_n_u8(0), vreinterpretq_u8_u32(a.m_v), 16 - n));
+    }
+    template <int n>
+    static FORCE_INLINE XV shr128(const XV& a)
+    {
+        if constexpr (n == 0) return a;
+        else if constexpr (n >= 16) return zero();
+        else return vreinterpretq_u32_u8(vextq_u8(vreinterpretq_u8_u32(a.m_v), vdupq_n_u8(0), n));
+    }
+
+    static FORCE_INLINE XV zero() { return vdupq_n_u32(0); }
+
+    FORCE_INLINE XV ifOddCst32ElseZero(const XV& cst32) const
+    {
+        int32x4_t mask = vshrq_n_s32(vreinterpretq_s32_u32(vshlq_n_u32(m_v, 31)), 31);
+        return vandq_u32(vreinterpretq_u32_s32(mask), cst32.m_v);
+    }
+
+    uint8_t parity() const
+    {
+        uint32_t d = vgetq_lane_u32(m_v, 0) ^ vgetq_lane_u32(m_v, 1) ^
+                     vgetq_lane_u32(m_v, 2) ^ vgetq_lane_u32(m_v, 3);
+        return popcnt(d) & 1;
+    }
+};
+#else
 template <>
 struct SimdRegister<128, 128, void> : VirtualRegBase<128, 128>
 {
@@ -397,6 +474,7 @@ struct SimdRegister<128, 128, void> : VirtualRegBase<128, 128>
         return popcnt(d) & 1;
     }
 };
+#endif
 #endif
 
 #if SIMD_N_BITS>=256

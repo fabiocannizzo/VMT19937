@@ -22,8 +22,10 @@ Build configurations
 --------------------
 
 Cygwin / Linux  (GCC, no MKL on Cygwin)
+  # NOTE: When building with GCC on Windows, you must use a suitable shell (e.g., Cygwin or MSYS2).
+  # You can use approximately 75% of the available CPU for building (e.g., -j3 on a 4-core system).
   cmake -B build-128 -G "Unix Makefiles" -DNBITS=128
-  cmake --build build-128 -j$(nproc)
+  cmake --build build-128 -j3
 
   # Linux with MKL:
   cmake -B build-128 -DNBITS=128 -DMKLROOT=/opt/intel/oneapi/mkl/latest

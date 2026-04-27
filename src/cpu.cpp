@@ -13,7 +13,9 @@
     #include <intrin.h>
 #else
     #include <sys/resource.h>
-    #include <cpuid.h>
+    #if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+        #include <cpuid.h>
+    #endif
     #include <pthread.h>
     #include <sched.h>
     #include <unistd.h>
@@ -25,16 +27,42 @@
 // simple helper for CPUID
 static inline void cpuid(int regs[4], int eax, int ecx = 0)
 {
-#ifdef _WIN32
+#if defined(_WIN32)
     __cpuidex(regs, eax, ecx);
-#else
+#elif defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
     __cpuid_count(eax, ecx, regs[0], regs[1], regs[2], regs[3]);
+#else
+    // Not an x86 architecture
+    regs[0] = regs[1] = regs[2] = regs[3] = 0;
 #endif
 }
 
 CpuInfo detectCpuInfo()
 {
     CpuInfo info;
+
+#if !defined(__x86_64__) && !defined(_M_X64) && !defined(__i386__) && !defined(_M_IX86) && !defined(_WIN32)
+    // ARM/Generic Linux detection
+    info.vendor = "ARM";
+    info.simd = "NEON";
+
+    std::ifstream f("/proc/cpuinfo");
+    std::string line;
+    while (std::getline(f, line))
+    {
+        if (line.find("Model") != std::string::npos || line.find("Hardware") != std::string::npos)
+        {
+            size_t pos = line.find(":");
+            if (pos != std::string::npos) info.brand = line.substr(pos + 2);
+        }
+        if (line.find("cpu MHz") != std::string::npos || line.find("BogoMIPS") != std::string::npos)
+        {
+            double val;
+            if (sscanf(line.c_str(), "%*s %*s : %lf", &val) == 1) info.mhz = val;
+        }
+    }
+    return info;
+#else
     int regs[4] = {0};
 
     // Vendor
@@ -157,6 +185,7 @@ CpuInfo detectCpuInfo()
         key << "L" << level << typeStr;
         info.cache[key.str()] = cacheSize;
     }
+#endif
 
     return info;
 }
