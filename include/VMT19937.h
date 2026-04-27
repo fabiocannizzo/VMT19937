@@ -99,6 +99,9 @@ private:
         const XVI m_matrixA;
     };
 
+    alignas(64) inline static const TemperCst<SimdRegister<s_n32InBlock * 32, s_regLenBitsHw>> s_temperCst{};
+    alignas(64) inline static const RefillCst s_refillMasks{};
+
     template <typename XVI, typename M>
     static FORCE_INLINE XVI temper(XVI y, const M& masks)
     {
@@ -119,9 +122,7 @@ private:
         // it is implemented iteratin on the available hardware registers
         using XVline = SimdRegister<s_n32InBlock * 32, s_regLenBitsHw>;
 
-        alignas(16) static const TemperCst<XVline> cst{};
-
-        XVline tmp = temper(XVline(m_pst), cst);
+        XVline tmp = temper(XVline(m_pst), s_temperCst);
         tmp.template store<Aligned>(dst);
 
         m_pst += s_n32InBlock;
@@ -201,11 +202,6 @@ private:
         constexpr int M = s_M;
         static_assert(N == 624 && M == 397, "unrolling designed for these parameters");
 
-        // Create local copy of the constants and pass them to the function as arguments.
-        // Since all functions invoked from here are forced inline, the function arguments
-        // will not be passed as arguments via the stack, but reside in CPU registers
-        const RefillCst masks;  // use default constructor
-
         XV x0(stCur);
 
         if constexpr (!MonoState) {
@@ -214,29 +210,29 @@ private:
             // unroll first part of the loop (N-M) iterations
             constexpr size_t n1 = (N - M) / nUnroll;
             constexpr size_t r1 = (N - M) % nUnroll;
-            stCur = advanceLoop<1, M>(n1, stCur, x0,masks, std::make_integer_sequence<int, nUnroll>{});
-            stCur = advanceLoop<1, M>(r1, stCur, x0, masks, std::make_integer_sequence<int, r1>{});
+            stCur = advanceLoop<1, M>(n1, stCur, x0, s_refillMasks, std::make_integer_sequence<int, nUnroll>{});
+            stCur = advanceLoop<1, M>(r1, stCur, x0, s_refillMasks, std::make_integer_sequence<int, r1>{});
 
             // unroll second part of the loop (M-1) iterations
             constexpr size_t n2 = (M - 1) / nUnroll;
             constexpr size_t r2 = (M - 1) % nUnroll;
-            stCur = advanceLoop<1, M - N>(n2, stCur, x0, masks, std::make_integer_sequence<int, nUnroll>{});
-            stCur = advanceLoop<1, M - N>(r2, stCur, x0, masks, std::make_integer_sequence<int, r2>{});
+            stCur = advanceLoop<1, M - N>(n2, stCur, x0, s_refillMasks, std::make_integer_sequence<int, nUnroll>{});
+            stCur = advanceLoop<1, M - N>(r2, stCur, x0, s_refillMasks, std::make_integer_sequence<int, r2>{});
 
             // last iteration
-            advanceLoop<1 - N, M - N>(1, stCur, x0, masks, std::make_integer_sequence<int, 1>{});
+            advanceLoop<1 - N, M - N>(1, stCur, x0, s_refillMasks, std::make_integer_sequence<int, 1>{});
         }
         else {
             XV XMlo(stCur + (s_M / s_n32inReg) * s_n32inReg);
             constexpr size_t nIter1 = (N - M) / s_n32inReg;
             for (size_t i = 0; i < nIter1; ++i)
-                monoStateIteration<0, 1, M>(stCur + i * s_n32inReg, x0, XMlo, masks);
+                monoStateIteration<0, 1, M>(stCur + i * s_n32inReg, x0, XMlo, s_refillMasks);
             stCur += nIter1 * s_n32inReg;
             constexpr size_t nIter2 = (M - 1) / s_n32inReg;
             for (size_t i = 0; i < nIter2; ++i)
-                monoStateIteration<0, 1, M - N>(stCur + i * s_n32inReg, x0, XMlo, masks);
+                monoStateIteration<0, 1, M - N>(stCur + i * s_n32inReg, x0, XMlo, s_refillMasks);
             stCur += nIter2 * s_n32inReg;
-            monoStateIteration<0, 1 - N, M - N>(stCur, x0, XMlo, masks);
+            monoStateIteration<0, 1 - N, M - N>(stCur, x0, XMlo, s_refillMasks);
         }
 
         m_pst = m_state;

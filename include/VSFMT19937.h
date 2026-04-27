@@ -37,6 +37,9 @@ private:
     const uint32_t* const m_state_end;
     const uint32_t* m_prnd;
 
+    using MaskType = SimdRegister<std::max<size_t>(128, s_regLenBitsHw), s_regLenBitsHw>;
+    alignas(64) inline static const MaskType s_bMask{SFMT19937Params::s_SFMT_MSK1, SFMT19937Params::s_SFMT_MSK2, SFMT19937Params::s_SFMT_MSK3, SFMT19937Params::s_SFMT_MSK4};
+
     template <typename XVCst>
     static FORCE_INLINE XV advance1(const XV& xA, const XV& xB, const XV& xC, const XV& xD, const XVCst& bMask)
     {
@@ -94,12 +97,6 @@ private:
 
     NO_INLINE void refill()
     {
-        // Create local copy of the constants and pass them to the function as arguments.
-        // Since all functions invoked from here are forced inline, the function arguments
-        // will not be passed as arguments via the stack, but reside in CPU registers
-        SimdRegister<std::max<size_t>(128, s_regLenBitsHw), s_regLenBitsHw>
-            bMask(SFMT19937Params::s_SFMT_MSK1, SFMT19937Params::s_SFMT_MSK2, SFMT19937Params::s_SFMT_MSK3, SFMT19937Params::s_SFMT_MSK4);
-
         const int s_M = SFMT19937Params::s_M;
 
         // local variables
@@ -108,10 +105,10 @@ private:
         XV xD(stCur + (s_N - 1) * s_n32inReg);
 
         // unroll first part of the loop: (N-M) iterations
-        advanceLoop<2, s_N - s_M, s_M>(stCur, xC, xD, bMask);
+        advanceLoop<2, s_N - s_M, s_M>(stCur, xC, xD, s_bMask);
 
         // unroll second part of the loop: M iterations
-        advanceLoop<2, s_M, s_M - s_N>(stCur, xC, xD, bMask);
+        advanceLoop<2, s_M, s_M - s_N>(stCur, xC, xD, s_bMask);
 
         m_prnd = begin();
     }
