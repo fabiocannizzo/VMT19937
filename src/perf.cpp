@@ -514,6 +514,8 @@ void parseCliArgs(int argc, const char** argv)
             	MYASSERT(++i < argc, "--dir must be followed by a path");
                 dir = argv[i];
             }
+            else if (key == "--slow")
+                g_nRandom *= 1000;
             else {
                 THROW("Invalid command line argument: " << argv[i]);
             }
