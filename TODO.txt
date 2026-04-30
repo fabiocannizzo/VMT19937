@@ -1,6 +1,3 @@
-Test also with mingw-g++ to compare againts MKL.
-Run test in slow mode
-Support Neon architecture (we can test on a Raspberri Pi)
 Wrap classes in a namespace xvmt
 
 Review static const definitions and names:
