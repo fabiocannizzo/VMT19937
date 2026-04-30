@@ -14,6 +14,7 @@ extern "C" {
 #include <cmath>
 
 using namespace std;
+using namespace xvmt;
 //using namespace std::placeholders;
 
 MT19937Matrix j19933(std::string("./dat/mt/F19933.bits"));

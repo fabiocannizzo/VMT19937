@@ -9,6 +9,8 @@
 #include <utility>
 #include <numeric>
 
+using namespace xvmt;
+
 const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 
@@ -426,7 +428,7 @@ void testSimdAlignR32(std::index_sequence<n32s...>&&)
 {
     constexpr size_t n32 = (sizeof...(n32s) - 1);
     constexpr size_t nBits = n32 * 32;
-    using T = Details::SimdRegister<nBits, BitLenToIsa<nBits>::isa>;
+    using T = xvmt::details::SimdRegister<nBits, BitLenToIsa<nBits>::isa>;
     std::cout << "\nTest SimdRegister<" << nBits << ", " << (int)BitLenToIsa<nBits>::isa << ">::alignr32\n";
     alignas(64) unsigned char data[128];
     std::iota(data, data + 128, 0);
@@ -444,7 +446,7 @@ void test_SIMD_special_methods()
 {
     std::cout << "\n--- SIMD special methods tests ---\n";
 
-    using XV = Details::SimdRegister<128, BitLenToIsa<128>::isa>;
+    using XV = xvmt::details::SimdRegister<128, BitLenToIsa<128>::isa>;
 
     // Test alignr32
     {

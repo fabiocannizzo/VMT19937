@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <cstddef>
 
-namespace Details {
+namespace xvmt::details {
 
 
 template <size_t N32>
@@ -429,4 +429,4 @@ public:
 };
 
 
-} // namespace Details
+} // namespace xvmt::details

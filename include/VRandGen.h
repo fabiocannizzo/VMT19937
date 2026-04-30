@@ -1,9 +1,9 @@
 #pragma once
 
-#include "VMT19937.h"
-#include "VSFMT19937.h"
+#include "MT19937.h"
+#include "SFMT19937.h"
 
-namespace Details
+namespace xvmt::details
 {
 
 template <typename GenBase, bool QryBlk16>
@@ -158,34 +158,38 @@ public:
     }
 };
 
-} // namespace Details
+} // namespace xvmt::details
+
+namespace xvmt {
 
 template < size_t RegisterBitLen = SIMD_N_BITS
          , bool QryBlk16 = false
-         , ISA RegisterIsa = Details::BestIsa<RegisterBitLen>::isa
+         , ISA RegisterIsa = xvmt::details::BestIsa<RegisterBitLen>::isa
          >
-struct VMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterIsa, false, QryBlk16>, QryBlk16>
+struct VMT19937 : xvmt::details::VRandGen<xvmt::details::MT19937Base<RegisterBitLen, RegisterIsa, false, QryBlk16>, QryBlk16>
 {
-    using base_t = Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterIsa, false, QryBlk16>, QryBlk16>;
+    using base_t = xvmt::details::VRandGen<xvmt::details::MT19937Base<RegisterBitLen, RegisterIsa, false, QryBlk16>, QryBlk16>;
     using base_t::VRandGen; // reuse constructors
 };
 
 template < size_t RegisterBitLen = SIMD_N_BITS
          , bool QryBlk16 = false
-         , ISA RegisterIsa = Details::BestIsa<RegisterBitLen>::isa
+         , ISA RegisterIsa = xvmt::details::BestIsa<RegisterBitLen>::isa
          >
-struct XMT19937 : Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterIsa, true, QryBlk16>, QryBlk16>
+struct XMT19937 : xvmt::details::VRandGen<xvmt::details::MT19937Base<RegisterBitLen, RegisterIsa, true, QryBlk16>, QryBlk16>
 {
-    using base_t = Details::VRandGen<Details::MT19937Base<RegisterBitLen, RegisterIsa, true, QryBlk16>, QryBlk16>;
+    using base_t = xvmt::details::VRandGen<xvmt::details::MT19937Base<RegisterBitLen, RegisterIsa, true, QryBlk16>, QryBlk16>;
     using base_t::VRandGen; // reuse constructors
 };
 
 template < size_t RegisterBitLen = SIMD_N_BITS
          , bool QryBlk16 = false
-         , ISA RegisterIsa = Details::BestIsa<RegisterBitLen>::isa
+         , ISA RegisterIsa = xvmt::details::BestIsa<RegisterBitLen>::isa
          >
-struct VSFMT19937 : Details::VRandGen<Details::VSFMT19937Base<RegisterBitLen, RegisterIsa>, QryBlk16>
+struct VSFMT19937 : xvmt::details::VRandGen<xvmt::details::SFMT19937Base<RegisterBitLen, RegisterIsa>, QryBlk16>
 {
-    using base_t = Details::VRandGen<Details::VSFMT19937Base<RegisterBitLen, RegisterIsa>, QryBlk16>;
+    using base_t = xvmt::details::VRandGen<xvmt::details::SFMT19937Base<RegisterBitLen, RegisterIsa>, QryBlk16>;
     using base_t::VRandGen; // reuse constructors
 };
+
+} // namespace xvmt

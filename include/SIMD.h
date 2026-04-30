@@ -5,7 +5,7 @@
 
 #include <algorithm>
 
-namespace Details {
+namespace xvmt::details {
 
 
 // SimdRegister is an abstraction of a packed SIMD register of length VirtualBitLen bits containing words of length 32 bits
@@ -679,5 +679,5 @@ struct SimdRegister<512, ISA::AVX512, void> : VirtualRegBase<512, ISA::AVX512>
 };
 #endif
 
-} // namespace Details
+} // namespace xvmt::details
 

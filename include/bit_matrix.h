@@ -26,7 +26,7 @@ struct BinaryVectorMultiplier
     template <size_t nRows, size_t nBitCols, size_t nBitColsPadded>
     static uint8_t multiply8(const uint8_t* _pr, const uint8_t** _pc)
     {
-        typedef Details::SimdRegister<SimdBits, SimdIsa> simd_t;
+        typedef xvmt::details::SimdRegister<SimdBits, SimdIsa> simd_t;
 
         const size_t nSimdBytes = sizeof(simd_t);
         const size_t nSimdBits = 8 * nSimdBytes;

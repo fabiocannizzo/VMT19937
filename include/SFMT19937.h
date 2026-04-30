@@ -7,10 +7,10 @@
 #include <cstdint>
 #include <cstddef>
 
-namespace Details {
+namespace xvmt::details {
 
 template <size_t RegisterBitLen, ISA Isa>
-class VSFMT19937Base : public SFMT19937Params
+class SFMT19937Base : public SFMT19937Params
 {
     static constexpr size_t RegisterBitLenHw = IsaTraits<Isa>::HwBitLen;
     static_assert(RegisterBitLen >= s_wordSizeBits);
@@ -341,12 +341,12 @@ protected:
 public:
 
     // constructors
-    VSFMT19937Base()
+    SFMT19937Base()
         : m_state_end(m_state + s_n32InFullState)
         , m_prnd(nullptr)
     {}
 
-}; // VSFMT19937Base
+}; // SFMT19937Base
 
-} // namespace Details
+} // namespace xvmt::details
 

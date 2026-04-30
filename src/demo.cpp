@@ -1,5 +1,7 @@
 #include "VRandGen.h"
 
+using namespace xvmt;
+
 #include <array>
 #include <memory>
 #include <iostream>

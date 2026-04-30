@@ -12,6 +12,7 @@
 #include <cmath>
 
 using namespace std;
+using namespace xvmt;
 
 #define TEST_MKL 1
 #define TEST_VMT 1

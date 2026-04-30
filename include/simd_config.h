@@ -34,7 +34,7 @@ template <> struct BitLenToIsa<128> {
 template <> struct BitLenToIsa<256> { static constexpr ISA isa = ISA::AVX2; };
 template <> struct BitLenToIsa<512> { static constexpr ISA isa = ISA::AVX512; };
 
-namespace Details {
+namespace xvmt::details {
     template <size_t Bits>
     struct BestIsa {
 #if defined(__AVX512F__)
@@ -49,7 +49,7 @@ namespace Details {
         static constexpr ISA isa = ISA::Scalar;
 #endif
     };
-}
+} // namespace xvmt::details
 
 #if defined(_MSC_VER) && (_M_IX86_FP==2 || defined(_M_X64))
 #  define __SSE2__

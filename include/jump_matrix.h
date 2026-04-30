@@ -149,9 +149,9 @@ struct BinarySquareMatrix : BinaryMatrix<N, N>
     }
 };
 
-struct MT19937Matrix : BinarySquareMatrix<Details::MT19937Params::s_nMatrixBits>
+struct MT19937Matrix : BinarySquareMatrix<xvmt::details::MT19937Params::s_nMatrixBits>
 {
-    typedef BinarySquareMatrix<Details::MT19937Params::s_nMatrixBits> base_t;
+    typedef BinarySquareMatrix<xvmt::details::MT19937Params::s_nMatrixBits> base_t;
 
     // Initialize the matrix as per MT19937 32 bit generator transition matrix
     // This is equivalent to a jump ahead of 1 random number
@@ -180,8 +180,8 @@ struct MT19937Matrix : BinarySquareMatrix<Details::MT19937Params::s_nMatrixBits>
     {
         static const size_t s_nBits = base_t::s_nBitRows;
         static const size_t s_nWordBits = base_t::s_nWordBits;
-        static const uint32_t s_matA = Details::MT19937Params::s_matrixA;
-        static const uint32_t s_M = Details::MT19937Params::s_M;
+        static const uint32_t s_matA = xvmt::details::MT19937Params::s_matrixA;
+        static const uint32_t s_M = xvmt::details::MT19937Params::s_M;
 
         // from row 0 to to row nBits - 32, state bits are just shifted left by 32 bits
         for (uint32_t r = 0; r < s_nBits - s_nWordBits; ++r)
@@ -224,9 +224,9 @@ struct MT19937Matrix : BinarySquareMatrix<Details::MT19937Params::s_nMatrixBits>
     }
 };
 
-struct SFMT19937Matrix : BinarySquareMatrix<Details::SFMT19937Params::s_nMatrixBits>
+struct SFMT19937Matrix : BinarySquareMatrix<xvmt::details::SFMT19937Params::s_nMatrixBits>
 {
-    typedef BinarySquareMatrix<Details::SFMT19937Params::s_nMatrixBits> base_t;
+    typedef BinarySquareMatrix<xvmt::details::SFMT19937Params::s_nMatrixBits> base_t;
 
     // Initialize the matrix as per MT19937 32 bit generator transition matrix
     // This is equivalent to a jump ahead of 4 random numbers
@@ -242,7 +242,7 @@ struct SFMT19937Matrix : BinarySquareMatrix<Details::SFMT19937Params::s_nMatrixB
 
     void init4()
     {
-    	using namespace Details;
+    	using namespace xvmt::details;
 
         const uint32_t masks[] =
             { SFMT19937Params::s_SFMT_MSK1
