@@ -16,13 +16,13 @@ class SFMT19937Base : public SFMT19937Params
     static_assert(RegisterBitLen >= s_wordSizeBits);
 
 public:
-    static constexpr size_t s_regLenBits = RegisterBitLen;
-    static constexpr size_t s_regLenBitsHw = RegisterBitLenHw;
-    static constexpr ISA s_isa = Isa;
-    static constexpr size_t s_nStates = RegisterBitLen / s_wordSizeBits;
-    static constexpr size_t s_n32inReg = RegisterBitLen / 32;
+    static constexpr size_t s_regLenBits = RegisterBitLen;                              // logical SIMD width driving vectorisation (may exceed hardware width)
+    static constexpr size_t s_regLenBitsHw = RegisterBitLenHw;                         // actual hardware SIMD register width in bits
+    static constexpr ISA s_isa = Isa;                                                   // target ISA used for SIMD intrinsic selection
+    static constexpr size_t s_nStates = RegisterBitLen / s_wordSizeBits;               // parallel SFMT states packed per logical SIMD register
+    static constexpr size_t s_n32inReg = RegisterBitLen / 32;                          // uint32 lanes per logical SIMD register
 
-    static constexpr size_t s_n32InFullState = s_n32InOneState * s_nStates;  // 624 * nStates
+    static constexpr size_t s_n32InFullState = s_n32InOneState * s_nStates;            // 624 * nStates - total uint32 elements in the interleaved state array
 
     using matrix_t = SFMT19937Matrix;
 

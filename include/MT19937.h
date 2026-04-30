@@ -56,19 +56,19 @@ class MT19937Base : public MT19937Params
     static_assert(!MonoState || RegisterBitLen == RegisterBitLenHw);
 
 public:
-    static constexpr size_t s_regLenBits = RegisterBitLen;
-    static constexpr size_t s_regLenBitsHw = RegisterBitLenHw;
-    static constexpr ISA s_isa = Isa;
-    static constexpr size_t s_nStates = MonoState ? 1 : RegisterBitLen / s_wordSizeBits;
-    static constexpr size_t s_n32inReg = RegisterBitLen / 32;
-    static constexpr size_t s_n32InFullState = s_n32InOneState * s_nStates;  // 624 * nStates
+    static constexpr size_t s_regLenBits = RegisterBitLen;                              // logical SIMD width driving vectorisation (may exceed hardware width)
+    static constexpr size_t s_regLenBitsHw = RegisterBitLenHw;                         // actual hardware SIMD register width in bits
+    static constexpr ISA s_isa = Isa;                                                   // target ISA used for SIMD intrinsic selection
+    static constexpr size_t s_nStates = MonoState ? 1 : RegisterBitLen / s_wordSizeBits; // parallel MT states packed per logical SIMD register
+    static constexpr size_t s_n32inReg = RegisterBitLen / 32;                          // uint32 lanes per logical SIMD register
+    static constexpr size_t s_n32InFullState = s_n32InOneState * s_nStates;            // 624 * nStates - total uint32 elements in the interleaved state array
 
     using matrix_t = MT19937Matrix;
 
 private:
-    static constexpr uint32_t s_cacheLineBytes = 64;
+    static constexpr uint32_t s_cacheLineBytes = 64;                                    // assumed cache line size in bytes; state array is aligned to this
     static_assert(s_cacheLineBytes * 8 >= RegisterBitLen, "Assume that the register size is <= than the cache line");
-    static constexpr uint32_t s_n32InBlock = s_cacheLineBytes / sizeof(uint32_t); // 16
+    static constexpr uint32_t s_n32InBlock = s_cacheLineBytes / sizeof(uint32_t);      // 16 - uint32 elements per cache-line block (one temperBlock call)
     static_assert(s_n32InFullState % s_n32InBlock == 0, "full state size not divisible by cache size");
 
     using XV = SimdRegister<s_regLenBits, Isa>;
