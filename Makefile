@@ -162,6 +162,12 @@ $(info BINDIR: $(BINDIR))
 CPPFLAGS := $(I_FLAG)include
 CXXFLAGS := $(COMMON_FLAGS) $(CXX_ONLY_FLAGS) $(SIMD) $(EXTRA_CXXFLAGS)
 CFLAGS := $(COMMON_FLAGS) $(SIMD)
+ifneq ($(IS_MSVC),1)
+    CXXFLAGS += -MMD -MP
+    CFLAGS   += -MMD -MP
+endif
+
+MAKEFILE_DEPS := Makefile
 
 CPP_SRC := $(wildcard src/*.cpp)
 # We identify files with main() to determine targets
@@ -185,13 +191,13 @@ all: $(TARGETS)
 $(BINDIR):
 	mkdir -p $(BINDIR)
 
-$(MT_OBJ): mt19937-original/mt19937ar.c | $(BINDIR)
+$(MT_OBJ): mt19937-original/mt19937ar.c $(MAKEFILE_DEPS) | $(BINDIR)
 	$(CC) $(CFLAGS) $(C_FLAG) $(OUT_OBJ)$@ $<
 
-$(SFMT_OBJ): SFMT-src-1.5.1/SFMT.c | $(BINDIR)
+$(SFMT_OBJ): SFMT-src-1.5.1/SFMT.c $(MAKEFILE_DEPS) | $(BINDIR)
 	$(CC) $(CFLAGS) $(SFMT_FLAGS) $(C_FLAG) $(OUT_OBJ)$@ $<
 
-$(BINDIR)/%$(OBJ_EXT): src/%.cpp | $(BINDIR)
+$(BINDIR)/%$(OBJ_EXT): src/%.cpp $(MAKEFILE_DEPS) | $(BINDIR)
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(C_FLAG) $(OUT_OBJ)$@ $<
 
 # Specific flags for objects
@@ -219,3 +225,5 @@ $(BINDIR)/%$(EXE_EXT): $(BINDIR)/%$(OBJ_EXT)
 .PHONY: clean
 clean:
 	rm -rf bin-*
+
+-include $(wildcard $(BINDIR)/*.d)
