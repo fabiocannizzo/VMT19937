@@ -4,8 +4,7 @@
 # - make MKLROOT=/path/to/mkl (default to automatic discovery)
 
 ifndef NBITS
-   $(info WARNING: NBITS not defined. Using default value: 128)
-   NBITS=128
+   NBITS := native
 endif
 $(info NBITS: $(NBITS))
 
@@ -45,6 +44,10 @@ ifeq ($(IS_MSVC),1)
     OUT_OBJ := /Fo:
     OUT_EXE := /Fe:
 
+    ifeq ($(NBITS), native)
+        $(info WARNING: NBITS=native not supported with MSVC. Defaulting to 128)
+        NBITS := 128
+    endif
     ifeq ($(NBITS), 512)
         SIMD := /arch:AVX512
     else ifeq ($(NBITS), 256)
@@ -111,7 +114,9 @@ else
         SFMT_FLAGS := -DSFMT_MEXP=19937 -DHAVE_NEON
         EXTRA_CXXFLAGS += -Wno-psabi
     else
-        ifeq ($(NBITS), 512)
+        ifeq ($(NBITS), native)
+            SIMD := -march=native
+        else ifeq ($(NBITS), 512)
             SIMD := -mavx512f -mavx512bw -mavx512dq
         else ifeq ($(NBITS), 256)
             SIMD := -mavx2
