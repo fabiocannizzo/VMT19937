@@ -101,21 +101,9 @@ private:
     template <typename XVI>
     struct TemperCst
     {
-        TemperCst() : m_mask1(s_temperMask1), m_mask2(s_temperMask2)
-        {
-#if defined(__AVX512F__)
-            if constexpr (HwBitLen == 512) {
-                m_kmask1 = _mm512_test_epi32_mask(m_mask1.m_v, _mm512_set1_epi32(0xFFFFFFFF));
-                m_kmask2 = _mm512_test_epi32_mask(m_mask2.m_v, _mm512_set1_epi32(0xFFFFFFFF));
-            }
-#endif
-        }
+        TemperCst() : m_mask1(s_temperMask1), m_mask2(s_temperMask2) {}
         const XVI m_mask1;
         const XVI m_mask2;
-#if defined(__AVX512F__)
-        __mmask16 m_kmask1;
-        __mmask16 m_kmask2;
-#endif
     };
 
     struct RefillCst
@@ -133,15 +121,6 @@ private:
     template <typename XVI, typename M>
     static FORCE_INLINE XVI temper(XVI y, const M& masks)
     {
-#if defined(__AVX512F__)
-        if constexpr (HwBitLen == 512) {
-            y = y ^ (y >> 11);
-            y = y ^ _mm512_maskz_mov_epi32(masks.m_kmask1, (y << 7).m_v);
-            y = y ^ _mm512_maskz_mov_epi32(masks.m_kmask2, (y << 15).m_v);
-            y = y ^ (y >> 18);
-            return y;
-        }
-#endif
         y = y ^ (y >> 11);
         y = y ^ ((y << 7) & masks.m_mask1);
         y = y ^ ((y << 15) & masks.m_mask2);
@@ -168,15 +147,8 @@ private:
     static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, const RefillCst& masks)
     {
         XV y = XV::bitwiseSelect(masks.m_upperMask, s, sp);
-#if defined(__AVX512F__)
-        if constexpr (HwBitLen == 512) {
-            __mmask16 isOdd = _mm512_test_epi32_mask(sp.m_v, _mm512_set1_epi32(1));
-            XV r = sm ^ (y >> 1);
-            return _mm512_mask_xor_epi32(r.m_v, isOdd, r.m_v, masks.m_matrixA.m_v);
-        }
-#endif
-        XV r = sm ^ (y >> 1) ^ sp.ifOddCst32ElseZero(masks.m_matrixA);
-        return r;
+        XV r = sm ^ (y >> 1);
+        return r.xorIfOddCst32(sp, masks.m_matrixA);
     }
 
     template <int J0, int J1, int JM>
