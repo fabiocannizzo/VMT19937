@@ -33,7 +33,7 @@ endif
 
 # --- Platform & Compiler Specific Flags ---
 ifeq ($(IS_MSVC),1)
-    $(info Compiler: MSVC)
+    $(info Compiler: $(shell cl 2>&1 | head -1))
     COMMON_FLAGS := /O2 /MD /EHsc /Zi
     CXX_ONLY_FLAGS := /std:c++20
     C_FLAG := /c
@@ -83,7 +83,7 @@ ifeq ($(IS_MSVC),1)
     LFLAGS := /link Advapi32.lib
     SFMT_FLAGS := /D SFMT_MEXP=19937 /D HAVE_SSE2
 else
-    $(info Compiler: GCC/Clang)
+    $(info Compiler: $(shell $(CXX) --version | head -1))
     # Detect Architecture
     ARCH ?= $(shell uname -m)
     $(info Architecture: $(ARCH))
