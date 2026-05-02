@@ -24,7 +24,9 @@ using namespace xvmt;
 #   if __has_include(<mkl.h>)
 #       include <mkl.h>
 #   else
-#       pragma message("MKL not found, disabling MKL tests")
+#       if !defined(__arm__) && !defined(__aarch64__)
+#           pragma message("MKL not found, disabling MKL tests")
+#       endif
 #       undef TEST_MKL
 #       define TEST_MKL 0
 #   endif
