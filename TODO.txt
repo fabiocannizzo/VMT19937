@@ -1,10 +1,7 @@
-Wrap classes in a namespace xvmt
-
 Review static const definitions and names:
  - Add comments for static constants definitions
  - ?MT19937: review static definitions and template arguments, e.g. s_n32InReg. Do names make sense? Are tehy all used?
  - ?MT19937: review static definitions and template arguments, what is the meaning of using as HWLen 32? Can it be extended to XMT?
- - rename repo?
 
 Define static constant with the number of Bits s_nBits in the jump matrix
 Review project file name: VMT19937 (change to XV-MT19937 (the prject also also contains XMT19937)
