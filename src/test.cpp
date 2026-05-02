@@ -8,6 +8,7 @@
 
 #include <utility>
 #include <numeric>
+#include <random>
 
 using namespace xvmt;
 
@@ -16,6 +17,7 @@ const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 
 const uint64_t nRandomTest = 50ul * 624 * 16;
 
+extern "C" void init_genrand(unsigned long s);
 extern "C" unsigned long genrand_int32();
 extern "C" void init_by_array(unsigned long init_key[], int key_length);
 
@@ -187,6 +189,27 @@ void startTest(const char* name)
               << "Test " << name << "\n"
               << std::setw(40) << std::setfill('*') << "" << "\n\n"
               << std::setfill(' ');
+}
+
+void test_STL_MT19937()
+{
+    startTest("STL mt19937 equivalence");
+    constexpr unsigned long seed = 5489UL;
+    constexpr size_t N = 10000;
+
+    init_genrand(seed);
+    std::vector<uint32_t> ref(N);
+    for (size_t i = 0; i < N; ++i)
+        ref[i] = (uint32_t)genrand_int32();
+
+    std::mt19937 stl(seed);
+    for (size_t i = 0; i < N; ++i) {
+        uint32_t v = stl();
+        MYASSERT(v == ref[i], "FAILED at index " << i
+            << ": std::mt19937 produced " << v
+            << ", expected " << ref[i]);
+    }
+    std::cout << "SUCCESS! std::mt19937 matches original MT19937 for " << N << " values\n";
 }
 
 void testEncoding()
@@ -525,6 +548,7 @@ int main()
         testEncoding();
         testSquareMatrix();
 #endif
+        test_STL_MT19937();
         test_XVMT19937();
         test_VSFMT19937();
     }

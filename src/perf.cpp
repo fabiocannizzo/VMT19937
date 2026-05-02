@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <string>
 #include <cmath>
+#include <random>
 
 using namespace std;
 using namespace xvmt;
@@ -60,9 +61,9 @@ constexpr uint32_t s_seedinit[s_seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 extern "C" unsigned long genrand_int32();
 extern "C" void init_by_array(unsigned long init_key[], int key_length);
 
-enum GenMode {orig, sfmt, mkl_mt, mkl_sfmt, xmt, vmt, vsfmt};
+enum GenMode {orig, sfmt, mkl_mt, mkl_sfmt, xmt, vmt, vsfmt, stl_mt};
 
-const char* modename[] = {"ORIG-MT19937", "ORIG-SFMT19937", "MKL-MT19937", "MKL-SFMT19937", "X-MT19937", "V-MT19937", "V-SFMT19937" };
+const char* modename[] = {"ORIG-MT19937", "ORIG-SFMT19937", "MKL-MT19937", "MKL-SFMT19937", "X-MT19937", "V-MT19937", "V-SFMT19937", "STL-MT19937"};
 
 const size_t anySize[] = {/* 1, 4, 16, 64, 256, 624, 1024, 4096,*/ 16384 };
 
@@ -219,6 +220,30 @@ void mtOrigPerformance()
     auto start = std::chrono::system_clock::now();
     for (size_t i = 0; i < g_nRandom; ++i)
         dst[0] = genrand_int32();
+    auto end = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end - start;
+    double nSeconds = elapsed_seconds.count();
+    done(nSeconds);
+
+    addResult(key, nSeconds);
+}
+#endif
+
+#if TEST_ORIG==1
+void stlMtPerformance()
+{
+    Results key(stl_mt, 32, 32, 1, QM_Scalar);
+    key.print();
+    if (alreadyHaveEnoughIter(key)) {
+        std::cout << "skip\n";
+        return;
+    }
+
+    std::mt19937 gen(5489);
+
+    auto start = std::chrono::system_clock::now();
+    for (size_t i = 0; i < g_nRandom; ++i)
+        aligneddst[0] = gen();
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
     double nSeconds = elapsed_seconds.count();
@@ -586,6 +611,7 @@ int main(int argc, const char** argv)
             if (g_testOriginal) {
                 // original Matsumoto - Tsukamoto MT19937 implementation
                 mtOrigPerformance();
+                stlMtPerformance();
                 if (g_testSFMT) {
                     if (g_testQry1)
                         sfmtOrigPerformance<true>(1);
