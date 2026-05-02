@@ -34,6 +34,12 @@ template <> struct BitLenToIsa<128> {
 template <> struct BitLenToIsa<256> { static constexpr ISA isa = ISA::AVX2; };
 template <> struct BitLenToIsa<512> { static constexpr ISA isa = ISA::AVX512; };
 
+#if defined(_MSC_VER) && (_M_IX86_FP==2 || defined(_M_X64))
+#  define __SSE2__
+#  define __SSE4_1__
+#  define __SSE4_2__
+#endif
+
 namespace xvmt {
 namespace details {
     template <size_t Bits>
@@ -52,12 +58,6 @@ namespace details {
     };
 } // namespace details
 } // namespace xvmt
-
-#if defined(_MSC_VER) && (_M_IX86_FP==2 || defined(_M_X64))
-#  define __SSE2__
-#  define __SSE4_1__
-#  define __SSE4_2__
-#endif
 
 #if defined(__AVX512F__)
 #   define SIMD_N_BITS 512
