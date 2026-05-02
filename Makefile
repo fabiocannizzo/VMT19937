@@ -19,16 +19,15 @@ export CXX
 export CC
 
 # Check if we are using MSVC (cl.exe)
-IS_MSVC := $(findstring cl,$(CXX))
-ifeq ($(IS_MSVC),)
-    # Check if cl is available in path if CXX is just 'cl' or empty
-    ifeq ($(shell where cl.exe 2>NUL),)
-        IS_MSVC :=
-    else
-        IS_MSVC := 1
-        CXX := cl
-        CC := cl
-    endif
+ifneq ($(findstring cl,$(CXX)),)
+    IS_MSVC := 1
+    CC := cl
+else ifeq ($(shell where cl.exe 2>NUL),)
+    IS_MSVC :=
+else
+    IS_MSVC := 1
+    CXX := cl
+    CC := cl
 endif
 
 # --- Platform & Compiler Specific Flags ---

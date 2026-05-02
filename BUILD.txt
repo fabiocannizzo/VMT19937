@@ -1,7 +1,18 @@
 Building VMT19937
 =================
 
-VMT19937 requires a C++20 compiler and CMake 3.20+.
+VMT19937 is a header-only library. To use it in your own project, simply add the
+include/ directory to your include path — no build step is required.
+
+Building is only necessary if you want to run the bundled executables:
+  - test.exe    correctness tests
+  - perf.exe    throughput benchmarks
+  - demo.exe    usage examples
+  - jump.exe    jump-ahead matrix utilities
+  - encoder.exe matrix encoder utility
+
+These require a C++20 compiler and GNU make.
+Note: Windows' built-in nmake is NOT compatible — the Makefile uses GNU make syntax.
 
 Jump matrices
 -------------
@@ -10,40 +21,85 @@ If you need to fetch them again:
     git checkout origin/jumpfiles -- dat/
     # Then extract .7z files if needed, or sync from a known good source.
 
-Universal Build Instructions
-----------------------------
-The project uses a standard CMake build system. On all platforms, the basic commands are:
+Build System
+------------
+The project uses a GNU Makefile. Output binaries land in bin-<NBITS>-<compiler>/.
 
-    cmake -B build
-    cmake --build build
+Makefile variables (all optional):
 
-### Linux / Remote Linux (Ubuntu/Debian)
-1.  Open a terminal.
-2.  Run:
-        cmake -B build
-        cmake --build build -j$(nproc)
+  NBITS         SIMD width: 128 (SSE4.2) / 256 (AVX2) / 512 (AVX-512).
+                Default: native (-march=native) on GCC, 128 on MSVC.
+  CXX           C++ compiler. Default: g++. Pass CXX=cl for MSVC.
+  MKLROOT       Path to Intel MKL root. Auto-discovered if not set (see MKL section).
+  TESTU01_DIR   Path to TestU01 install. Default: ../testu01/install.
+
+### Linux
+
+    make                        # NBITS defaults to native
+    make NBITS=256
 
 ### Cygwin
-1.  Open a Cygwin terminal.
-2.  Run:
-        cmake -B build
-        cmake --build build -j3
+
+Invoke make via the full Cygwin path so it is found regardless of the calling shell's PATH:
+
+    /path/to/cygwin/bin/bash.exe -c \
+      "cd /cygdrive/path/to/repo && make NBITS=128"
+
+Binaries land in bin-128-g++/ and are native Windows executables.
 
 ### Windows (MSVC)
-1.  Open the "x64 Native Tools Command Prompt for VS 2022" (or run `vcvars64.bat`).
-2.  Run:
-        cmake -B build
-        cmake --build build --config Release
 
-CMake Options
--------------
-You can customize the build using `-DVAR=VALUE`:
+The build requires both cl.exe (from MSVC) and GNU make. Neither cmd nor PowerShell
+ship with GNU make. Obtain it from one of:
 
-  NBITS        SIMD width: 128 (SSE4.2) / 256 (AVX2) / 512 (AVX-512).  Default: 128
-  MKLROOT      Path to Intel MKL root. Set empty to disable.
-  TESTU01_DIR  Path to TestU01 install. Default: empty (disabled).
+  - Cygwin   — <cygwin-install>\bin\make.exe
+  - Git for Windows — C:\Program Files\Git\usr\bin\make.exe  (present if Git is installed)
+  - MSYS2    — C:\msys64\usr\bin\make.exe
 
+vcvars64.bat is found under <VS-install>\VC\Auxiliary\Build\vcvars64.bat.
+Activate the MSVC toolchain, then call the appropriate make.exe:
+
+  From PowerShell (Cygwin make):
+    cmd /c '"<path\to\vcvars64.bat>" && <cygwin>\bin\make.exe CXX=cl NBITS=128'
+
+  From PowerShell (Git for Windows make):
+    cmd /c '"<path\to\vcvars64.bat>" && "C:\Program Files\Git\usr\bin\make.exe" CXX=cl NBITS=128'
+
+  From a VS Developer Command Prompt (cmd.exe), add make to PATH first, then:
+    set PATH=<path\to\cygwin-or-make-dir>;%PATH%
+    make CXX=cl NBITS=128
+
+Binaries land in bin-128-cl/.
+
+MKL (optional, perf.exe only)
+------------------------------
+MKL enables comparison benchmarks against Intel's reference MT19937 and SFMT19937.
+The Makefile auto-discovers MKL in the following order:
+
+  1. MKLROOT variable if set explicitly:
+       make MKLROOT=/path/to/mkl CXX=cl NBITS=128
+
+  2. mkl.h on the system INCLUDE path (set by vcvars or oneAPI environment scripts).
+
+  3. vcpkg at <vcpkg-root>/installed/x64-windows (hard-coded Makefile fallback).
+
+  4. /opt/intel/oneapi/mkl/latest (Linux default).
+
+If MKL is not found, perf.exe is built without MKL benchmarks (no error).
+
+At runtime, the MKL DLLs must be in PATH. With vcpkg:
+
+    $env:PATH += ";<vcpkg-install>\x64-windows\bin"
+    .\bin-128-cl\perf.exe --dir dat
+
+With Intel oneAPI:
+
+    $env:PATH += ";C:\Program Files (x86)\Intel\oneAPI\mkl\latest\redist\intel64"
+    .\bin-128-cl\perf.exe --dir dat
 
 Known Issues
 ------------
-MinGW Cross-Compilation: Attempting to link MinGW-GCC with Intel MKL provided by vcpkg (x64-windows) fails due to binary incompatibility. The vcpkg MKL libraries are built with MSVC and reference MSVC-specific symbols (like `__security_cookie`) missing from MinGW. Use MSVC (cl.exe) for MKL on Windows.
+- testu01.exe is not buildable on Windows because the TestU01 static library must be
+  compiled separately. All other targets (test, perf, demo, encoder, jump) build fine.
+- MKL is not available in the Cygwin build. perf.exe will build and run without MKL
+  benchmarks when using GCC/Cygwin on Windows.

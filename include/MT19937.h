@@ -6,6 +6,12 @@
 #include <cstdint>
 #include <cstddef>
 
+#if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__)
+#  define XVMT_PREFETCH(addr) __builtin_prefetch((addr), 0, 3)
+#else
+#  define XVMT_PREFETCH(addr) _mm_prefetch(reinterpret_cast<const char*>(addr), _MM_HINT_T0)
+#endif
+
 namespace xvmt {
 namespace details {
 
@@ -198,8 +204,8 @@ private:
             auto pend = p + nBlkIter * n32PerBlk;
             do {
                 if constexpr (nIterPerBlk >= 4) {
-                    __builtin_prefetch(p + n32PerBlk + J1 * s_n32inReg, 0, 3);
-                    __builtin_prefetch(p + n32PerBlk + JM * s_n32inReg, 0, 3);
+                    XVMT_PREFETCH(p + n32PerBlk + J1 * s_n32inReg);
+                    XVMT_PREFETCH(p + n32PerBlk + JM * s_n32inReg);
                 }
                 (multiStateIteration<Is, J1 + Is, JM + Is>(p, x0, masks), ...);
                 p += n32PerBlk;
