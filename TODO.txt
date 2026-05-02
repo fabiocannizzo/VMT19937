@@ -1,12 +1,6 @@
-Review static const definitions and names:
- - Add comments for static constants definitions
- - ?MT19937: review static definitions and template arguments, e.g. s_n32InReg. Do names make sense? Are tehy all used?
- - ?MT19937: review static definitions and template arguments, what is the meaning of using as HWLen 32? Can it be extended to XMT?
-
 Define static constant with the number of Bits s_nBits in the jump matrix
-Review project file name: VMT19937 (change to XV-MT19937 (the prject also also contains XMT19937)
+
 review SFMT19937 matrix parameters
-matrices: review serialization (add metadata about geometry). Load existing matrices and save them in the new format, commit--amend them to the umpfiles branch.
 
 Results
 - Generate results and save results in the log folder. For each set of results we save CPU features, OS, Compiler.
@@ -27,15 +21,14 @@ Encapsulate as methods generators classes code which used generator constants?
 
 Introduce dynamic dispatching?
 
-Add support for Intel AVX-10 architecture.
-
-Use SIMD-ISA ISA codes as a template argument in register classes
+Add support for Intel AVX-10 architecture? Perhaps premature.
 
 Should we remove QryBlk16 ? Does it add value?
 
-Check if per test throughput are computed correctly (try with slow). E.g. if we are doing the same number of repetatiions in the various cases for a faitr comparison.
+Check if per test throughput are computed correctly (try with slow), increase the number of repetatiions, the evarge time should remain constant.
+Are doing the same number of repetitions in the various cases for a fair comparison?
 
-There are some non-trivial SIMD methods. Add tests for them.
+There are some non-trivial SIMD methods. Some are etsted. Add tests for them.
 
 Simplify exposed templates
 
