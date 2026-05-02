@@ -16,7 +16,6 @@
     #if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
         #include <cpuid.h>
     #endif
-    #include <pthread.h>
     #include <sched.h>
     #include <unistd.h>
     #include <fstream>
