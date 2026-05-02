@@ -22,7 +22,7 @@ export CC
 ifneq ($(findstring cl,$(CXX)),)
     IS_MSVC := 1
     CC := cl
-else ifeq ($(shell where cl.exe 2>NUL),)
+else ifeq ($(shell where cl.exe 2>/dev/null),)
     IS_MSVC :=
 else
     IS_MSVC := 1
@@ -58,7 +58,7 @@ ifeq ($(IS_MSVC),1)
     # MKL Discovery for MSVC
     ifndef MKLROOT
         # Try to find mkl.h in INCLUDE path or common locations
-        MKL_H_FOUND := $(shell where mkl.h 2>NUL)
+        MKL_H_FOUND := $(shell where mkl.h 2>/dev/null)
         ifneq ($(MKL_H_FOUND),)
             $(info MKL found in PATH/INCLUDE)
             MKL_AVAIL := 1
