@@ -1,7 +1,6 @@
 #include "../include/cpu.h"
 
 #include <iostream>
-#include <thread>
 #include <string>
 #include <vector>
 #include <cstring>

@@ -97,7 +97,7 @@ else
     OUT_OBJ := -o
     OUT_EXE := -o
 
-    LFLAGS := -pthread
+    LFLAGS :=
     ifeq ($(ARCH), aarch64)
         # Check if userland is 32-bit
         USERLAND_BITS ?= $(shell getconf LONG_BIT)
@@ -205,6 +205,9 @@ $(BINDIR)/%$(OBJ_EXT): src/%.cpp $(MAKEFILE_DEPS) | $(BINDIR)
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(C_FLAG) $(OUT_OBJ)$@ $<
 
 # Specific flags for objects
+ifneq ($(IS_MSVC),1)
+$(BINDIR)/jump$(EXE_EXT): LFLAGS += -pthread
+endif
 $(BINDIR)/perf$(OBJ_EXT) $(BINDIR)/test$(OBJ_EXT): CPPFLAGS += $(SFMT_FLAGS)
 ifeq ($(MKL_AVAIL),1)
     $(BINDIR)/perf$(OBJ_EXT): CPPFLAGS += $(MKL_INC)
