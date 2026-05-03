@@ -18,6 +18,8 @@ void wait()
 
 enum GenType { undef, mt32, mt64, sfmt };
 
+std::set<std::string> genTypeStr = { "mt32", "mt64", "sfmt" };
+
 template <GenType>
 struct GenTraits;
 
@@ -25,6 +27,13 @@ template <>
 struct GenTraits<mt32>
 {
     typedef MT19937Matrix matrix_t;
+    static constexpr size_t power2 = 0;
+};
+
+template <>
+struct GenTraits<mt64>
+{
+    typedef MT19937_64Matrix matrix_t;
     static constexpr size_t power2 = 0;
 };
 
@@ -59,14 +68,17 @@ void usage()
     std::cerr
         << "Invalid command line arguments\n"
         << "Syntax:\n"
-        << "   jump -g=<generator> [-j=<nthreads>] [-p=<filepath>] [-f=<savefreq>] [-s=<stopindex>] [-wait]\n"
+        << "   jump -g=<generator> [-j=<nthreads>] [-p=<filepath>] [-f=<savefreq>] [-t=<target1,target2,...>] [-wait]\n"
         << "Example:\n"
-        << "   jump -g=mt32 -j=8 -p=./dat/ -f=100 -s=1000\n"
-        << " generator must be one of {mt32, sfmt}\n"
-        << " nthreads defaults to host concurrency\n"
-        << " filepath defaults to ./dat/<genname>\n"
-        << " savefrequency defaults to 100 (useful to interrupt and resume)\n"
-        << " targets: comma separated list of indices to save (e.g. -t=12,52,78), defaults to {9, 100, 19933, 19934, 19935, 19936, 19937}\n";
+        << "   jump -g=mt32 -j=8 -p=./outdir/ -f=100 -t=3,9\n"
+        << " -g: generator must be one of {";
+    for (const auto& s : genTypeStr)
+        std::cerr << s << " ";
+    std::cerr << "}\n"
+        << " -j: nthreads defaults to host concurrency\n"
+        << " -p: filepath defaults to ./dat/<genname>\n"
+        << " -f: savefrequency defaults to 100 (useful to interrupt and resume)\n"
+        << " -t: comma separated list of exponents n for jump matrices F^(2^n) (e.g. -t=12,52,78), defaults to 9,100,19933,19934,19935,19936,19937\n";
     std::exit(-1);
 }
 
@@ -201,7 +213,7 @@ int main(int argc, const char** argv)
 
         // generator type (mt32 or sfmt) is required
         consumeArg(args, "g", true, gentype);
-        if (gentype != "mt32" && gentype != "sfmt") {
+        if (genTypeStr.find(gentype) == genTypeStr.end()) {
             std::cerr << "Error: invalid generator type: " << gentype << "\n";
             usage();
             return -1;
@@ -250,6 +262,8 @@ int main(int argc, const char** argv)
 
     if (gentype == "mt32")
         run<mt32>(filepath, nThreads, saveFrequency, targetsSet);
+    else if (gentype == "mt64")
+        run<mt64>(filepath, nThreads, saveFrequency, targetsSet);
     else if (gentype == "sfmt")
         run<sfmt>(filepath, nThreads, saveFrequency, targetsSet);
     else {

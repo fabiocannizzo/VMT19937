@@ -21,6 +21,9 @@ extern "C" void init_genrand(unsigned long s);
 extern "C" unsigned long genrand_int32();
 extern "C" void init_by_array(unsigned long init_key[], int key_length);
 
+extern "C" void init_genrand64(unsigned long long seed);
+extern "C" unsigned long long genrand64_int64();
+
 enum GenType { VSFMT, VMT, XMT };
 const char* genName[] = { "VSFMT", "VMT", "XMT" };
 
@@ -210,6 +213,40 @@ void test_STL_MT19937()
             << ", expected " << ref[i]);
     }
     std::cout << "SUCCESS! std::mt19937 matches original MT19937 for " << N << " values\n";
+}
+
+void test_XMT19937_64()
+{
+    startTest("STL mt19937_64 / XMT19937_64 equivalence");
+    constexpr unsigned long long seed = 5489ULL;
+    constexpr size_t N = 10000;
+
+    // Generate reference values using the official mt19937-64.c implementation
+    init_genrand64(seed);
+    std::vector<uint64_t> ref(N);
+    for (size_t i = 0; i < N; ++i)
+        ref[i] = genrand64_int64();
+
+    // Compare with std::mt19937_64
+    std::mt19937_64 stl(seed);
+    for (size_t i = 0; i < N; ++i) {
+        uint64_t v = stl();
+        MYASSERT(v == ref[i], "FAILED at index " << i
+            << ": std::mt19937_64 produced " << v
+            << ", expected " << ref[i]);
+    }
+    std::cout << "SUCCESS! std::mt19937_64 matches original MT19937-64 for " << N << " values\n";
+
+    // Compare XMT19937_64 against the reference
+    XMT19937_64<> xmt;
+    xmt.reinit(seed, 0, nullptr, nullptr);
+    for (size_t i = 0; i < N; ++i) {
+        uint64_t v = xmt.genrand_uint64();
+        MYASSERT(v == ref[i], "FAILED at index " << i
+            << ": XMT19937_64 produced " << v
+            << ", expected " << ref[i]);
+    }
+    std::cout << "SUCCESS! XMT19937_64 matches original MT19937-64 for " << N << " values\n";
 }
 
 void testEncoding()
@@ -557,6 +594,7 @@ int main(int argc, const char** argv)
         testSquareMatrix();
 #endif
         test_STL_MT19937();
+        test_XMT19937_64();
         test_XVMT19937();
         test_VSFMT19937();
     }

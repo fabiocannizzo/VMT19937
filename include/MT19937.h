@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <type_traits>
 
 #if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__)
 #  define XVMT_PREFETCH(addr) __builtin_prefetch((addr), 0, 3)
@@ -16,38 +17,42 @@ namespace xvmt {
 namespace details {
 
 
-template <size_t N32>
+template <typename WordT, size_t NWords>
 struct RndCache
 {
     static constexpr bool s_enabled = true;
 
     RndCache() { setEnd(); }
 
-    void setEnd() { m_cur = m_rnd + N32; }
+    void setEnd() { m_cur = m_rnd + NWords; }
     void setBegin() { m_cur = begin(); }
     void setAt(size_t pos) { m_cur = begin() + pos; }
 
-    uint32_t *begin() { return m_rnd; }
-    uint32_t* current() { return m_cur; }
-    const uint32_t* end() const { return m_rnd + N32; }
-    uint32_t operator*() const { return *m_cur; }
-    uint32_t& operator*() { return *m_cur; }
+    WordT* begin() { return m_rnd; }
+    WordT* current() { return m_cur; }
+    const WordT* end() const { return m_rnd + NWords; }
+    WordT operator*() const { return *m_cur; }
+    WordT& operator*() { return *m_cur; }
     RndCache& operator+=(size_t n) { m_cur += n; return *this; }
     RndCache& operator++() { ++m_cur; return *this; }
     RndCache operator++(int) { RndCache tmp = *this; ++m_cur; return tmp; }
-    uint32_t operator[](size_t i) const { return m_rnd[i]; }
+    WordT operator[](size_t i) const { return m_rnd[i]; }
 
     bool isAtEnd() const { return m_cur == end(); }
-    size_t nAvailable() const { return std::distance<const uint32_t*>(m_cur, end()); }
+    size_t nAvailable() const { return std::distance<const WordT*>(m_cur, end()); }
 
-    alignas(64) uint32_t m_rnd[N32]; // buffer of tempered numbers
-    uint32_t* m_cur;
+    alignas(64) WordT m_rnd[NWords];
+    WordT* m_cur;
 };
 
-template <>
-struct RndCache<0>
+template <typename WordT>
+struct RndCache<WordT, 0>
 {
     void setEnd() {}
+    bool isAtEnd() const { return true; }
+    size_t nAvailable() const { return 0; }
+    WordT* begin() { return nullptr; }
+    WordT* current() { return nullptr; }
 };
 
 // VRegBitLen  - virtual (logical) SIMD register width in bits. Three constraints apply:
@@ -63,51 +68,60 @@ struct RndCache<0>
 // MonoState   - false: multi-state vectorized generator (VMT family, nStates > 1);
 //               true:  single-state generator using SIMD for intra-state speed (XMT).
 // QryBlk16    - false: scalar and any-size query interface enabled;
-//               true:  only genrand_uint32_blk16() is available.
-template <size_t VRegBitLen, ISA Isa, bool MonoState, bool QryBlk16>
-class MT19937Base : public MT19937Params
+//               true:  only genrand_word_blk() is available.
+// Params      - parameter struct selecting 32-bit (MT19937Params) or 64-bit (MT19937_64Params).
+template <size_t VRegBitLen, ISA Isa, bool MonoState, bool QryBlk16, typename Params = MT19937Params>
+class MT19937Base
 {
     static constexpr size_t HwBitLen = IsaTraits<Isa>::HwBitLen;
     static_assert(VRegBitLen == 32 || VRegBitLen == 128 || VRegBitLen == 256 || VRegBitLen == 512,
         "VRegBitLen must be a valid SIMD hardware register width (32, 128, 256, or 512)");
-    static_assert(VRegBitLen % s_wordSizeBits == 0,
-        "VRegBitLen must be a multiple of the MT word size (32)");
+    static_assert(VRegBitLen % Params::s_wordSizeBits == 0,
+        "VRegBitLen must be a multiple of the MT word size");
     static_assert(!MonoState || VRegBitLen == HwBitLen,
         "MonoState=true requires VRegBitLen == HwBitLen");
 
 public:
-    static constexpr size_t s_regLenBits = VRegBitLen;                              // logical SIMD width driving vectorisation (may exceed hardware width)
-    static constexpr size_t s_regLenBitsHw = HwBitLen;                         // actual hardware SIMD register width in bits
-    static constexpr ISA s_isa = Isa;                                                   // target ISA used for SIMD intrinsic selection
-    static constexpr size_t s_nStates = MonoState ? 1 : VRegBitLen / s_wordSizeBits; // parallel MT states packed per logical SIMD register
-    static constexpr size_t s_n32inReg = VRegBitLen / 32;                          // uint32 lanes per logical SIMD register
-    static constexpr size_t s_n32InFullState = s_n32InOneState * s_nStates;            // 624 * nStates - total uint32 elements in the interleaved state array
+    using word_t = typename Params::word_t;
+
+    static constexpr size_t s_regLenBits = VRegBitLen;
+    static constexpr size_t s_regLenBitsHw = HwBitLen;
+    static constexpr ISA s_isa = Isa;
+    static constexpr int    s_N = Params::s_N;
+    static constexpr int    s_M = Params::s_M;
+    static constexpr size_t s_nStates = MonoState ? 1 : VRegBitLen / Params::s_wordSizeBits;
+    static constexpr size_t s_n32inReg = VRegBitLen / 32;                    // uint32 lanes per logical SIMD register (32-bit path)
+    static constexpr size_t s_n32InOneWord = Params::s_n32InOneWord;
+    static constexpr size_t s_n32InOneState = Params::s_n32InOneState;
+    static constexpr size_t s_n32InFullState = s_n32InOneState * s_nStates;
+    static constexpr size_t s_nMatrixBits = Params::s_nMatrixBits;
 
     using matrix_t = MT19937Matrix;
 
 private:
-    static constexpr uint32_t s_cacheLineBytes = 64;                                    // assumed cache line size in bytes; state array is aligned to this
+    static constexpr uint32_t s_cacheLineBytes = 64;
     static_assert(s_cacheLineBytes * 8 >= VRegBitLen, "Assume that the register size is <= than the cache line");
-    static constexpr uint32_t s_n32InBlock = s_cacheLineBytes / sizeof(uint32_t);      // 16 - uint32 elements per cache-line block (one temperBlock call)
-    static_assert(s_n32InFullState % s_n32InBlock == 0, "full state size not divisible by cache size");
+    static constexpr size_t s_n32InBlock = s_cacheLineBytes / sizeof(uint32_t);      // 16 - uint32 slots per cache line
+    static constexpr size_t s_nWordsInBlock = s_n32InBlock / Params::s_n32InOneWord; // words per cache line (16 for 32-bit, 8 for 64-bit)
+    static_assert(s_n32InOneState * s_nStates % s_n32InBlock == 0, "full state size not divisible by cache line");
 
     using XV = SimdRegister<s_regLenBits, Isa>;
 
-    // This data members is necessary only if QueryMode==QM_Scalar
-    [[no_unique_address]] RndCache<(QryBlk16 ? 0 : s_n32InBlock)> m_rndCache; // buffer of tempered numbers
+    [[no_unique_address]] RndCache<word_t, (QryBlk16 ? 0 : s_nWordsInBlock)> m_rndCache;
 
-    // This data members are redundant if QueryMode==QM_StateSize
-    const uint32_t*m_pst, * const m_pstEnd;    // m_pos==m_pstEnd means the state vector has been consumed and need to be regenerated
+    const word_t* m_pst;
+    const word_t* const m_pstEnd;
 
 protected:
-    alignas(64) uint32_t m_state[s_N * s_n32inReg];    // the array of state vectors
+    alignas(64) word_t m_state[s_N * s_nStates];
 
 private:
 
+    // SIMD tempering constants (32-bit path only; cast to uint32_t so they compile for any Params)
     template <typename XVI>
     struct TemperCst
     {
-        TemperCst() : m_mask1(s_temperMask1), m_mask2(s_temperMask2) {}
+        TemperCst() : m_mask1(uint32_t(Params::s_b)), m_mask2(uint32_t(Params::s_c)) {}
         const XVI m_mask1;
         const XVI m_mask2;
     };
@@ -115,7 +129,7 @@ private:
     struct RefillCst
     {
         using XVI = SimdRegister<VRegBitLen, Isa>;
-        RefillCst() : m_upperMask(s_upperMask), m_lowerMask(s_lowerMask), m_matrixA(s_matrixA) {}
+        RefillCst() : m_upperMask(uint32_t(Params::s_upperMask)), m_lowerMask(uint32_t(Params::s_lowerMask)), m_matrixA(uint32_t(Params::s_matrixA)) {}
         const XVI m_upperMask;
         const XVI m_lowerMask;
         const XVI m_matrixA;
@@ -124,6 +138,7 @@ private:
     alignas(64) inline static const TemperCst<SimdRegister<s_n32InBlock * 32, Isa>> s_temperCst{};
     alignas(64) inline static const RefillCst s_refillMasks{};
 
+    // SIMD temper (32-bit MT, operates on whole SIMD register)
     template <typename XVI, typename M>
     static FORCE_INLINE XVI temper(XVI y, const M& masks)
     {
@@ -134,20 +149,30 @@ private:
         return y;
     }
 
-    template <bool Aligned>
-    FORCE_INLINE void temperBlock(uint32_t* dst)
+    // Scalar temper (works for both 32-bit and 64-bit Params)
+    static FORCE_INLINE word_t scalarTemper(word_t y)
     {
-        static_assert(s_n32InBlock == 16);
+        y ^= (y >> Params::s_u) & Params::s_d;
+        y ^= (y << Params::s_s) & Params::s_b;
+        y ^= (y << Params::s_t) & Params::s_c;
+        y ^= (y >> Params::s_l);
+        return y;
+    }
 
-        // a virtual register having the same size as a cache line
-        // this may be larger than what available in hardware
-        // it is implemented iteratin on the available hardware registers
-        using XVline = SimdRegister<s_n32InBlock * 32, Isa>;
-
-        XVline tmp = temper(XVline(m_pst), s_temperCst);
-        tmp.template store<Aligned>(dst);
-
-        m_pst += s_n32InBlock;
+    template <bool Aligned>
+    FORCE_INLINE void temperBlock(word_t* dst)
+    {
+        if constexpr (Params::s_wordSizeBits == 32) {
+            static_assert(s_n32InBlock == 16);
+            using XVline = SimdRegister<s_n32InBlock * 32, Isa>;
+            XVline tmp = temper(XVline(m_pst), s_temperCst);
+            tmp.template store<Aligned>(dst);
+            m_pst += s_n32InBlock;
+        } else {
+            for (size_t i = 0; i < s_nWordsInBlock; ++i)
+                dst[i] = scalarTemper(m_pst[i]);
+            m_pst += s_nWordsInBlock;
+        }
     }
 
     static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, const RefillCst& masks)
@@ -197,7 +222,7 @@ private:
     template <int J1, int JM, int...Is>
     static FORCE_INLINE uint32_t* advanceLoop(size_t nBlkIter, uint32_t* p, XV& x0, const RefillCst& masks, std::integer_sequence<int, Is...>&&)
     {
-    	static_assert(!MonoState);
+        static_assert(!MonoState);
         constexpr size_t nIterPerBlk = sizeof...(Is);
         if constexpr (nIterPerBlk) {
             constexpr size_t n32PerBlk = nIterPerBlk * s_n32inReg;
@@ -218,68 +243,83 @@ private:
 
     void NO_INLINE refill()
     {
-        uint32_t* stCur = m_state;
+        if constexpr (Params::s_wordSizeBits == 32) {
+            // 32-bit SIMD path (multi-state and mono-state)
+            uint32_t* stCur = reinterpret_cast<uint32_t*>(m_state);
 
-        constexpr int N = s_N;
-        constexpr int M = s_M;
-        static_assert(N == 624 && M == 397, "unrolling designed for these parameters");
+            constexpr int N = s_N;
+            constexpr int M = s_M;
+            static_assert(N == 624 && M == 397, "SIMD unrolling designed for MT19937-32 parameters");
 
-        XV x0(stCur);
+            XV x0(stCur);
 
-        if constexpr (!MonoState) {
-            constexpr size_t nUnroll = 4;
+            if constexpr (!MonoState) {
+                constexpr size_t nUnroll = 4;
 
-            // unroll first part of the loop (N-M) iterations
-            constexpr size_t n1 = (N - M) / nUnroll;
-            constexpr size_t r1 = (N - M) % nUnroll;
-            stCur = advanceLoop<1, M>(n1, stCur, x0, s_refillMasks, std::make_integer_sequence<int, nUnroll>{});
-            if constexpr (r1 > 0)
-                stCur = advanceLoop<1, M>(1, stCur, x0, s_refillMasks, std::make_integer_sequence<int, (int)r1>{});
+                constexpr size_t n1 = (N - M) / nUnroll;
+                constexpr size_t r1 = (N - M) % nUnroll;
+                stCur = advanceLoop<1, M>(n1, stCur, x0, s_refillMasks, std::make_integer_sequence<int, nUnroll>{});
+                if constexpr (r1 > 0)
+                    stCur = advanceLoop<1, M>(1, stCur, x0, s_refillMasks, std::make_integer_sequence<int, (int)r1>{});
 
-            // unroll second part of the loop (M-1) iterations
-            constexpr size_t n2 = (M - 1) / nUnroll;
-            constexpr size_t r2 = (M - 1) % nUnroll;
-            stCur = advanceLoop<1, M - N>(n2, stCur, x0, s_refillMasks, std::make_integer_sequence<int, nUnroll>{});
-            if constexpr (r2 > 0)
-                stCur = advanceLoop<1, M - N>(1, stCur, x0, s_refillMasks, std::make_integer_sequence<int, (int)r2>{});
+                constexpr size_t n2 = (M - 1) / nUnroll;
+                constexpr size_t r2 = (M - 1) % nUnroll;
+                stCur = advanceLoop<1, M - N>(n2, stCur, x0, s_refillMasks, std::make_integer_sequence<int, nUnroll>{});
+                if constexpr (r2 > 0)
+                    stCur = advanceLoop<1, M - N>(1, stCur, x0, s_refillMasks, std::make_integer_sequence<int, (int)r2>{});
 
-            // last iteration
-            advanceLoop<1 - N, M - N>(1, stCur, x0, s_refillMasks, std::make_integer_sequence<int, 1>{});
-        }
-        else {
-            XV XMlo(stCur + (s_M / s_n32inReg) * s_n32inReg);
-            constexpr size_t nIter1 = (N - M) / s_n32inReg;
-            for (size_t i = 0; i < nIter1; ++i)
-                monoStateIteration<0, 1, M>(stCur + i * s_n32inReg, x0, XMlo, s_refillMasks);
-            stCur += nIter1 * s_n32inReg;
-            constexpr size_t nIter2 = (M - 1) / s_n32inReg;
-            for (size_t i = 0; i < nIter2; ++i)
-                monoStateIteration<0, 1, M - N>(stCur + i * s_n32inReg, x0, XMlo, s_refillMasks);
-            stCur += nIter2 * s_n32inReg;
-            monoStateIteration<0, 1 - N, M - N>(stCur, x0, XMlo, s_refillMasks);
+                advanceLoop<1 - N, M - N>(1, stCur, x0, s_refillMasks, std::make_integer_sequence<int, 1>{});
+            }
+            else {
+                XV XMlo(stCur + (s_M / s_n32inReg) * s_n32inReg);
+                constexpr size_t nIter1 = (N - M) / s_n32inReg;
+                for (size_t i = 0; i < nIter1; ++i)
+                    monoStateIteration<0, 1, M>(stCur + i * s_n32inReg, x0, XMlo, s_refillMasks);
+                stCur += nIter1 * s_n32inReg;
+                constexpr size_t nIter2 = (M - 1) / s_n32inReg;
+                for (size_t i = 0; i < nIter2; ++i)
+                    monoStateIteration<0, 1, M - N>(stCur + i * s_n32inReg, x0, XMlo, s_refillMasks);
+                stCur += nIter2 * s_n32inReg;
+                monoStateIteration<0, 1 - N, M - N>(stCur, x0, XMlo, s_refillMasks);
+            }
+        } else {
+            // 64-bit scalar path (Phase 1; scalar only, MonoState=true implied for now)
+            word_t* st = m_state;
+            constexpr int N = s_N;
+            constexpr int M = s_M;
+            static constexpr word_t mag01[2] = {word_t(0), Params::s_matrixA};
+            int i;
+            for (i = 0; i < N - M; ++i) {
+                word_t x = (st[i] & Params::s_upperMask) | (st[i + 1] & Params::s_lowerMask);
+                st[i] = st[i + M] ^ (x >> 1) ^ mag01[x & 1];
+            }
+            for (; i < N - 1; ++i) {
+                word_t x = (st[i] & Params::s_upperMask) | (st[i + 1] & Params::s_lowerMask);
+                st[i] = st[i + (M - N)] ^ (x >> 1) ^ mag01[x & 1];
+            }
+            word_t x = (st[N - 1] & Params::s_upperMask) | (st[0] & Params::s_lowerMask);
+            st[N - 1] = st[M - 1] ^ (x >> 1) ^ mag01[x & 1];
         }
 
         m_pst = m_state;
         m_rndCache.setEnd();
     }
 
-    uint32_t& scalarState(uint32_t scalarIndex)
+    word_t& scalarState(uint32_t scalarIndex)
     {
         return m_state[scalarIndex * s_nStates];
     }
 
-    uint32_t scalarState(uint32_t scalarIndex) const
+    word_t scalarState(uint32_t scalarIndex) const
     {
         return m_state[scalarIndex * s_nStates];
     }
 
-    // initializes the first state with a seed
-    void __reinit(uint32_t s)
+    void __reinit(word_t s)
     {
-        constexpr uint32_t mask = uint32_t(1812433253UL);
-        uint32_t prev = scalarState(0) = s;
-        for (uint32_t i = 1; i < s_N; i++)
-            prev = scalarState(i) = (mask * (prev ^ (prev >> 30)) + i);
+        word_t prev = scalarState(0) = s;
+        for (uint32_t i = 1; i < (uint32_t)s_N; ++i)
+            prev = scalarState(i) = (Params::s_initMul * (prev ^ (prev >> Params::s_initShift)) + i);
         reinitPointers();
     }
 
@@ -290,26 +330,26 @@ protected:
         m_rndCache.setEnd();
     }
 
-    // extract one of the interleaved state vectors, shift it left by 31 bits and save it to dst
     void stateToVector(size_t stateIndex, uint32_t* pdst) const
     {
-        const uint32_t* pstate = m_state;
+        static_assert(Params::s_wordSizeBits == 32, "stateToVector only implemented for 32-bit Params");
+        const uint32_t* pstate = reinterpret_cast<const uint32_t*>(m_state);
         pdst[0] = pstate[stateIndex] >> 31;
-        for (size_t i = 1; i < s_N; ++i) {
+        for (size_t i = 1; i < (size_t)s_N; ++i) {
             uint32_t word = pstate[i * s_nStates + stateIndex];
             pdst[i - 1] |= word << 1;
             pdst[i] = word >> 31;
         }
     }
 
-    // shift vector psr to the right by 31 bit and store into the interleaved elements of the state vector
     void vectorToState(size_t stateIndex, const uint32_t* psrc)
     {
-        uint32_t* pstate = m_state;
-        const uint32_t* pw = (const uint32_t*)psrc;
+        static_assert(Params::s_wordSizeBits == 32, "vectorToState only implemented for 32-bit Params");
+        uint32_t* pstate = reinterpret_cast<uint32_t*>(m_state);
+        const uint32_t* pw = psrc;
         pstate[stateIndex] = 0;
         size_t w;
-        for (w = 0; w < s_N - 1; ++w) {
+        for (w = 0; w < (size_t)s_N - 1; ++w) {
             uint32_t word = pw[w];
             pstate[w * s_nStates + stateIndex] |= word << 31;
             pstate[(w + 1) * s_nStates + stateIndex] = word >> 1;
@@ -317,42 +357,64 @@ protected:
         pstate[w * s_nStates + stateIndex] |= pw[w] << 31;
     }
 
-    // initializes m_state[s_N] with a seed
     void reinitMainState(uint32_t s)
+    {
+        __reinit(word_t(s));
+    }
+
+    // 64-bit scalar seed — only enabled when word_t != uint32_t to avoid redefinition
+    template<size_t WB = Params::s_wordSizeBits, std::enable_if_t<WB == 64, int> = 0>
+    void reinitMainState(uint64_t s)
     {
         __reinit(s);
     }
 
-    // initialize by an array with array-length
-    // init_key is the array for initializing keys
-    // key_length is its length
     void reinitMainState(const uint32_t* seeds, uint32_t nSeeds)
     {
-        __reinit(uint32_t(19650218));
+        static_assert(Params::s_wordSizeBits == 32, "uint32 seed array only supported for 32-bit Params");
+        __reinit(word_t(Params::s_arrayInitSeed));
         uint32_t i = 1, j = 0;
-        uint32_t k = (s_N > nSeeds ? s_N : nSeeds);
-        for (; k; k--) {
-            scalarState(i) = (scalarState(i) ^ ((scalarState(i - 1) ^ (scalarState(i - 1) >> 30)) * uint32_t(1664525)))
-                + seeds[j] + j; // non linear
-            //m_state[i] &= 0xffffffffUL; // for WORDSIZE > 32 machines
-            i++; j++;
-            if (i >= s_N) { scalarState(0) = scalarState(s_N - 1); i = 1; }
+        uint32_t k = ((uint32_t)s_N > nSeeds ? (uint32_t)s_N : nSeeds);
+        for (; k; --k) {
+            scalarState(i) = (scalarState(i) ^ ((scalarState(i - 1) ^ (scalarState(i - 1) >> 30)) * word_t(Params::s_arrayInitMul1)))
+                + seeds[j] + j;
+            ++i; ++j;
+            if (i >= (uint32_t)s_N) { scalarState(0) = scalarState(s_N - 1); i = 1; }
             if (j >= nSeeds) j = 0;
         }
-        for (k = s_N - 1; k; k--) {
-            scalarState(i) = (scalarState(i) ^ ((scalarState(i - 1) ^ (scalarState(i - 1) >> 30)) * uint32_t(1566083941)))
-                - i; // non linear
-            //m_state[i] &= 0xffffffffUL; // for WORDSIZE > 32 machines
-            i++;
-            if (i >= s_N) { scalarState(0) = scalarState(s_N - 1); i = 1; }
+        for (k = (uint32_t)s_N - 1; k; --k) {
+            scalarState(i) = (scalarState(i) ^ ((scalarState(i - 1) ^ (scalarState(i - 1) >> 30)) * word_t(Params::s_arrayInitMul2)))
+                - i;
+            ++i;
+            if (i >= (uint32_t)s_N) { scalarState(0) = scalarState(s_N - 1); i = 1; }
         }
-
-        scalarState(0) = uint32_t(0x80000000); // MSB is 1; assuring non-zero initial array
+        scalarState(0) = Params::s_msb;
     }
 
-    // generates a random number on [0,0xffffffff] interval
-    template <bool B = !QryBlk16, std::enable_if_t<B == !QryBlk16, int> = 0>
-    FORCE_INLINE uint32_t genrand_uint32()
+    // 64-bit array seed — only enabled when word_t != uint32_t to avoid redefinition
+    template<size_t WB = Params::s_wordSizeBits, std::enable_if_t<WB == 64, int> = 0>
+    void reinitMainState(const uint64_t* seeds, uint32_t nSeeds)
+    {
+        __reinit(Params::s_arrayInitSeed);
+        uint32_t i = 1, j = 0;
+        uint32_t k = ((uint32_t)s_N > nSeeds ? (uint32_t)s_N : nSeeds);
+        for (; k; --k) {
+            scalarState(i) = (scalarState(i) ^ ((scalarState(i - 1) ^ (scalarState(i - 1) >> Params::s_initShift)) * Params::s_arrayInitMul1))
+                + seeds[j] + j;
+            ++i; ++j;
+            if (i >= (uint32_t)s_N) { scalarState(0) = scalarState(s_N - 1); i = 1; }
+            if (j >= nSeeds) j = 0;
+        }
+        for (k = (uint32_t)s_N - 1; k; --k) {
+            scalarState(i) = (scalarState(i) ^ ((scalarState(i - 1) ^ (scalarState(i - 1) >> Params::s_initShift)) * Params::s_arrayInitMul2))
+                - i;
+            ++i;
+            if (i >= (uint32_t)s_N) { scalarState(0) = scalarState(s_N - 1); i = 1; }
+        }
+        scalarState(0) = Params::s_msb;
+    }
+
+    FORCE_INLINE word_t genrand_word()
     {
         static_assert(!QryBlk16);
 
@@ -369,7 +431,7 @@ protected:
     }
 
 private:
-    FORCE_INLINE void __genrand_uint32_blk16(uint32_t* dst)
+    FORCE_INLINE void __genrand_word_blk(word_t* dst)
     {
         if (m_pst == m_pstEnd) VM19937_UNLIKELY
             refill();
@@ -377,17 +439,68 @@ private:
     }
 
 protected:
-    // generates 16 uniform discrete random numbers in [0,0xffffffff] interval
-    // for optimal performance the vector dst should be aligned on a 64 byte boundary
+    // generates a random uint32 on [0, 0xffffffff]
+    template <bool B = !QryBlk16, std::enable_if_t<B == !QryBlk16, int> = 0>
+    FORCE_INLINE uint32_t genrand_uint32()
+    {
+        static_assert(!QryBlk16);
+        return (uint32_t)genrand_word();
+    }
+
+    // generates a random uint64 on [0, 0xffffffffffffffff]
+    template <bool B = !QryBlk16, std::enable_if_t<B == !QryBlk16, int> = 0>
+    FORCE_INLINE uint64_t genrand_uint64()
+    {
+        static_assert(!QryBlk16);
+        if constexpr (Params::s_wordSizeBits == 64)
+            return genrand_word();
+        else
+            return (uint64_t(genrand_word()) << 32) | genrand_word();
+    }
+
     template <bool B = QryBlk16, std::enable_if_t<B == QryBlk16, int> = 0>
     void genrand_uint32_blk16(uint32_t* dst)
     {
         static_assert(QryBlk16);
-        __genrand_uint32_blk16(dst);
+        static_assert(Params::s_wordSizeBits == 32, "blk16 uint32 API only for 32-bit Params");
+        __genrand_word_blk(reinterpret_cast<word_t*>(dst));
+    }
+
+    // generates s_nWordsInBlock words into dst (cache-line-sized block)
+    template <bool B = QryBlk16, std::enable_if_t<B == QryBlk16, int> = 0>
+    void genrand_word_blk(word_t* dst)
+    {
+        static_assert(QryBlk16);
+        __genrand_word_blk(dst);
     }
 
     template <bool B = !QryBlk16, std::enable_if_t<B == !QryBlk16, int> = 0>
     void genrand_uint32_anySize(uint32_t* dst, size_t n)
+    {
+        static_assert(!QryBlk16);
+        static_assert(Params::s_wordSizeBits == 32, "uint32 anySize API only for 32-bit Params");
+        word_t* wdst = reinterpret_cast<word_t*>(dst);
+        size_t fromCache = std::min(n, m_rndCache.nAvailable());
+        std::copy_n(m_rndCache.current(), fromCache, wdst);
+        wdst += fromCache;
+        m_rndCache += fromCache;
+        n -= fromCache;
+
+        while (n >= s_nWordsInBlock) {
+            __genrand_word_blk(wdst);
+            wdst += s_nWordsInBlock;
+            n -= s_nWordsInBlock;
+        }
+
+        if (n > 0) {
+            __genrand_word_blk(m_rndCache.begin());
+            std::copy_n(m_rndCache.begin(), n, wdst);
+            m_rndCache.setAt(n);
+        }
+    }
+
+    template <bool B = !QryBlk16, std::enable_if_t<B == !QryBlk16, int> = 0>
+    void genrand_word_anySize(word_t* dst, size_t n)
     {
         static_assert(!QryBlk16);
 
@@ -397,14 +510,14 @@ protected:
         m_rndCache += fromCache;
         n -= fromCache;
 
-        while (n >= 16) {
-            __genrand_uint32_blk16(dst);
-            dst += 16;
-            n -= 16;
+        while (n >= s_nWordsInBlock) {
+            __genrand_word_blk(dst);
+            dst += s_nWordsInBlock;
+            n -= s_nWordsInBlock;
         }
 
         if (n > 0) {
-            __genrand_uint32_blk16(m_rndCache.begin());
+            __genrand_word_blk(m_rndCache.begin());
             std::copy_n(m_rndCache.begin(), n, dst);
             m_rndCache.setAt(n);
         }
@@ -412,7 +525,6 @@ protected:
 
 public:
 
-    // constructors
     MT19937Base()
         : m_pst(nullptr)
         , m_pstEnd(m_state + s_N * s_nStates)

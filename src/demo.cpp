@@ -111,6 +111,30 @@ void demoParallel()
     }
 }
 
+// show how to use the 64-bit MT19937 generator (XMT19937_64)
+void demo128_64()
+{
+    std::cout << "example of how to use the 64-bit MT19937 generator (XMT19937_64)\n";
+
+    // XMT19937_64 is the single-state 64-bit generator (no jump matrices required)
+    XMT19937_64<> gen;
+    gen.reinit(uint64_t(5489), 0, nullptr, nullptr);
+
+    std::cout << "First 10 outputs of XMT19937_64 (scalar):\n";
+    for (int i = 0; i < 10; ++i)
+        std::cout << gen.genrand_uint64() << "\n";
+    std::cout << "\n";
+
+    // anySize bulk generation into a uint64_t buffer
+    constexpr size_t N = 16;
+    uint64_t buf[N];
+    gen.reinit(uint64_t(5489), 0, nullptr, nullptr);
+    gen.genrand_word_anySize(buf, N);
+    std::cout << "First " << N << " outputs via genrand_word_anySize:\n";
+    for (size_t i = 0; i < N; ++i)
+        std::cout << buf[i] << "\n";
+}
+
 int main(int argc, const char** argv)
 {
     ArgMap args = parseArgs(argc, argv);
@@ -122,6 +146,10 @@ int main(int argc, const char** argv)
 
     // show how to construct multiple independent generators
     demoParallel();
+    std::cout << "\n\n\n";
+
+    // show 64-bit MT19937 generator
+    demo128_64();
 
     return 0;
 }

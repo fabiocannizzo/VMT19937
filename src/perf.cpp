@@ -43,6 +43,7 @@ bool g_testMkl = TEST_MKL;
 bool g_testOriginal = true;
 bool g_testVMT = true;
 bool g_testXMT = true;
+bool g_testXMT64 = true;
 bool g_testSFMT = true;
 bool g_testQry1 = true;
 bool g_testQryN = true;
@@ -61,9 +62,9 @@ constexpr uint32_t s_seedinit[s_seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 extern "C" unsigned long genrand_int32();
 extern "C" void init_by_array(unsigned long init_key[], int key_length);
 
-enum GenMode {orig, sfmt, mkl_mt, mkl_sfmt, xmt, vmt, vsfmt, stl_mt};
+enum GenMode {orig, sfmt, mkl_mt, mkl_sfmt, xmt32, vmt, vsfmt, stl_mt, xmt64, stl_mt64};
 
-const char* modename[] = {"ORIG-MT19937", "ORIG-SFMT19937", "MKL-MT19937", "MKL-SFMT19937", "X-MT19937", "V-MT19937", "V-SFMT19937", "STL-MT19937"};
+const char* modename[] = {"ORIG-MT19937", "ORIG-SFMT19937", "MKL-MT19937", "MKL-SFMT19937", "X-MT19937", "V-MT19937", "V-SFMT19937", "STL-MT19937", "X-MT19937-64", "STL-MT19937-64"};
 
 const size_t anySize[] = {/* 1, 4, 16, 64, 256, 624, 1024, 4096,*/ 16384 };
 
@@ -78,7 +79,8 @@ const auto pmt = std::make_unique<MT19937Matrix>(dir + "/mt/F19933.bits");
 const auto psfmt = std::make_unique<SFMT19937Matrix>(dir + "/sfmt/F19935.bits");
 
 // use the same destination memory in all tests to avoid spurious difference in test results due to memory layout
-AlignedVector<uint32_t, 64> aligneddst(anySize[sizeof(anySize)/sizeof(anySize[0])-1]);
+// sized for the largest 64-bit anySize block (each element = 8 bytes)
+AlignedVector<uint32_t, 64> aligneddst(anySize[sizeof(anySize)/sizeof(anySize[0])-1] * 2);
 
 template <>
 struct GenTraits<vmt>
@@ -91,9 +93,9 @@ struct GenTraits<vmt>
 };
 
 template <>
-struct GenTraits<xmt>
+struct GenTraits<xmt32>
 {
-    static const GenMode mode = xmt;
+    static const GenMode mode = xmt32;
     static const MT19937Matrix* jumpMatrix() { return nullptr; }
 
     template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw, std::enable_if_t<RegBitLen == RegBitLenHw, int> = 0>
@@ -108,6 +110,16 @@ struct GenTraits<vsfmt>
 
     template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw>
     using gen_t = VSFMT19937<RegBitLen, QM == QM_Block16, BitLenToIsa<RegBitLenHw>::isa>;
+};
+
+template <>
+struct GenTraits<xmt64>
+{
+    static const GenMode mode = xmt64;
+    static const MT19937Matrix* jumpMatrix() { return nullptr; }
+
+    template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw, std::enable_if_t<RegBitLen == RegBitLenHw, int> = 0>
+    using gen_t = XMT19937_64<BitLenToIsa<RegBitLenHw>::isa, QM == QM_Block16>;
 };
 
 const size_t s_messageSpacing[] = { 15, 9, 8, 8, 12 };
@@ -251,6 +263,28 @@ void stlMtPerformance()
 
     addResult(key, nSeconds);
 }
+
+void stlMt64Performance()
+{
+    Results key(stl_mt64, 64, 64, 1, QM_Scalar);
+    key.print();
+    if (alreadyHaveEnoughIter(key)) {
+        std::cout << "skip\n";
+        return;
+    }
+
+    std::mt19937_64 gen(5489ULL);
+
+    auto start = std::chrono::system_clock::now();
+    for (size_t i = 0; i < g_nRandom; ++i)
+        aligneddst[0] = (uint32_t)gen();
+    auto end = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end - start;
+    double nSeconds = elapsed_seconds.count();
+    done(nSeconds);
+
+    addResult(key, nSeconds);
+}
 #endif
 
 template <bool ScalarQry>
@@ -363,21 +397,41 @@ void vRandGenPerformance5(size_t blkSize)
     }
 
     using Gen = typename GenTraits<Mode>::template gen_t<L, QM, I>;
+    using word_t = typename Gen::word_t;
 
     const typename Gen::matrix_t *jumpMatrixPtr = nullptr;
     if constexpr (Gen::s_nStates > 1)
         jumpMatrixPtr = GenTraits<Mode>::jumpMatrix();
-    Gen mt(s_seedinit, s_seedlength, 0, nullptr, jumpMatrixPtr);
+
+    auto makeGen = [&]() -> Gen {
+        if constexpr (sizeof(word_t) == 8)
+            return Gen(uint64_t(5489), 0, nullptr, jumpMatrixPtr);
+        else
+            return Gen(s_seedinit, s_seedlength, 0, nullptr, jumpMatrixPtr);
+    };
+    Gen mt = makeGen();
 
     auto start = std::chrono::system_clock::now();
 
     for (size_t i = 0, n = g_nRandom / blkSize; i < n; ++i) {
-        if constexpr (QM == QM_Scalar)
-            aligneddst[0] = mt.genrand_uint32();
-        else if constexpr (QM == QM_Block16)
-            mt.genrand_uint32_blk16(aligneddst.data());
-        else if constexpr (QM == QM_Any)
-            mt.genrand_uint32_anySize(aligneddst.data(), blkSize);
+        if constexpr (QM == QM_Scalar) {
+            if constexpr (sizeof(word_t) == 8)
+                aligneddst[0] = (uint32_t)mt.genrand_uint64();
+            else
+                aligneddst[0] = mt.genrand_uint32();
+        }
+        else if constexpr (QM == QM_Block16) {
+            if constexpr (sizeof(word_t) == 8)
+                mt.genrand_word_blk(reinterpret_cast<word_t*>(aligneddst.data()));
+            else
+                mt.genrand_uint32_blk16(aligneddst.data());
+        }
+        else if constexpr (QM == QM_Any) {
+            if constexpr (sizeof(word_t) == 8)
+                mt.genrand_word_anySize(reinterpret_cast<word_t*>(aligneddst.data()), blkSize);
+            else
+                mt.genrand_uint32_anySize(aligneddst.data(), blkSize);
+        }
         else
             NOT_IMPLEMENTED;
     }
@@ -395,14 +449,17 @@ void vRandGenPerformance5(size_t blkSize)
 template <GenMode Mode, size_t L, size_t I, QryMode QM>
 void vRandGenPerformance4()
 {
+    using word_t = typename GenTraits<Mode>::template gen_t<L, QM, I>::word_t;
     if constexpr (QM == QM_Any) {
         if (g_testQryN)
             for (auto sz : anySize)
                 vRandGenPerformance5<Mode, L, I, QM>(sz);
     }
     else if constexpr (QM == QM_Block16) {
-        if (g_testQry16)
-            vRandGenPerformance5<Mode, L, I, QM>(16);
+        if (g_testQry16) {
+            constexpr size_t blkSz = (sizeof(word_t) == 8) ? 8 : 16;
+            vRandGenPerformance5<Mode, L, I, QM>(blkSz);
+        }
     }
     else if constexpr (QM == QM_Scalar) {
         if (g_testQry1)
@@ -414,7 +471,7 @@ template <GenMode Mode, size_t L, size_t I, QryMode...QMs>
 void vRandGenPerformance2()
 {
     constexpr size_t M = std::min<size_t>(L, SIMD_N_BITS);
-    if constexpr (I <= M && (Mode != xmt || I == L))
+    if constexpr (I <= M && (Mode != xmt32 || I == L) && (Mode != xmt64 || I == L))
         (vRandGenPerformance4<Mode, L, I, QMs>(), ...);
 }
 
@@ -436,11 +493,12 @@ void syntax()
         << "Invalid command line arguments\n"
         << "Syntax:\n"
         << "   perf [-n=<nRepeats>] [-s=<nRndScaler>] [--no-mkl] [--no-original] [--no-vmt] [--no-sfmt]\n"
-        << "        [--no-xmt] [--dir=<datpath>] [--no-qry1] [--no-qry16] [--no-qryN] [--stdev=<val>] [-wait]\n"
+        << "        [--no-xmt32] [--dir=<datpath>] [--no-qry1] [--no-qry16] [--no-qryN] [--stdev=<val>] [-wait]\n"
         << "  -n=<nRepeats>: number of performance test iterations (default 1)\n"
         << "  --no-mkl: skip MKL tests\n"
         << "  --no-vmt: skip VMT tests\n"
-        << "  --no-xmt: skip XMT tests\n"
+        << "  --no-xmt32: skip XMT tests\n"
+        << "  --no-mt64: skip 64-bit MT tests\n"
         << "  --no-sfmt: skip SFMT tests\n"
         << "  --no-qry1: skip scalar query tests\n"
         << "  --no-qry16: skip block-16 query tests\n"
@@ -512,7 +570,8 @@ void parseCliArgs(ArgMap& args)
         g_testOriginal &= !consumeArg(args, "no-original");
         g_testVMT &= !consumeArg(args, "no-vmt");
         g_testSFMT &= !consumeArg(args, "no-sfmt");
-        g_testXMT &= !consumeArg(args, "no-xmt");
+        g_testXMT &= !consumeArg(args, "no-xmt32");
+        g_testXMT64 &= !consumeArg(args, "no-mt64");
         g_testQry1 &= !consumeArg(args, "no-qry1");
         g_testQry16 &= !consumeArg(args, "no-qry16");
         g_testQryN &= !consumeArg(args, "no-qryN");
@@ -626,9 +685,15 @@ int main(int argc, const char** argv)
 #endif
 #if TEST_XMT==1
             if (g_testXMT) {
-                vRandGenPerformance0<xmt, /*32, 128, 256, 512*/ SIMD_N_BITS>();
+                vRandGenPerformance0<xmt32, /*32, 128, 256, 512*/ SIMD_N_BITS>();
             }
 #endif
+            if (g_testXMT64) {
+#if TEST_ORIG==1
+                stlMt64Performance();
+#endif
+                vRandGenPerformance0<xmt64, SIMD_N_BITS>();
+            }
             size_t nResAfter = nResults();
             if (nResAfter == nResBefore)
                 break; // no new results added

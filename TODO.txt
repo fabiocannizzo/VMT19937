@@ -2,6 +2,8 @@ Define static constant with the number of Bits s_nBits in the jump matrix
 
 review SFMT19937 matrix parameters
 
+define semantic of XMT vs VMT: i think XMT is when the vlensize = hwlensize. vmt is for vlensize > hwlensize
+
 Results
 - Generate results and save results in the log folder. For each set of results we save CPU features, OS, Compiler.
 - We will run on multiple confirguration to store multiple set of results
@@ -13,7 +15,23 @@ Review paper
  - add proper conclusions
  - any additional reference?
 
+doc Introduction: does not talk about the 64-bit variation.
+For the 128 bit variation, mention that while this fits well 128 but regsiter because it has 128-bit word, it is effectively not a vectorization.
+Lets prefix hexadecimal constants with 0x to make it clear they are hexadecimal.
+d sometime is represented in hexadecimal, sometimes in binary. Let's be consistent and use hexadecimal everywhere.
+SFMT seems quite different from MT and the constants are different. Is it fair that it share the "common framework" section with the others?
+Add descipriotn of XMT, which is my vectorization of the various algos as they are, it suffers from the said limittations, I consider it as an intrastate vectorization and can act as  a benchmark.
+
 Review README page
+
+The word size of sfmt should be 128?
+
+Use templates here
+template <> struct GenTraits<mt64>
+{
+    typedef MT19937_64Matrix /*use template*/ matrix_t;
+    static const size_t power2 = 0;
+};
 
 Remove jump matrix argument from XMT constructors
 

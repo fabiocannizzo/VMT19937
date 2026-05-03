@@ -224,6 +224,80 @@ struct MT19937Matrix : BinarySquareMatrix<xvmt::details::MT19937Params::s_nMatri
     }
 };
 
+struct MT19937_64Matrix : BinarySquareMatrix<xvmt::details::MT19937_64Params::s_nMatrixBits>
+{
+    typedef BinarySquareMatrix<xvmt::details::MT19937_64Params::s_nMatrixBits> base_t;
+
+    MT19937_64Matrix()
+    {
+        init1_64();
+    }
+
+    MT19937_64Matrix(const std::string& binaryfilename)
+    {
+        fromBinaryFile(binaryfilename);
+    }
+
+    // Initialize the one-step transition matrix for MT19937-64.
+    //
+    // State bit encoding (w=64, UPPER_MASK=bits 31..63, LOWER_MASK=bits 0..30):
+    //   pdst[k] is a 64-bit "group" at state bits 64k..64k+63:
+    //     bits 0..32  = x[k][31..63]   (33 UPPER_MASK bits of x[k])
+    //     bits 33..63 = x[k+1][0..30]  (31 LOWER_MASK bits of x[k+1])
+    //   pdst[N-1]: only bits 0..32 meaningful (UPPER_MASK of last element).
+    //   Total effective bits: 64*(N-1)+33 = 19937.
+    void init1_64()
+    {
+        using namespace xvmt::details;
+        static const size_t s_nBits = base_t::s_nBitRows;   // 19937
+        static const uint64_t s_matA = MT19937_64Params::s_matrixA;
+        static const int s_M = MT19937_64Params::s_M;        // 156
+        static const size_t w = 64;
+
+        // Shift: new bit r = old bit r+w for r = 0..s_nBits-w-1
+        for (size_t r = 0; r < s_nBits - w; ++r)
+            setBit(r, r + w);
+
+        const size_t B = s_nBits - w;  // = 19873; first row for new element x[N]
+
+        // x[k+N] = x[k+M] XOR ((y >> 1)) XOR (y[0] ? matA : 0)
+        // where y = (x[k] & UPPER_MASK) | (x[k+1] & LOWER_MASK),  y[0] = x[k+1][0]
+        //
+        // For any bit j (0..63), x[k+M][j] lives at state bit w*(M-1)+33+j:
+        //   j=0..30  -> pdst[M-1] bits 33..63  (LOWER_MASK of x[k+M] in group M-1)
+        //   j=31..63 -> pdst[M]   bits  0..32  (UPPER_MASK of x[k+M] in group M)
+        for (size_t j = 0; j < w; ++j)
+            setBit(B + j, (size_t)w * (s_M - 1) + 33 + j);
+
+        // (y >> 1)[j]:
+        //   j=0..29:  y[j+1] = x[k+1][j+1] = pdst[0] bit 34+j
+        for (size_t j = 0; j < 30; ++j)
+            setBit(B + j, 34 + j);
+        //   j=30:     y[31]  = x[k][31]     = pdst[0] bit 0
+        setBit(B + 30, 0);
+        //   j=31..62: y[j+1] = x[k][j+1]   = pdst[0] bit j-30
+        for (size_t j = 31; j < 63; ++j)
+            setBit(B + j, j - 30);
+        //   j=63: (y >> 1)[63] = 0, no dependency
+
+        // Conditional matA: parity y[0] = x[k+1][0] = pdst[0] bit 33 = state bit 33
+        for (size_t j = 0; j < w; ++j)
+            if (s_matA & (uint64_t(1) << j))
+                setBit(B + j, 33);
+    }
+
+    void fromBinaryFile(const std::string& filename)
+    {
+        std::ifstream is(filename, std::ios::binary | std::ios::ate);
+        MYASSERT(is.is_open(), "error opening binary file: " << filename);
+        std::streamsize size = is.tellg();
+        is.seekg(0, std::ios::beg);
+        size_t expectedSize = base_t::s_binStreamSize;
+        MYASSERT(size == expectedSize, "File size mismatch for " << filename << ". Expected " << expectedSize << " bytes, but got " << size << " bytes.");
+        base_t::fromBin(is);
+    }
+};
+
 struct SFMT19937Matrix : BinarySquareMatrix<xvmt::details::SFMT19937Params::s_nMatrixBits>
 {
     typedef BinarySquareMatrix<xvmt::details::SFMT19937Params::s_nMatrixBits> base_t;

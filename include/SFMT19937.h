@@ -29,6 +29,8 @@ class SFMT19937Base : public SFMT19937Params
         "VRegBitLen must be a multiple of the SFMT word size (128)");
 
 public:
+    using word_t = uint32_t;
+
     static constexpr size_t s_regLenBits = VRegBitLen;                              // logical SIMD width driving vectorisation (may exceed hardware width)
     static constexpr size_t s_regLenBitsHw = HwBitLen;                         // actual hardware SIMD register width in bits
     static constexpr ISA s_isa = Isa;                                                   // target ISA used for SIMD intrinsic selection

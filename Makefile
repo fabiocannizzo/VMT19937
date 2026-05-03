@@ -197,6 +197,7 @@ CPP_WITH_MAIN := src/perf.cpp src/test.cpp src/demo.cpp src/encoder.cpp src/jump
 CPP_WITHOUT_MAIN := src/cpu.cpp
 
 MT_OBJ := $(BINDIR)/mt19937ar$(OBJ_EXT)
+MT64_OBJ := $(BINDIR)/mt19937-64$(OBJ_EXT)
 SFMT_OBJ := $(BINDIR)/SFMT$(OBJ_EXT)
 CPU_OBJ := $(BINDIR)/cpu$(OBJ_EXT)
 
@@ -238,7 +239,7 @@ ifeq ($(TESTU01_AVAIL),1)
 endif
 
 # Executables
-$(BINDIR)/test$(EXE_EXT): $(BINDIR)/test$(OBJ_EXT) $(MT_OBJ) $(SFMT_OBJ)
+$(BINDIR)/test$(EXE_EXT): $(BINDIR)/test$(OBJ_EXT) $(MT_OBJ) $(MT64_OBJ) $(SFMT_OBJ)
 	$(CXX) $(OUT_EXE)$@ $^ $(LFLAGS)
 
 $(BINDIR)/perf$(EXE_EXT): $(BINDIR)/perf$(OBJ_EXT) $(MT_OBJ) $(SFMT_OBJ) $(CPU_OBJ)
