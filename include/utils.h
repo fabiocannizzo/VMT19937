@@ -126,6 +126,25 @@ public:
     AlignedVector(size_t n) : AlignedVector() { init(n); }
     ~AlignedVector() { deallocate(); }
 
+    AlignedVector(const AlignedVector& o) : m_data(nullptr), m_n(0)
+    {
+        if (o.m_n) { init(o.m_n); std::memcpy(m_data, o.m_data, m_n * sizeof(T)); }
+    }
+    AlignedVector(AlignedVector&& o) noexcept : m_data(o.m_data), m_n(o.m_n)
+    {
+        o.m_data = nullptr; o.m_n = 0;
+    }
+    AlignedVector& operator=(const AlignedVector& o)
+    {
+        if (this != &o) { init(o.m_n); std::memcpy(m_data, o.m_data, m_n * sizeof(T)); }
+        return *this;
+    }
+    AlignedVector& operator=(AlignedVector&& o) noexcept
+    {
+        if (this != &o) { deallocate(); m_data = o.m_data; m_n = o.m_n; o.m_data = nullptr; o.m_n = 0; }
+        return *this;
+    }
+
     void init(size_t n)
     {
         if (n != m_n) {
