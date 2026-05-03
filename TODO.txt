@@ -1,8 +1,14 @@
 Define static constant with the number of Bits s_nBits in the jump matrix
 
+Implement tests for V-SFMT and complete tests for MT-64, with the proper jump matrices.
+
 review SFMT19937 matrix parameters
 
-define semantic of XMT vs VMT: i think XMT is when the vlensize = hwlensize. vmt is for vlensize > hwlensize
+define semantic of XMT vs VMT: I think XMT is when the vlensize = hwlensize. vmt is for vlensize > hwlensize
+
+vectorize XMT-64 and VMT-64
+
+wrap utils and other files in vxmt::details namespace
 
 Results
 - Generate results and save results in the log folder. For each set of results we save CPU features, OS, Compiler.
@@ -15,7 +21,7 @@ Review paper
  - add proper conclusions
  - any additional reference?
 
-doc Introduction: does not talk about the 64-bit variation.
+doc Introduction: the doc does not talk about the 64-bit variation.
 For the 128 bit variation, mention that while this fits well 128 but regsiter because it has 128-bit word, it is effectively not a vectorization.
 Lets prefix hexadecimal constants with 0x to make it clear they are hexadecimal.
 d sometime is represented in hexadecimal, sometimes in binary. Let's be consistent and use hexadecimal everywhere.

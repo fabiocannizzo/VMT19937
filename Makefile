@@ -205,6 +205,9 @@ TARGETS := $(patsubst src/%.cpp,$(BINDIR)/%$(EXE_EXT),$(CPP_WITH_MAIN))
 ifneq ($(TESTU01_AVAIL), 1)
     TARGETS := $(filter-out $(BINDIR)/testu01$(EXE_EXT), $(TARGETS))
 endif
+ifeq ($(IS_MSVC),1)
+    TARGETS := $(filter-out $(BINDIR)/testu01$(EXE_EXT), $(TARGETS))
+endif
 
 # --- Rules ---
 
