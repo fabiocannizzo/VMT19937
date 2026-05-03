@@ -15,12 +15,12 @@ struct BinarySquareMatrix : BinaryMatrix<N, N>
 
     typedef uint32_t word_t;
 
-    static const size_t s_nBits = N;
-    static const size_t s_nWordBits = sizeof(word_t) * 8;
+    static constexpr size_t s_nBits = N;
+    static constexpr size_t s_nWordBits = sizeof(word_t) * 8;
 
-    static const size_t s_nBitCols = base_t::s_nBitCols;
-    static const size_t s_nBitColsPerBlk = 8;
-    const size_t s_nColBlks = s_nBits / s_nBitColsPerBlk;
+    static constexpr size_t s_nBitCols = base_t::s_nBitCols;
+    static constexpr size_t s_nBitColsPerBlk = 8;
+    static constexpr size_t s_nColBlks = s_nBits / s_nBitColsPerBlk;
     typedef BinaryMatrix<s_nBitColsPerBlk, base_t::s_nBitRows> buffer_t;
 
     template <size_t NRows, size_t nColumns, size_t...Is>
