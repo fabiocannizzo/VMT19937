@@ -68,12 +68,11 @@ void printSome(const std::vector<uint32_t>& v)
 enum EncodeMode {Base64, Hex};
 
 template <size_t nRows, size_t nCols>
-void testEncoder(const BinaryMatrix<nRows, nCols>& m, EncodeMode enc)
+void testEncoder(const details::BinaryMatrix<nRows, nCols>& m, EncodeMode enc)
 {
     const char* modename = enc == Base64 ? "base64" : "hex";
 
-    BinaryMatrix<nRows, nCols> m2;
-
+    details::BinaryMatrix<nRows, nCols> m2;
     std::cout << "saving matrix to " << modename << " stream\n";
     std::ostringstream os;
     if (enc == Base64)
@@ -101,9 +100,9 @@ void testEncoder(const BinaryMatrix<nRows, nCols>& m, EncodeMode enc)
 }
 
 template <size_t NBITS>
-void testSquare(const BinarySquareMatrix<NBITS>& m)
+void testSquare(const details::BinarySquareMatrix<NBITS>& m)
 {
-    BinarySquareMatrix<NBITS> m2, m3;
+    details::BinarySquareMatrix<NBITS> m2, m3;
 
     // slow bit by bit multiplication
     //std::cout << "compute matrix multiplication the classical way\n";
@@ -121,7 +120,7 @@ void testSquare(const BinarySquareMatrix<NBITS>& m)
 
     const size_t nThreads = 4;
     //std::cout << "compute matrix multiplication vectorially\n";
-    std::vector<typename BinarySquareMatrix<NBITS>::buffer_t> buffers(nThreads);
+    std::vector<typename details::BinarySquareMatrix<NBITS>::buffer_t> buffers(nThreads);
     m3.square(m, buffers);
 
     MYASSERT((m2 == m3), "error in square");
@@ -132,7 +131,7 @@ void testSquare(const BinarySquareMatrix<NBITS>& m)
 template <size_t nRows, size_t nCols>
 void encodingTests()
 {
-    BinaryMatrix<nRows, nCols> m;
+    details::BinaryMatrix<nRows, nCols> m;
     m.initRand();
     std::cout << "\ngenerated random matrix with size (" << m.s_nBitRows << "x" << m.s_nBitCols << ") with " << m.nnz() << " non zero elements\n";
     m.printBits(0, 0, 10, 32);
@@ -145,7 +144,7 @@ template <size_t NBits>
 void squareTest()
 {
     std::cout << "testing multiplication with matrices of size: " << NBits << "\n";
-    BinarySquareMatrix<NBits> m;
+    details::BinarySquareMatrix<NBits> m;
     for (size_t i = 0; i < 10; ++i) {
         m.resetZero();
         m.initRand();
@@ -410,7 +409,7 @@ void test_XVMT19937()
 {
     generateBenchmark_MT19937();
 
-    typedef MT19937Matrix matrix_t;
+    typedef MT19937Matrix<32> matrix_t;
     typedef JumpMatrix<matrix_t> pmatrix_t;
 
     pmatrix_t noJump;

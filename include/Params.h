@@ -6,7 +6,11 @@
 namespace xvmt {
 namespace details {
 
-struct MT19937Params
+template <size_t W>
+struct MT19937Params;
+
+template <>
+struct MT19937Params<32>
 {
     using word_t = uint32_t;
 
@@ -45,7 +49,8 @@ struct MT19937Params
     static constexpr size_t s_n32InOneState = s_N * s_n32InOneWord;     // uint32 elements in the full state (= 624)
 };
 
-struct MT19937_64Params
+template <>
+struct MT19937Params<64>
 {
     using word_t = uint64_t;
 

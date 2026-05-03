@@ -8,6 +8,13 @@
 #include <memory>
 #include <sstream>
 
+namespace xvmt {
+
+template <size_t W>
+struct MT19937Matrix;
+
+namespace details {
+
 template <size_t N>
 struct BinarySquareMatrix : BinaryMatrix<N, N>
 {
@@ -149,9 +156,12 @@ struct BinarySquareMatrix : BinaryMatrix<N, N>
     }
 };
 
-struct MT19937Matrix : BinarySquareMatrix<xvmt::details::MT19937Params::s_nMatrixBits>
+} // namespace details
+
+template <>
+struct MT19937Matrix<32> : details::BinarySquareMatrix<details::MT19937Params<32>::s_nMatrixBits>
 {
-    typedef BinarySquareMatrix<xvmt::details::MT19937Params::s_nMatrixBits> base_t;
+    typedef details::BinarySquareMatrix<details::MT19937Params<32>::s_nMatrixBits> base_t;
 
     // Initialize the matrix as per MT19937 32 bit generator transition matrix
     // This is equivalent to a jump ahead of 1 random number
@@ -180,8 +190,8 @@ struct MT19937Matrix : BinarySquareMatrix<xvmt::details::MT19937Params::s_nMatri
     {
         static const size_t s_nBits = base_t::s_nBitRows;
         static const size_t s_nWordBits = base_t::s_nWordBits;
-        static const uint32_t s_matA = xvmt::details::MT19937Params::s_matrixA;
-        static const uint32_t s_M = xvmt::details::MT19937Params::s_M;
+        static const uint32_t s_matA = xvmt::details::MT19937Params<32>::s_matrixA;
+        static const uint32_t s_M = xvmt::details::MT19937Params<32>::s_M;
 
         // from row 0 to to row nBits - 32, state bits are just shifted left by 32 bits
         for (uint32_t r = 0; r < s_nBits - s_nWordBits; ++r)
@@ -222,18 +232,19 @@ struct MT19937Matrix : BinarySquareMatrix<xvmt::details::MT19937Params::s_nMatri
     {
         base_t::fromArrayChar(pchar, len);
     }
-};
+};  // MT19937Matrix<32>
 
-struct MT19937_64Matrix : BinarySquareMatrix<xvmt::details::MT19937_64Params::s_nMatrixBits>
+template <>
+struct MT19937Matrix<64> : details::BinarySquareMatrix<details::MT19937Params<64>::s_nMatrixBits>
 {
-    typedef BinarySquareMatrix<xvmt::details::MT19937_64Params::s_nMatrixBits> base_t;
+    typedef details::BinarySquareMatrix<details::MT19937Params<64>::s_nMatrixBits> base_t;
 
-    MT19937_64Matrix()
+    MT19937Matrix()
     {
         init1_64();
     }
 
-    MT19937_64Matrix(const std::string& binaryfilename)
+    MT19937Matrix(const std::string& binaryfilename)
     {
         fromBinaryFile(binaryfilename);
     }
@@ -250,8 +261,8 @@ struct MT19937_64Matrix : BinarySquareMatrix<xvmt::details::MT19937_64Params::s_
     {
         using namespace xvmt::details;
         static const size_t s_nBits = base_t::s_nBitRows;   // 19937
-        static const uint64_t s_matA = MT19937_64Params::s_matrixA;
-        static const int s_M = MT19937_64Params::s_M;        // 156
+        static const uint64_t s_matA = MT19937Params<64>::s_matrixA;
+        static const int s_M = MT19937Params<64>::s_M;        // 156
         static const size_t w = 64;
 
         // Shift: new bit r = old bit r+w for r = 0..s_nBits-w-1
@@ -296,11 +307,11 @@ struct MT19937_64Matrix : BinarySquareMatrix<xvmt::details::MT19937_64Params::s_
         MYASSERT(size == expectedSize, "File size mismatch for " << filename << ". Expected " << expectedSize << " bytes, but got " << size << " bytes.");
         base_t::fromBin(is);
     }
-};
+};  // MT19937Matrix<64>
 
-struct SFMT19937Matrix : BinarySquareMatrix<xvmt::details::SFMT19937Params::s_nMatrixBits>
+struct SFMT19937Matrix : details::BinarySquareMatrix<details::SFMT19937Params::s_nMatrixBits>
 {
-    typedef BinarySquareMatrix<xvmt::details::SFMT19937Params::s_nMatrixBits> base_t;
+    typedef details::BinarySquareMatrix<details::SFMT19937Params::s_nMatrixBits> base_t;
 
     // Initialize the matrix as per MT19937 32 bit generator transition matrix
     // This is equivalent to a jump ahead of 4 random numbers
@@ -386,3 +397,5 @@ struct SFMT19937Matrix : BinarySquareMatrix<xvmt::details::SFMT19937Params::s_nM
 #endif
     }
 };
+
+} // namespace xvmt

@@ -5,6 +5,7 @@
 #include <cstdlib>
 
 using namespace std;
+using namespace xvmt;
 
 enum class EncodeMode {
     Base64,
@@ -96,7 +97,7 @@ int main(int argc, const char** argv)
     std::cout << "input: " << inputfile << ", output: " << outputfile << ": ... ";
 
     try {
-        MT19937Matrix matrix;
+        MT19937Matrix<32> matrix;
 
         std::ifstream is;
         if (imode == EncodeMode::Hex) {

@@ -6,8 +6,10 @@
 #include <sstream>
 #include <optional>
 #include <filesystem>
+#include <chrono>
 
 using namespace std;
+using namespace xvmt;
 
 void wait()
 {
@@ -26,14 +28,14 @@ struct GenTraits;
 template <>
 struct GenTraits<mt32>
 {
-    typedef MT19937Matrix matrix_t;
+    typedef MT19937Matrix<32> matrix_t;
     static constexpr size_t power2 = 0;
 };
 
 template <>
 struct GenTraits<mt64>
 {
-    typedef MT19937_64Matrix matrix_t;
+    typedef MT19937Matrix<64> matrix_t;
     static constexpr size_t power2 = 0;
 };
 
@@ -106,6 +108,11 @@ void run(const std::string& filepath, size_t nThreads, size_t saveFrequency, con
 
     size_t currentIdxInMem = size_t(-1);
 
+    // save current time before starting the computation
+    auto startTime = std::chrono::system_clock::now();
+    size_t nComputed = 0;
+    size_t nLastTarget = *targets.rbegin(); 
+
     for (size_t t : targets) {
         auto it = onDisk.upper_bound(t);
         if (it == onDisk.begin()) continue;
@@ -171,6 +178,12 @@ void run(const std::string& filepath, size_t nThreads, size_t saveFrequency, con
                     toBeDeleted = fn;
                 }
             }
+            nComputed++;
+            auto curTime = std::chrono::system_clock::now();
+            double elapsed = std::chrono::duration<double>(curTime - startTime).count();
+            std::cout << "elapsed: " << std::fixed << elapsed << "s,"
+                      << " avg per matrix:  " << std::fixed << elapsed / nComputed << "s,"
+                      << " eta: " << std::fixed << elapsed / nComputed * (nLastTarget - i) / 3600.0 << "h" << "\n";
         }
     }
 

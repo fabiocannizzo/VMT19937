@@ -24,54 +24,53 @@ public:
 private:
     void completeStateInitialization(size_t nCommonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
     {
-        if constexpr (sizeof(word_t) == 4) {
-            // Jump matrices only implemented for 32-bit generators
-            BinaryMatrix<2, base_t::s_nMatrixBits> tmp(commonJump || sequentialJump);
+        BinaryMatrix<2, base_t::s_nMatrixBits> tmp(commonJump || sequentialJump);
 
-            if (nCommonJumpRepeat) {
-                MYASSERT(commonJump, "commonJump is required when nCommonJumpRepeat>0");
+        if (nCommonJumpRepeat) {
+            MYASSERT(commonJump, "commonJump is required when nCommonJumpRepeat>0");
 
+            base_t::stateToVector(0, (uint32_t*)tmp.rowBegin(0));
+
+            for (size_t i = 0; i < nCommonJumpRepeat; ++i)
+                commonJump->multiplyByColumn(tmp.rowBegin((i + 1) % 2), tmp.rowBegin(i % 2));
+
+            base_t::vectorToState(0, (const uint32_t*)tmp.rowBegin(nCommonJumpRepeat % 2));
+        }
+
+        if constexpr (s_nStates > 1) {
+            if (sequentialJump) {
                 base_t::stateToVector(0, (uint32_t*)tmp.rowBegin(0));
 
-                for (size_t i = 0; i < nCommonJumpRepeat; ++i)
-                    commonJump->multiplyByColumn(tmp.rowBegin((i + 1) % 2), tmp.rowBegin(i % 2));
+                for (size_t s = 1; s < base_t::s_nStates; ++s) {
+                    const uint8_t* psrc = (uint8_t*)tmp.rowBegin((s + 1) % 2);
+                    uint8_t* pdst = (uint8_t*)tmp.rowBegin(s % 2);
 
-                base_t::vectorToState(0, (const uint32_t*)tmp.rowBegin(nCommonJumpRepeat % 2));
-            }
-            // else: nCommonJumpRepeat==0; commonJump may be non-null but is not applied
+                    sequentialJump->multiplyByColumn(pdst, psrc);
 
-            if constexpr (s_nStates > 1) {
-                if (sequentialJump) {
-                    base_t::stateToVector(0, (uint32_t*)tmp.rowBegin(0));
-
-                    for (size_t s = 1; s < base_t::s_nStates; ++s) {
-                        const uint8_t* psrc = (uint8_t*)tmp.rowBegin((s + 1) % 2);
-                        uint8_t* pdst = (uint8_t*)tmp.rowBegin(s % 2);
-
-                        sequentialJump->multiplyByColumn(pdst, psrc);
-
-                        base_t::vectorToState(s, (const uint32_t*)pdst);
-                    }
+                    base_t::vectorToState(s, (const uint32_t*)pdst);
                 }
-                else {
+            }
+            else {
 #if (RANDGEN_TESTING!=1)
-                    THROW("Having multiple states and no sequential jump matrix does not make sense");
+                THROW("Having multiple states and no sequential jump matrix does not make sense");
 #endif
+                // Fallback for RANDGEN_TESTING only: replicate state 0 to all states.
+                // 32-bit word_t (MT32, SFMT) uses s_n32inReg-based interleaving (j-loop needed for SFMT);
+                // 64-bit word_t (MT64) uses a direct word-level copy.
+                if constexpr (sizeof(word_t) == 4) {
                     for (size_t w = 0; w < (size_t)base_t::s_N; ++w)
                         for (size_t j = 0; j < base_t::s_n32InOneWord; ++j)
                             for (size_t s = 1; s < base_t::s_nStates; ++s)
                                 base_t::m_state[w * base_t::s_n32inReg + s * base_t::s_n32InOneWord + j] = base_t::m_state[w * base_t::s_n32inReg + j];
+                } else {
+                    for (size_t w = 0; w < (size_t)base_t::s_N; ++w)
+                        for (size_t s = 1; s < base_t::s_nStates; ++s)
+                            base_t::m_state[w * base_t::s_nStates + s] = base_t::m_state[w * base_t::s_nStates];
                 }
             }
-            else {
-                MYASSERT(!sequentialJump, "sequentialJump matrix should not be provided when there is only one state");
-            }
-        } else {
-            // 64-bit generators: jump matrices not yet implemented
-            MYASSERT(!nCommonJumpRepeat && !commonJump && !sequentialJump,
-                "Jump matrices are not yet supported for 64-bit generators");
-            MYASSERT(s_nStates == 1 || !sequentialJump,
-                "Multi-state 64-bit generator requires sequential jump matrix (not yet implemented)");
+        }
+        else {
+            MYASSERT(!sequentialJump, "sequentialJump matrix should not be provided when there is only one state");
         }
     }
 
@@ -154,18 +153,18 @@ template < size_t VRegBitLen = SIMD_N_BITS
          , bool QryBlk16 = false
          , ISA Isa = details::BestIsa<VRegBitLen>::isa
          >
-struct VMT19937 : details::RandGen<details::MT19937Base<VRegBitLen, Isa, false, QryBlk16>, QryBlk16>
+struct VMT19937 : details::RandGen<details::MT19937Base<VRegBitLen, Isa, false, QryBlk16, details::MT19937Params<32>>, QryBlk16>
 {
-    using base_t = details::RandGen<details::MT19937Base<VRegBitLen, Isa, false, QryBlk16>, QryBlk16>;
+    using base_t = details::RandGen<details::MT19937Base<VRegBitLen, Isa, false, QryBlk16, details::MT19937Params<32>>, QryBlk16>;
     using base_t::RandGen;
 };
 
 template < ISA Isa = details::BestIsa<512>::isa
          , bool QryBlk16 = false
          >
-struct XMT19937 : details::RandGen<details::MT19937Base<IsaTraits<Isa>::HwBitLen, Isa, true, QryBlk16>, QryBlk16>
+struct XMT19937 : details::RandGen<details::MT19937Base<IsaTraits<Isa>::HwBitLen, Isa, true, QryBlk16, details::MT19937Params<32>>, QryBlk16>
 {
-    using base_t = details::RandGen<details::MT19937Base<IsaTraits<Isa>::HwBitLen, Isa, true, QryBlk16>, QryBlk16>;
+    using base_t = details::RandGen<details::MT19937Base<IsaTraits<Isa>::HwBitLen, Isa, true, QryBlk16, details::MT19937Params<32>>, QryBlk16>;
     using base_t::RandGen;
 };
 
@@ -173,18 +172,18 @@ template < size_t VRegBitLen = SIMD_N_BITS
          , bool QryBlk16 = false
          , ISA Isa = details::BestIsa<VRegBitLen>::isa
          >
-struct VMT19937_64 : details::RandGen<details::MT19937Base<VRegBitLen, Isa, false, QryBlk16, details::MT19937_64Params>, QryBlk16>
+struct VMT19937_64 : details::RandGen<details::MT19937Base<VRegBitLen, Isa, false, QryBlk16, details::MT19937Params<64>>, QryBlk16>
 {
-    using base_t = details::RandGen<details::MT19937Base<VRegBitLen, Isa, false, QryBlk16, details::MT19937_64Params>, QryBlk16>;
+    using base_t = details::RandGen<details::MT19937Base<VRegBitLen, Isa, false, QryBlk16, details::MT19937Params<64>>, QryBlk16>;
     using base_t::RandGen;
 };
 
 template < ISA Isa = details::BestIsa<512>::isa
          , bool QryBlk16 = false
          >
-struct XMT19937_64 : details::RandGen<details::MT19937Base<IsaTraits<Isa>::HwBitLen, Isa, true, QryBlk16, details::MT19937_64Params>, QryBlk16>
+struct XMT19937_64 : details::RandGen<details::MT19937Base<IsaTraits<Isa>::HwBitLen, Isa, true, QryBlk16, details::MT19937Params<64>>, QryBlk16>
 {
-    using base_t = details::RandGen<details::MT19937Base<IsaTraits<Isa>::HwBitLen, Isa, true, QryBlk16, details::MT19937_64Params>, QryBlk16>;
+    using base_t = details::RandGen<details::MT19937Base<IsaTraits<Isa>::HwBitLen, Isa, true, QryBlk16, details::MT19937Params<64>>, QryBlk16>;
     using base_t::RandGen;
 };
 

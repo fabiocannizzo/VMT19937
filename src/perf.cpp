@@ -73,7 +73,7 @@ struct GenTraits;
 
 // for maximum period, we should select the file based on the number of states
 // but these periods are so large anyway that who do not care!
-const auto pmt = std::make_unique<MT19937Matrix>(dir + "/mt/F19933.bits");
+const auto pmt = std::make_unique<MT19937Matrix<32>>(dir + "/mt32/F19933.bits");
 // for maximum period, we should select the file based on the number of states
 // but these periods are so large anyway that who do not care!
 const auto psfmt = std::make_unique<SFMT19937Matrix>(dir + "/sfmt/F19935.bits");
@@ -86,7 +86,7 @@ template <>
 struct GenTraits<vmt>
 {
     static const GenMode mode = vmt;
-    static const MT19937Matrix* jumpMatrix() { return pmt.get(); }
+    static const MT19937Matrix<32>* jumpMatrix() { return pmt.get(); }
 
     template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw>
     using gen_t = VMT19937<RegBitLen, QM == QM_Block16, BitLenToIsa<RegBitLenHw>::isa>;
@@ -96,7 +96,7 @@ template <>
 struct GenTraits<xmt32>
 {
     static const GenMode mode = xmt32;
-    static const MT19937Matrix* jumpMatrix() { return nullptr; }
+    static const MT19937Matrix<32>* jumpMatrix() { return nullptr; }
 
     template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw, std::enable_if_t<RegBitLen == RegBitLenHw, int> = 0>
     using gen_t = XMT19937<BitLenToIsa<RegBitLenHw>::isa, QM == QM_Block16>;
@@ -116,7 +116,7 @@ template <>
 struct GenTraits<xmt64>
 {
     static const GenMode mode = xmt64;
-    static const MT19937Matrix* jumpMatrix() { return nullptr; }
+    static const MT19937Matrix<32>* jumpMatrix() { return nullptr; }
 
     template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw, std::enable_if_t<RegBitLen == RegBitLenHw, int> = 0>
     using gen_t = XMT19937_64<BitLenToIsa<RegBitLenHw>::isa, QM == QM_Block16>;

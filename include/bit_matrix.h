@@ -11,6 +11,8 @@
 #include <iomanip>
 #include <cstring>
 
+namespace xvmt::details {
+
 inline constexpr uint8_t bitmask(size_t b)
 {
     return (uint8_t)(uint8_t(1) << b);
@@ -72,7 +74,7 @@ public:
     static const size_t s_nBitCols = _nBitCols;
     static const size_t s_nPaddingBits = (s_nAlignBits - (s_nBitCols % s_nAlignBits)) % s_nAlignBits;
     static const size_t s_nBitColsPadded = s_nBitCols + s_nPaddingBits;
-    static const size_t s_nBytesPerRow = s_nBitCols / 8+ (s_nBitCols % 8 != 0);
+    static const size_t s_nBytesPerRow = s_nBitCols / 8 + (s_nBitCols % 8 != 0);
     static const size_t s_nBytesPerPaddedRow = s_nBitColsPadded / 8;  // inclusive of padding
     static const size_t s_nUsedBytes = s_nBitRows * s_nBytesPerPaddedRow;
     static const size_t s_binStreamSize = s_nBitRows * s_nBytesPerRow;
@@ -160,7 +162,7 @@ public:
 
     void printBits(size_t bitRowIndex, size_t bitColIndex, size_t nRows, size_t nCols, bool matlabIndexStyle = true) const
     {
-        std::cout << "bit columns " << bitColIndex + matlabIndexStyle << " to " << bitColIndex + nCols - (1-matlabIndexStyle) << "\n";
+        std::cout << "bit columns " << bitColIndex + matlabIndexStyle << " to " << bitColIndex + nCols - (1 - matlabIndexStyle) << "\n";
         for (size_t i = 0; i < nRows; ++i) {
             std::cout << std::setw(5) << bitRowIndex + i + matlabIndexStyle << ": ";
             for (size_t j = 0; j < nCols; ++j)
@@ -180,7 +182,7 @@ public:
         return n;
     }
 
-    void toMatlab(const char *path, const char *name) const
+    void toMatlab(const char* path, const char* name) const
     {
         std::ostringstream fn;
         fn << path << name << ".m";
@@ -237,7 +239,7 @@ public:
 
         const uint8_t* p = (const uint8_t*)&binStr[0];
         for (size_t r = 0; r < s_nBitRows; ++r, p += s_nBytesPerRow)
-            std::copy(p, p + s_nBytesPerRow, (char *) rowBegin(r));
+            std::copy(p, p + s_nBytesPerRow, (char*)rowBegin(r));
     }
 
     void txtRowDecoderStream(std::istream& is, std::ostream& (*decoder)(std::ostream&, std::istream&))
@@ -251,18 +253,18 @@ public:
     void toBin(OS& os) const
     {
         for (size_t r = 0; r < s_nBitRows; ++r)
-            os.write((const char *) rowBegin(r), s_nBytesPerRow);
+            os.write((const char*)rowBegin(r), s_nBytesPerRow);
     }
 
     template <typename IS>
     void fromBin(IS& is)
     {
         for (size_t r = 0; r < s_nBitRows; ++r)
-            is.read((char*) rowBegin(r), s_nBytesPerRow);
+            is.read((char*)rowBegin(r), s_nBytesPerRow);
     }
 
 
-    void fromArrayChar(const uint8_t*pchar, size_t len)
+    void fromArrayChar(const uint8_t* pchar, size_t len)
     {
         MYASSERT(len == s_nBitRows * s_nBytesPerRow, "array length must be same length" << s_nBitRows * s_nBytesPerRow);
         for (size_t r = 0; r < s_nBitRows; ++r)
@@ -302,7 +304,7 @@ public:
         for (size_t r = 0; r < s_nBitRows; ++r) {
             const char* p = (const char*)rowBegin(r);
             for (size_t c = 0; c < s_nBytesPerRow; ++c)
-                os << (unsigned) (uint8_t) p[c] << ',';
+                os << (unsigned)(uint8_t)p[c] << ',';
         }
     }
 
@@ -310,7 +312,7 @@ public:
     {
         size_t n = 0;
         static_assert(s_nUsedBytes % sizeof(uint64_t) == 0);
-        for (const uint64_t *p = (const uint64_t*)m_data.data(), * const pend = p + (s_nUsedBytes / sizeof(*p)); p != pend; ++p)
+        for (const uint64_t* p = (const uint64_t*)m_data.data(), * const pend = p + (s_nUsedBytes / sizeof(*p)); p != pend; ++p)
             n += popcnt(*p);
         return n;
     }
@@ -398,7 +400,7 @@ public:
                     ((word_t*)rowBegin(r))[c / (sizeof(word_t) * 8)] = rnd;
                 }
             }
-            for (;  c < s_nBitCols; ++c) {
+            for (; c < s_nBitCols; ++c) {
                 auto rnd = rand() % 2;
                 if (rnd)
                     setBit(r, c);
@@ -408,3 +410,4 @@ public:
 
 };
 
+} // namespace xvmt::details
