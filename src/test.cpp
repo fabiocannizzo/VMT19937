@@ -533,8 +533,16 @@ void test_SIMD_special_methods()
     std::cout << "SIMD special methods tests passed!\n";
 }
 
-int main()
+int main(int argc, const char** argv)
 {
+    ArgMap args = parseArgs(argc, argv);
+    waitForDebugger(args);
+
+    if (!args.empty()) {
+        std::cerr << "Syntax: test [-wait]\n";
+        return -1;
+    }
+
     try {
         test_SIMD_special_methods();
 #if 0

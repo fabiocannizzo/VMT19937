@@ -62,9 +62,9 @@ void usage()
     std::cerr
         << "Invalid command line arguments\n"
         << "Syntax:\n"
-        << "   encoder -i inputfile -o outputfile\n"
+        << "   encoder -i=<inputfile> -o=<outputfile> [-wait]\n"
         << "Example:\n"
-        << "   encoder -i dir1/F19937.bits -o dir2/F19937.b64\n"
+        << "   encoder -i=dir1/F19937.bits -o=dir2/F19937.b64\n"
         << "valid file extensins are: b64, hex, bits, hmat\n";
     THROW("");
 }
@@ -72,20 +72,21 @@ void usage()
 
 int main(int argc, const char** argv)
 {
+    ArgMap args = parseArgs(argc, argv);
+    waitForDebugger(args);
+
     // parse command line arguments
     string inputfile, outputfile;
-    if (argc % 2 == 0)
-        usage();
-    for (int i = 1; i < argc; i += 2) {
-        string key(argv[i]);
-        string value(argv[i + 1]);
-        if (key == "-i")
-            inputfile = value;
-        else if (key == "-o")
-            outputfile = value;
-        else {
+    try {
+        consumeArg(args, "i", true, inputfile);
+        consumeArg(args, "o", true, outputfile);
+
+        if (!args.empty())
             usage();
-        }
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << "\n";
+        usage();
     }
 
     // parse filenames

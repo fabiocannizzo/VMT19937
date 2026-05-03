@@ -111,8 +111,11 @@ void demoParallel()
     }
 }
 
-int main()
+int main(int argc, const char** argv)
 {
+    ArgMap args = parseArgs(argc, argv);
+    waitForDebugger(args);
+
     // show how to construct and use a geneartor with VecLen=128 and GenMode=QM_Block16
     demo128();
     std::cout << "\n\n\n";

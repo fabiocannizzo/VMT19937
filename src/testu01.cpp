@@ -84,30 +84,31 @@ void usage()
     std::cerr
         << "Invalid command line arguments\n"
         << "Syntax:\n"
-        << "   testu01 -b nbits -m mode{0,1,2}\n"
+        << "   testu01 -b=<nbits> -m=<mode{0,1,2}> [-wait]\n"
         << "Example:\n"
-        << "   testu01 -b 128\n";
+        << "   testu01 -b=128 -m=0\n";
     THROW("");
 }
 
 
 int main(int argc, const char** argv)
 {
+    ArgMap args = parseArgs(argc, argv);
+    waitForDebugger(args);
+
     // parse command line arguments
     size_t nBits = 0;
     size_t mode = 0;
-    if (argc % 2 == 0)
-        usage();
-    for (int i = 1; i < argc; i += 2) {
-        string key(argv[i]);
-        string value(argv[i + 1]);
-        if (key == "-b")
-            nBits = atoi(value.c_str());
-        else if (key == "-m")
-            mode = atoi(value.c_str());
-        else {
+    try {
+        consumeArg(args, "b", true, nBits);
+        consumeArg(args, "m", false, mode);
+
+        if (!args.empty())
             usage();
-        }
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << "\n";
+        usage();
     }
 
     try {

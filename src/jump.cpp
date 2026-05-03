@@ -57,13 +57,11 @@ void usage()
 {
     std::cerr
         << "Invalid command line arguments\n"
+        << "Syntax:\n"
+        << "   jump -g=<generator> [-j=<nthreads>] [-p=<filepath>] [-f=<savefreq>] [-s=<stopindex>] [-wait]\n"
         << "Example:\n"
-        << "jump -g generator [-j nthreads] [-p filepath] [-f savefrequency] [-s stopindex]\n"
-        << "  nthreads defaults to 1\n"
-        << "  filepath defaults to ./\n"
-        << "  savefrequency defaults to 100\n"
-        << "  generator must be one of {mt, sfmt}"
-        << "  stopindex: stops after saving the matrix with power >= stopIndex\n";
+        << "   jump -g=mt -j=8 -p=./dat/ -f=100 -s=1000\n"
+        << "generator: mt, sfmt\n";
     std::exit(-1);
 }
 
@@ -124,36 +122,31 @@ void run(const std::string& filepath, size_t nThreads, size_t saveFrequency, siz
 
 int main(int argc, const char** argv)
 {
+    ArgMap args = parseArgs(argc, argv);
+    waitForDebugger(args);
+
     // parse command line arguments
     size_t nThreads = std::thread::hardware_concurrency();
     std::string filepath = "./dat/";
     std::string gentype;
     size_t saveFrequency = 100;
     size_t stopIndex = std::numeric_limits<size_t>::max();
-    if (argc % 2 == 0)
-        usage();
-    for (int i = 1; i < argc; i += 2) {
-        string key(argv[i]);
-        const char* value = argv[i + 1];
-        if (key == "-j") {
-            nThreads = atoi(value);
+
+    try {
+        consumeArg(args, "j", false, nThreads);
+        if (consumeArg(args, "p", false, filepath)) {
+            if (filepath.back() != '/') filepath.push_back('/');
         }
-        else if (key == "-p") {
-            filepath = value;
-            if (filepath.back() != '/')
-                filepath.push_back('/');
-        }
-        else if (key == "-g") {
-            gentype = value;
-        }
-        else if (key == "-f") {
-            saveFrequency = atoi(value);
-        }
-        else if (key == "-s") {
-            stopIndex = atoi(value);
-        }
-        else
+        consumeArg(args, "g", true, gentype);
+        consumeArg(args, "f", false, saveFrequency);
+        consumeArg(args, "s", false, stopIndex);
+
+        if (!args.empty())
             usage();
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << "\n";
+        usage();
     }
 
     std::cout << "nThreads = " << nThreads << "\n";
