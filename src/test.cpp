@@ -378,8 +378,8 @@ void test_XVMT19937()
 
     pmatrix_t noJump;
     pmatrix_t jumpMatrix1(new matrix_t, 1);                                          // jump ahead 1 element
-    pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/mt/F00009.bits")), 512);    // jump ahead 2^9 (512) elements
-    pmatrix_t jumpMatrixPeriod(new matrix_t(std::string("./dat/mt/F19937.bits")), 1);   // jump ahead 2^19937 elements
+    pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/mt32/F00009.bits")), 512);    // jump ahead 2^9 (512) elements
+    pmatrix_t jumpMatrixPeriod(new matrix_t(std::string("./dat/mt32/F19937.bits")), 1);   // jump ahead 2^19937 elements
 
     // test VMT generator (VRegBitLen=32 is not supported for multi-state generators)
     startTest(genName[VMT]);

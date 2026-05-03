@@ -61,7 +61,7 @@ void usage()
         << "Syntax:\n"
         << "   jump -g=<generator> [-j=<nthreads>] [-p=<filepath>] [-f=<savefreq>] [-s=<stopindex>] [-wait]\n"
         << "Example:\n"
-        << "   jump -g=mt -j=8 -p=./dat/ -f=100 -s=1000\n"
+        << "   jump -g=mt32 -j=8 -p=./dat/ -f=100 -s=1000\n"
         << " generator must be one of {mt32, sfmt}\n"
         << " nthreads defaults to host concurrency\n"
         << " filepath defaults to ./dat/<genname>\n"
