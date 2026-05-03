@@ -8,6 +8,9 @@ ifndef NBITS
 endif
 $(info NBITS: $(NBITS))
 
+DEBUG ?= 0
+$(info DEBUG: $(DEBUG))
+
 # Detect compiler
 ifeq ($(CXX),)
     CXX := g++
@@ -33,7 +36,13 @@ endif
 # --- Platform & Compiler Specific Flags ---
 ifeq ($(IS_MSVC),1)
     $(info Compiler: $(shell cl 2>&1 | head -1))
-    COMMON_FLAGS := /O2 /MD /EHsc /Zi
+    ifeq ($(DEBUG),1)
+        COMMON_FLAGS := /Od /MDd /EHsc /Zi /FS
+    else
+        COMMON_FLAGS := /O2 /MD /EHsc /Zi /FS
+    endif
+    # /Fd:path/to/pdb ensures each compile has its own PDB or shares a specific one in BINDIR.
+    # Using /FS (Force Synchronous) handles parallel writes to the same PDB.
     CXX_ONLY_FLAGS := /std:c++20
     C_FLAG := /c
     I_FLAG := /I
@@ -42,6 +51,7 @@ ifeq ($(IS_MSVC),1)
     EXE_EXT := .exe
     OUT_OBJ := /Fo:
     OUT_EXE := /Fe:
+    PDB_FLAGS = /Fd:$(basename $@).pdb
 
     ifeq ($(NBITS), native)
         $(info WARNING: NBITS=native not supported with MSVC. Defaulting to 128)
@@ -80,6 +90,9 @@ ifeq ($(IS_MSVC),1)
     endif
 
     LFLAGS := /link Advapi32.lib
+    ifeq ($(DEBUG),1)
+        LFLAGS += /DEBUG
+    endif
     SFMT_FLAGS := /D SFMT_MEXP=19937 /D HAVE_SSE2
 else
     $(info Compiler: $(shell $(CXX) --version | head -1))
@@ -87,7 +100,11 @@ else
     ARCH ?= $(shell uname -m)
     $(info Architecture: $(ARCH))
 
-    COMMON_FLAGS := -O3 -pthread
+    ifeq ($(DEBUG),1)
+        COMMON_FLAGS := -O0 -g
+    else
+        COMMON_FLAGS := -O3
+    endif
     CXX_ONLY_FLAGS := -std=c++20
     C_FLAG := -c
     I_FLAG := -I
@@ -160,7 +177,7 @@ ifneq ("$(wildcard $(TESTU01_DIR)/include/TestU01.h)","")
 endif
 
 # --- Paths & Files ---
-BINDIR := bin-$(NBITS)-$(notdir $(CXX))
+BINDIR := bin-$(NBITS)-$(notdir $(CXX))$(if $(filter 1,$(DEBUG)),-dbg,)
 $(info BINDIR: $(BINDIR))
 
 CPPFLAGS := $(I_FLAG)include
@@ -196,16 +213,20 @@ $(BINDIR):
 	mkdir -p $(BINDIR)
 
 $(MT_OBJ): mt19937-original/mt19937ar.c $(MAKEFILE_DEPS) | $(BINDIR)
-	$(CC) $(CFLAGS) $(C_FLAG) $(OUT_OBJ)$@ $<
+	$(CC) $(CFLAGS) $(if $(IS_MSVC),/FS) $(C_FLAG) $(OUT_OBJ)$@ $(if $(IS_MSVC),$(PDB_FLAGS)) $<
+
+$(MT64_OBJ): mt19937-original/mt19937-64.c $(MAKEFILE_DEPS) | $(BINDIR)
+	$(CC) $(CFLAGS) $(if $(IS_MSVC),/FS) $(D_FLAG)MT19937_64_NO_MAIN $(C_FLAG) $(OUT_OBJ)$@ $(if $(IS_MSVC),$(PDB_FLAGS)) $<
 
 $(SFMT_OBJ): SFMT-src-1.5.1/SFMT.c $(MAKEFILE_DEPS) | $(BINDIR)
-	$(CC) $(CFLAGS) $(SFMT_FLAGS) $(C_FLAG) $(OUT_OBJ)$@ $<
+	$(CC) $(CFLAGS) $(if $(IS_MSVC),/FS) $(SFMT_FLAGS) $(C_FLAG) $(OUT_OBJ)$@ $(if $(IS_MSVC),$(PDB_FLAGS)) $<
 
 $(BINDIR)/%$(OBJ_EXT): src/%.cpp $(MAKEFILE_DEPS) | $(BINDIR)
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(C_FLAG) $(OUT_OBJ)$@ $<
+	$(CXX) $(CXXFLAGS) $(if $(IS_MSVC),/FS) $(CPPFLAGS) $(C_FLAG) $(OUT_OBJ)$@ $(if $(IS_MSVC),$(PDB_FLAGS)) $<
 
 # Specific flags for objects
 ifneq ($(IS_MSVC),1)
+$(BINDIR)/jump$(OBJ_EXT): CXXFLAGS += -pthread
 $(BINDIR)/jump$(EXE_EXT): LFLAGS += -pthread
 endif
 $(BINDIR)/perf$(OBJ_EXT) $(BINDIR)/test$(OBJ_EXT): CPPFLAGS += $(SFMT_FLAGS)
