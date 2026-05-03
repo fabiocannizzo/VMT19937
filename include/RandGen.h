@@ -12,7 +12,7 @@ class RandGen : protected GenBase
     using base_t = GenBase;
 public:
     using matrix_t = typename base_t::matrix_t;
-    using word_t = typename base_t::word_t;
+    using output_word_t = typename base_t::output_word_t;
 
     // re-export useful constants
     static constexpr size_t s_regLenBits = base_t::s_regLenBits;           // logical SIMD register width in bits
@@ -68,9 +68,9 @@ private:
                 THROW("Having multiple states and no sequential jump matrix does not make sense");
 #endif
                 // Fallback for RANDGEN_TESTING only: replicate state 0 to all states.
-                // 32-bit word_t (MT32, SFMT) uses s_n32inReg-based interleaving (j-loop needed for SFMT);
-                // 64-bit word_t (MT64) uses a direct word-level copy.
-                if constexpr (sizeof(word_t) == 4) {
+                // 32-bit output_word_t (MT32, SFMT) uses s_n32inReg-based interleaving (j-loop needed for SFMT);
+                // 64-bit output_word_t (MT64) uses a direct word-level copy.
+                if constexpr (sizeof(output_word_t) == 4) {
                     for (size_t w = 0; w < (size_t)base_t::s_N; ++w)
                         for (size_t j = 0; j < base_t::s_n32InOneWord; ++j)
                             for (size_t s = 1; s < base_t::s_nStates; ++s)
@@ -95,7 +95,7 @@ public:
     // 2) apply commonJump matrix nCommonJumpRepeat times to state 0
     // 3) if multiple states are present, apply sequentialJump matrix to initialize the other states
     // Note that the sequentialJump must be provided only for generators of the V-family, which have multiple states
-    RandGen(word_t seed, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
+    RandGen(output_word_t seed, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
         : base_t()
     {
         reinit(seed, commonJumpRepeat, commonJump, sequentialJump);
@@ -117,7 +117,7 @@ public:
     // 2) apply commonJump matrix nCommonJumpRepeat times to state 0
     // 3) if multiple states are present, apply sequentialJump matrix to initialize the other states
     // Note that the sequentialJump must be provided only for generators of the V-family, which have multiple states
-    void reinit(word_t s, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
+    void reinit(output_word_t s, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
     {
         base_t::reinitMainState(s);
         completeStateInitialization(commonJumpRepeat, commonJump, sequentialJump);
@@ -172,7 +172,7 @@ public:
 
     // generates a block of the same size as the state vector of uniform discrete random numbers
     // for optimal performance the vector dst should be aligned on a 64 byte boundary
-    FORCE_INLINE void genrand_word_blk(word_t* dst)
+    FORCE_INLINE void genrand_word_blk(output_word_t* dst)
     {
         static_assert(QryBlk16, "This function can only be invoked when query mode is QM_Block16");
         base_t::genrand_word_blk(dst);
@@ -185,8 +185,8 @@ public:
         base_t::genrand_uint32_anySize(dst, n);
     }
 
-    // generates n uniform discrete word_t random numbers
-    FORCE_INLINE void genrand_word_anySize(word_t* dst, size_t n)
+    // generates n uniform discrete output_word_t random numbers
+    FORCE_INLINE void genrand_word_anySize(output_word_t* dst, size_t n)
     {
         static_assert(!QryBlk16, "This function can only be invoked when query mode is QM_Any");
         base_t::genrand_word_anySize(dst, n);

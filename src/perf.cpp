@@ -61,10 +61,12 @@ constexpr uint32_t s_seedinit[s_seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 
 extern "C" unsigned long genrand_int32();
 extern "C" void init_by_array(unsigned long init_key[], int key_length);
+extern "C" unsigned long long genrand64_int64();
+extern "C" void init_by_array64(unsigned long long init_key[], unsigned long long key_length);
 
-enum GenMode {orig, sfmt, mkl_mt, mkl_sfmt, xmt32, vmt, vsfmt, stl_mt, xmt64, stl_mt64};
+enum GenMode {orig, sfmt, mkl_mt, mkl_sfmt, xmt32, vmt, vsfmt, xsfmt, stl_mt, xmt64, stl_mt64, orig64};
 
-const char* modename[] = {"ORIG-MT19937", "ORIG-SFMT19937", "MKL-MT19937", "MKL-SFMT19937", "X-MT19937", "V-MT19937", "V-SFMT19937", "STL-MT19937", "X-MT19937-64", "STL-MT19937-64"};
+const char* modename[] = {"ORIG-MT19937", "ORIG-SFMT19937", "MKL-MT19937", "MKL-SFMT19937", "X-MT19937", "V-MT19937", "V-SFMT19937", "X-SFMT19937", "STL-MT19937", "X-MT19937-64", "STL-MT19937-64", "ORIG-MT19937-64"};
 
 const size_t anySize[] = {/* 1, 4, 16, 64, 256, 624, 1024, 4096,*/ 16384 };
 
@@ -109,6 +111,17 @@ struct GenTraits<vsfmt>
     static const SFMT19937Matrix* jumpMatrix() { return psfmt.get(); }
 
     template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw>
+    using gen_t = VSFMT19937<RegBitLen, QM == QM_Block16, BitLenToIsa<RegBitLenHw>::isa>;
+};
+
+// X-SFMT19937: single-state SFMT (VRegBitLen == 128 == s_stateWordBits, so s_nStates == 1)
+template <>
+struct GenTraits<xsfmt>
+{
+    static const GenMode mode = xsfmt;
+    static const SFMT19937Matrix* jumpMatrix() { return nullptr; }
+
+    template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw, std::enable_if_t<RegBitLen == RegBitLenHw, int> = 0>
     using gen_t = VSFMT19937<RegBitLen, QM == QM_Block16, BitLenToIsa<RegBitLenHw>::isa>;
 };
 
@@ -232,6 +245,34 @@ void mtOrigPerformance()
     auto start = std::chrono::system_clock::now();
     for (size_t i = 0; i < g_nRandom; ++i)
         dst[0] = genrand_int32();
+    auto end = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end - start;
+    double nSeconds = elapsed_seconds.count();
+    done(nSeconds);
+
+    addResult(key, nSeconds);
+}
+
+void mtOrig64Performance()
+{
+    Results key(orig64, 64, 64, 1, QM_Scalar);
+
+    key.print();
+
+    if (alreadyHaveEnoughIter(key)) {
+        std::cout << "skip\n";
+        return;
+    }
+
+    unsigned long long init[s_seedlength];
+    for (size_t i = 0; i < s_seedlength; ++i)
+        init[i] = s_seedinit[i];
+
+    init_by_array64(init, s_seedlength);
+
+    auto start = std::chrono::system_clock::now();
+    for (size_t i = 0; i < g_nRandom; ++i)
+        aligneddst[0] = (uint32_t)genrand64_int64();
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
     double nSeconds = elapsed_seconds.count();
@@ -397,14 +438,14 @@ void vRandGenPerformance5(size_t blkSize)
     }
 
     using Gen = typename GenTraits<Mode>::template gen_t<L, QM, I>;
-    using word_t = typename Gen::word_t;
+    using output_word_t = typename Gen::output_word_t;
 
     const typename Gen::matrix_t *jumpMatrixPtr = nullptr;
     if constexpr (Gen::s_nStates > 1)
         jumpMatrixPtr = GenTraits<Mode>::jumpMatrix();
 
     auto makeGen = [&]() -> Gen {
-        if constexpr (sizeof(word_t) == 8)
+        if constexpr (sizeof(output_word_t) == 8)
             return Gen(uint64_t(5489), 0, nullptr, jumpMatrixPtr);
         else
             return Gen(s_seedinit, s_seedlength, 0, nullptr, jumpMatrixPtr);
@@ -415,20 +456,20 @@ void vRandGenPerformance5(size_t blkSize)
 
     for (size_t i = 0, n = g_nRandom / blkSize; i < n; ++i) {
         if constexpr (QM == QM_Scalar) {
-            if constexpr (sizeof(word_t) == 8)
+            if constexpr (sizeof(output_word_t) == 8)
                 aligneddst[0] = (uint32_t)mt.genrand_uint64();
             else
                 aligneddst[0] = mt.genrand_uint32();
         }
         else if constexpr (QM == QM_Block16) {
-            if constexpr (sizeof(word_t) == 8)
-                mt.genrand_word_blk(reinterpret_cast<word_t*>(aligneddst.data()));
+            if constexpr (sizeof(output_word_t) == 8)
+                mt.genrand_word_blk(reinterpret_cast<output_word_t*>(aligneddst.data()));
             else
                 mt.genrand_uint32_blk16(aligneddst.data());
         }
         else if constexpr (QM == QM_Any) {
-            if constexpr (sizeof(word_t) == 8)
-                mt.genrand_word_anySize(reinterpret_cast<word_t*>(aligneddst.data()), blkSize);
+            if constexpr (sizeof(output_word_t) == 8)
+                mt.genrand_word_anySize(reinterpret_cast<output_word_t*>(aligneddst.data()), blkSize);
             else
                 mt.genrand_uint32_anySize(aligneddst.data(), blkSize);
         }
@@ -449,7 +490,7 @@ void vRandGenPerformance5(size_t blkSize)
 template <GenMode Mode, size_t L, size_t I, QryMode QM>
 void vRandGenPerformance4()
 {
-    using word_t = typename GenTraits<Mode>::template gen_t<L, QM, I>::word_t;
+    using output_word_t = typename GenTraits<Mode>::template gen_t<L, QM, I>::output_word_t;
     if constexpr (QM == QM_Any) {
         if (g_testQryN)
             for (auto sz : anySize)
@@ -457,7 +498,7 @@ void vRandGenPerformance4()
     }
     else if constexpr (QM == QM_Block16) {
         if (g_testQry16) {
-            constexpr size_t blkSz = (sizeof(word_t) == 8) ? 8 : 16;
+            constexpr size_t blkSz = (sizeof(output_word_t) == 8) ? 8 : 16;
             vRandGenPerformance5<Mode, L, I, QM>(blkSz);
         }
     }
@@ -471,7 +512,7 @@ template <GenMode Mode, size_t L, size_t I, QryMode...QMs>
 void vRandGenPerformance2()
 {
     constexpr size_t M = std::min<size_t>(L, SIMD_N_BITS);
-    if constexpr (I <= M && (Mode != xmt32 || I == L) && (Mode != xmt64 || I == L))
+    if constexpr (I <= M && (Mode != xmt32 || I == L) && (Mode != xmt64 || I == L) && (Mode != xsfmt || I == L))
         (vRandGenPerformance4<Mode, L, I, QMs>(), ...);
 }
 
@@ -680,7 +721,10 @@ int main(int argc, const char** argv)
 #endif
 #if TEST_VSFMT==1
             if (g_testSFMT) {
-                vRandGenPerformance0<vsfmt, /*32, 128, 256, 512*/ SIMD_N_BITS>();
+                vRandGenPerformance0<xsfmt, 128>();
+#if SIMD_N_BITS >= 256
+                vRandGenPerformance0<vsfmt, /*256, 512*/ SIMD_N_BITS>();
+#endif
             }
 #endif
 #if TEST_XMT==1
@@ -690,6 +734,7 @@ int main(int argc, const char** argv)
 #endif
             if (g_testXMT64) {
 #if TEST_ORIG==1
+                mtOrig64Performance();
                 stlMt64Performance();
 #endif
                 vRandGenPerformance0<xmt64, SIMD_N_BITS>();

@@ -12,11 +12,11 @@ struct MT19937Params;
 template <>
 struct MT19937Params<32>
 {
-    using word_t = uint32_t;
+    using output_word_t = uint32_t;
 
     static constexpr size_t s_nBits = 19937;                                                 // Mersenne exponent; period is 2^19937 - 1
-    static constexpr size_t s_wordSizeBits = 32;                                             // word size w in bits (MT paper notation)
-    static constexpr int s_N = s_nBits / s_wordSizeBits + (s_nBits % s_wordSizeBits != 0);  // 624 - state array length in words
+    static constexpr size_t s_stateWordBits = 32;                                             // word size w in bits (MT paper notation)
+    static constexpr int s_N = s_nBits / s_stateWordBits + (s_nBits % s_stateWordBits != 0);  // 624 - state array length in words
     static constexpr int s_M = 397;                                                          // middle-word offset in the twist recurrence
     static constexpr size_t s_nMatrixBits = s_nBits;                                         // transition matrix dimension in bits
 
@@ -45,17 +45,17 @@ struct MT19937Params<32>
     static constexpr uint32_t s_msb          = 0x80000000UL;
     static constexpr uint32_t s_arrayInitSeed = 19650218UL;
 
-    static constexpr size_t s_n32InOneWord = s_wordSizeBits / 32;       // uint32 elements per word (= 1)
+    static constexpr size_t s_n32InOneWord = s_stateWordBits / 32;       // uint32 elements per word (= 1)
     static constexpr size_t s_n32InOneState = s_N * s_n32InOneWord;     // uint32 elements in the full state (= 624)
 };
 
 template <>
 struct MT19937Params<64>
 {
-    using word_t = uint64_t;
+    using output_word_t = uint64_t;
 
     static constexpr size_t s_nBits = 19937;
-    static constexpr size_t s_wordSizeBits = 64;
+    static constexpr size_t s_stateWordBits = 64;
     static constexpr int s_N = 312;
     static constexpr int s_M = 156;
     static constexpr size_t s_nMatrixBits = s_nBits;
@@ -81,7 +81,7 @@ struct MT19937Params<64>
     static constexpr uint64_t s_msb          = 1ULL << 63;
     static constexpr uint64_t s_arrayInitSeed = 19650218ULL;
 
-    static constexpr size_t s_n32InOneWord  = s_wordSizeBits / 32;   // 2
+    static constexpr size_t s_n32InOneWord  = s_stateWordBits / 32;   // 2
     static constexpr size_t s_n32InOneState = s_N * s_n32InOneWord;  // 624
 };
 
@@ -89,12 +89,12 @@ struct SFMT19937Params
 {
     static constexpr size_t s_nBits = 19937;                                                  // Mersenne exponent; period is 2^19937 - 1
 
-    static constexpr size_t s_wordSizeBits = 128;                                             // SFMT word size: one 128-bit integer element
-    static constexpr int s_N = s_nBits / s_wordSizeBits + (s_nBits % s_wordSizeBits != 0);   // 156 - state array length in 128-bit words
+    static constexpr size_t s_stateWordBits = 128;                                             // SFMT word size: one 128-bit integer element
+    static constexpr int s_N = s_nBits / s_stateWordBits + (s_nBits % s_stateWordBits != 0);   // 156 - state array length in 128-bit words
     static constexpr int s_M = 122;                                                           // POS1 offset in the SFMT recurrence
-    static constexpr size_t s_nMatrixBits = s_N * s_wordSizeBits;                            // FIXME: confirm this value
+    static constexpr size_t s_nMatrixBits = s_N * s_stateWordBits;                            // FIXME: confirm this value
 
-    static const size_t s_n32InOneWord = s_wordSizeBits / 32;       // uint32 elements per 128-bit word (= 4)
+    static const size_t s_n32InOneWord = s_stateWordBits / 32;       // uint32 elements per 128-bit word (= 4)
     static const size_t s_n32InOneState = s_N * s_n32InOneWord;     // uint32 elements in the full state (= 624)
 
     // bit-masks applied to the POS1 element in the SFMT recurrence to ensure maximal period

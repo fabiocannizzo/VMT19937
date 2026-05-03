@@ -301,7 +301,7 @@ template <GenType G, size_t L, size_t I, QryMode QM, typename M>
 void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, const JumpMatrix<M>& seqJump)
 {
     using Gen = typename GenTraits<G, L, I, QM>::gen_t;
-    using word_t = typename Gen::word_t;
+    using output_word_t = typename Gen::output_word_t;
 
     const size_t commonJumpSize = commonJump.p ? commonJump.jumpSize : 0;
     const size_t sequenceJumpSize = seqJump.p ? seqJump.jumpSize : 0;
@@ -312,14 +312,14 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
     constexpr QryMode QryMode = QM;
     constexpr size_t s_nStates = Gen::s_nStates;
     constexpr size_t s_n32InOneWord = Gen::s_n32InOneWord;
-    // number of output word_t values per MT state word (1 for MT32/MT64, 4 for SFMT)
-    constexpr size_t s_nWordInOneWord = s_n32InOneWord * sizeof(uint32_t) / sizeof(word_t);
+    // number of output output_word_t values per MT state word (1 for MT32/MT64, 4 for SFMT)
+    constexpr size_t s_nWordInOneWord = s_n32InOneWord * sizeof(uint32_t) / sizeof(output_word_t);
 
     size_t blkSize;
     switch (QryMode) {
         case QM_Any: blkSize = 0; break;
         case QM_Scalar: blkSize = 1; break;
-        case QM_Block16: blkSize = 64 / sizeof(word_t); break;  // one cache line: 16 x uint32 or 8 x uint64
+        case QM_Block16: blkSize = 64 / sizeof(output_word_t); break;  // one cache line: 16 x uint32 or 8 x uint64
         default: THROW("how did we get here?");
     }
 
@@ -333,8 +333,8 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
         std::cout << "rand";
     std::cout << " ... ";
 
-    const size_t nTest = sizeof(word_t) == 4 ? nRandomTest : nRandomTest64;
-    std::vector<word_t> aligneddst(nTest);
+    const size_t nTest = sizeof(output_word_t) == 4 ? nRandomTest : nRandomTest64;
+    std::vector<output_word_t> aligneddst(nTest);
 
     const M* jumpMat = nullptr;
     if constexpr (s_nStates > 1)
@@ -343,21 +343,21 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
         MYASSERT(!seqJump.p, "sequential jump provided for single-state generator");
 
     Gen mt;
-    if constexpr (sizeof(word_t) == 4)
+    if constexpr (sizeof(output_word_t) == 4)
         mt.reinit(seedinit, seedlength, nCommonJumpRepeat, commonJump.p.get(), jumpMat);
     else
-        mt.reinit((word_t)5489ULL, nCommonJumpRepeat, commonJump.p.get(), jumpMat);
+        mt.reinit((output_word_t)5489ULL, nCommonJumpRepeat, commonJump.p.get(), jumpMat);
 
-    word_t* dst = aligneddst.data();
+    output_word_t* dst = aligneddst.data();
     if constexpr (QryMode != QM_Any) {
         for (size_t i = 0; i < nTest / blkSize; ++i)
             if constexpr (QryMode == QM_Scalar) {
-                if constexpr (sizeof(word_t) == 4)
+                if constexpr (sizeof(output_word_t) == 4)
                     *dst++ = mt.genrand_uint32();
                 else
                     *dst++ = mt.genrand_uint64();
             } else if constexpr (QryMode == QM_Block16) {
-                if constexpr (sizeof(word_t) == 4)
+                if constexpr (sizeof(output_word_t) == 4)
                     mt.genrand_uint32_blk16(dst);
                 else
                     mt.genrand_word_blk(dst);
@@ -367,8 +367,8 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
     }
     else { // QryMode == QM_Any
         size_t n = nTest;
-        word_t* dst = aligneddst.data();
-        if constexpr (sizeof(word_t) == 4) {
+        output_word_t* dst = aligneddst.data();
+        if constexpr (sizeof(output_word_t) == 4) {
             const size_t sz[] = { 1, 2, 3, 4, 7, 8, 9, 15, 16, 17, 31, 32, 33, 127, 128, 129, 623, 624, 625, 800
                                 , 624 * 2 - 1, 624 * 2, 624 * 2 + 1
                                 , 624 * 4 - 1, 624 * 4, 624 * 4 + 1
@@ -398,11 +398,11 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
     }
 
     for (size_t i = 0; i < nTest; ++i) {
-        word_t r2 = aligneddst[i];
+        output_word_t r2 = aligneddst[i];
         size_t genIndex = (i % (s_nWordInOneWord * s_nStates)) / s_nWordInOneWord;
         size_t seqIndex = (i % s_nWordInOneWord) + (i / (s_nWordInOneWord * s_nStates)) * s_nWordInOneWord;
         size_t benchmarkindex = seqIndex + commonJumpSize * nCommonJumpRepeat + sequenceJumpSize * genIndex;
-        if constexpr (sizeof(word_t) == 4) {
+        if constexpr (sizeof(output_word_t) == 4) {
             MYASSERT(benchmark[benchmarkindex] == r2, "FAILED!\n"
                     << "Difference found: out[" << i << "] = " << r2
                     << ", benchmark[" << benchmarkindex  << "] = " << benchmark[benchmarkindex]);
@@ -660,7 +660,6 @@ int main(int argc, const char** argv)
     }
 
     try {
-#if 0
         test_SIMD_special_methods();
         testSimdAlignR32(std::make_index_sequence<128 / 32 + 1>{});
 #if SIMD_N_BITS>=256
@@ -675,7 +674,6 @@ int main(int argc, const char** argv)
         test_XMT19937_64();
         test_XVMT19937();
         test_VSFMT19937();
-#endif
         test_VMT19937_64();
     }
     catch (const std::exception& e) {

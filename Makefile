@@ -245,7 +245,7 @@ endif
 $(BINDIR)/test$(EXE_EXT): $(BINDIR)/test$(OBJ_EXT) $(MT_OBJ) $(MT64_OBJ) $(SFMT_OBJ)
 	$(CXX) $(OUT_EXE)$@ $^ $(LFLAGS)
 
-$(BINDIR)/perf$(EXE_EXT): $(BINDIR)/perf$(OBJ_EXT) $(MT_OBJ) $(SFMT_OBJ) $(CPU_OBJ)
+$(BINDIR)/perf$(EXE_EXT): $(BINDIR)/perf$(OBJ_EXT) $(MT_OBJ) $(MT64_OBJ) $(SFMT_OBJ) $(CPU_OBJ)
 	$(CXX) $(OUT_EXE)$@ $^ $(LFLAGS) $(MKL_LIB_DIR) $(MKL_LIBS)
 
 $(BINDIR)/testu01$(EXE_EXT): $(BINDIR)/testu01$(OBJ_EXT)

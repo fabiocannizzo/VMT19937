@@ -12,7 +12,7 @@ namespace details {
 
 // VRegBitLen  - virtual (logical) SIMD register width in bits. Three constraints apply:
 //   (1) Must be a multiple of IsaTraits<Isa>::HwBitLen (enforced by SimdRegister asserts).
-//   (2) Must be a multiple of s_wordSizeBits (= 128 for SFMT).
+//   (2) Must be a multiple of s_stateWordBits (= 128 for SFMT).
 //   (3) Must correspond to the HwBitLen of a real ISA: one of 128, 256, or 512.
 //       This parameter exists for portability: VSFMT19937<256, ISA::SSE42> and
 //       VSFMT19937<256, ISA::AVX2> produce identical sequences. On SSE42 hardware,
@@ -25,16 +25,16 @@ class SFMT19937Base : public SFMT19937Params
     static constexpr size_t HwBitLen = IsaTraits<Isa>::HwBitLen;
     static_assert(VRegBitLen == 128 || VRegBitLen == 256 || VRegBitLen == 512,
         "VRegBitLen must be a valid SIMD hardware register width (128, 256, or 512)");
-    static_assert(VRegBitLen % s_wordSizeBits == 0,
+    static_assert(VRegBitLen % s_stateWordBits == 0,
         "VRegBitLen must be a multiple of the SFMT word size (128)");
 
 public:
-    using word_t = uint32_t;
+    using output_word_t = uint32_t;
 
     static constexpr size_t s_regLenBits = VRegBitLen;                              // logical SIMD width driving vectorisation (may exceed hardware width)
     static constexpr size_t s_regLenBitsHw = HwBitLen;                         // actual hardware SIMD register width in bits
     static constexpr ISA s_isa = Isa;                                                   // target ISA used for SIMD intrinsic selection
-    static constexpr size_t s_nStates = VRegBitLen / s_wordSizeBits;               // parallel SFMT states packed per logical SIMD register
+    static constexpr size_t s_nStates = VRegBitLen / s_stateWordBits;               // parallel SFMT states packed per logical SIMD register
     static constexpr size_t s_n32inReg = VRegBitLen / 32;                          // uint32 lanes per logical SIMD register
 
     static constexpr size_t s_n32InFullState = s_n32InOneState * s_nStates;            // 624 * nStates - total uint32 elements in the interleaved state array
@@ -42,7 +42,7 @@ public:
     using matrix_t = SFMT19937Matrix;
 
 private:
-    static constexpr size_t s_regLenWords = s_regLenBits / s_wordSizeBits;  // FIXME: review this definition
+    static constexpr size_t s_regLenWords = s_regLenBits / s_stateWordBits;  // FIXME: review this definition
 
     using XV = SimdRegister<s_regLenBits, Isa>;
 
