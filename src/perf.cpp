@@ -93,8 +93,8 @@ struct GenTraits<vmt>
     static const GenMode mode = vmt;
     static const MT19937Matrix<32>* jumpMatrix() { return pmt.get(); }
 
-    template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw>
-    using gen_t = VMT19937<RegBitLen, QM == QM_Block16, BitLenToIsa<RegBitLenHw>::isa>;
+    template <size_t RegBitLen, QryMode QM, size_t HwRegBitLen>
+    using gen_t = VMT19937<RegBitLen, QM == QM_Block16, BitLenToIsa<HwRegBitLen>::isa>;
 };
 
 template <>
@@ -103,8 +103,8 @@ struct GenTraits<xmt32>
     static const GenMode mode = xmt32;
     static const MT19937Matrix<32>* jumpMatrix() { return nullptr; }
 
-    template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw, std::enable_if_t<RegBitLen == RegBitLenHw, int> = 0>
-    using gen_t = XMT19937<BitLenToIsa<RegBitLenHw>::isa, QM == QM_Block16>;
+    template <size_t RegBitLen, QryMode QM, size_t HwRegBitLen, std::enable_if_t<RegBitLen == HwRegBitLen, int> = 0>
+    using gen_t = XMT19937<BitLenToIsa<HwRegBitLen>::isa, QM == QM_Block16>;
 };
 
 template <>
@@ -113,8 +113,8 @@ struct GenTraits<vsfmt>
     static const GenMode mode = vsfmt;
     static const SFMT19937Matrix* jumpMatrix() { return psfmt.get(); }
 
-    template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw>
-    using gen_t = VSFMT19937<RegBitLen, QM == QM_Block16, BitLenToIsa<RegBitLenHw>::isa>;
+    template <size_t RegBitLen, QryMode QM, size_t HwRegBitLen>
+    using gen_t = VSFMT19937<RegBitLen, QM == QM_Block16, BitLenToIsa<HwRegBitLen>::isa>;
 };
 
 // X-SFMT19937: single-state SFMT (VRegBitLen == 128 == s_stateWordBits, so s_nStates == 1)
@@ -124,8 +124,8 @@ struct GenTraits<xsfmt>
     static const GenMode mode = xsfmt;
     static const SFMT19937Matrix* jumpMatrix() { return nullptr; }
 
-    template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw, std::enable_if_t<RegBitLen == RegBitLenHw, int> = 0>
-    using gen_t = VSFMT19937<RegBitLen, QM == QM_Block16, BitLenToIsa<RegBitLenHw>::isa>;
+    template <size_t RegBitLen, QryMode QM, size_t HwRegBitLen, std::enable_if_t<RegBitLen == HwRegBitLen, int> = 0>
+    using gen_t = VSFMT19937<RegBitLen, QM == QM_Block16, BitLenToIsa<HwRegBitLen>::isa>;
 };
 
 template <>
@@ -134,8 +134,8 @@ struct GenTraits<xmt64>
     static const GenMode mode = xmt64;
     static const MT19937Matrix<32>* jumpMatrix() { return nullptr; }
 
-    template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw, std::enable_if_t<RegBitLen == RegBitLenHw, int> = 0>
-    using gen_t = XMT19937_64<BitLenToIsa<RegBitLenHw>::isa, QM == QM_Block16>;
+    template <size_t RegBitLen, QryMode QM, size_t HwRegBitLen, std::enable_if_t<RegBitLen == HwRegBitLen, int> = 0>
+    using gen_t = XMT19937_64<BitLenToIsa<HwRegBitLen>::isa, QM == QM_Block16>;
 };
 
 template <>
@@ -144,8 +144,8 @@ struct GenTraits<vmt64>
     static const GenMode mode = vmt64;
     static const MT19937Matrix<64>* jumpMatrix() { return pvmt64.get(); }
 
-    template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw>
-    using gen_t = VMT19937_64<RegBitLen, QM == QM_Block16, BitLenToIsa<RegBitLenHw>::isa>;
+    template <size_t RegBitLen, QryMode QM, size_t HwRegBitLen>
+    using gen_t = VMT19937_64<RegBitLen, QM == QM_Block16, BitLenToIsa<HwRegBitLen>::isa>;
 };
 
 const size_t s_messageSpacing[] = { 15, 9, 8, 8, 12 };
@@ -693,8 +693,8 @@ int main(int argc, const char** argv)
                 size_t m = 0;
                 std::cout
                     << std::setw(s_messageSpacing[m++]) << "Generator"
-                    << std::setw(s_messageSpacing[m++]) << "WordSize"
-                    << std::setw(s_messageSpacing[m++]) << "RegSize"
+                    << std::setw(s_messageSpacing[m++]) << "VReg"
+                    << std::setw(s_messageSpacing[m++]) << "HwReg"
                     << std::setw(s_messageSpacing[m++]) << "BlkSize"
                     << std::setw(s_messageSpacing[m++]) << "QueryMode"
                     << "\n";
@@ -764,8 +764,8 @@ int main(int argc, const char** argv)
         size_t s = 0;
         std::cout << "\n"
             << std::setw(spacing[s++]) << std::right << "prng"
-            << std::setw(spacing[s++]) << std::right << "g-bits"
-            << std::setw(spacing[s++]) << std::right << "r-bits"
+            << std::setw(spacing[s++]) << std::right << "VReg"
+            << std::setw(spacing[s++]) << std::right << "HwReg"
             << std::setw(spacing[s++]) << std::right << "blksize"
             << std::setw(spacing[s++]) << std::right << "qrymode"
             << std::setw(spacing[s++]) << std::right << "nruns"
