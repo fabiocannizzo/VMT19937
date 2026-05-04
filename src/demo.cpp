@@ -115,6 +115,40 @@ void demoParallel()
     }
 }
 
+// show how to use the multi-state 64-bit MT19937 generator (VMT19937_64)
+void demoVMT64()
+{
+    std::cout << "example of how to use the multi-state 64-bit MT19937 generator (VMT19937_64)\n";
+
+    /*
+        VMT19937_64<128> uses a 128-bit virtual register with M=128/64=2 parallel 64-bit MT states.
+        The sequential jump matrix separates each state by 2^19936 values so they never overlap.
+
+        Number of states by VecLen:
+            128 => 2 states, use ./dat/mt64/F19936.bits
+            256 => 4 states, use ./dat/mt64/F19935.bits
+            512 => 8 states, use ./dat/mt64/F19934.bits
+    */
+    using jump_matrix_t = MT19937Matrix<64>;
+
+    jump_matrix_t* jumpMatrix = new jump_matrix_t(std::string("./dat/mt64/F19936.bits"));
+
+    // Create the generator with VecLen=128 and block-query mode
+    VMT19937_64<128, true> gen(uint64_t(5489), 0, nullptr, jumpMatrix);
+    delete jumpMatrix;
+
+    // Create aligned storage for one cache line of uint64_t values (8 x 8 bytes)
+    AlignedVector<uint64_t, 64> buffer(8);
+
+    // Query 5 times in blocks of 8 numbers
+    for (size_t i = 0; i < 5; ++i) {
+        gen.genrand_word_blk(buffer.data());
+        for (size_t j = 0; j < 8; ++j)
+            std::cout << buffer[j] << ", ";
+    }
+    std::cout << "\n";
+}
+
 // show how to use the 64-bit MT19937 generator (XMT19937_64)
 void demo128_64()
 {
@@ -152,7 +186,11 @@ int main(int argc, const char** argv)
     demoParallel();
     std::cout << "\n\n\n";
 
-    // show 64-bit MT19937 generator
+    // show multi-state 64-bit MT19937 generator
+    demoVMT64();
+    std::cout << "\n\n\n";
+
+    // show single-state 64-bit MT19937 generator
     demo128_64();
 
     return 0;

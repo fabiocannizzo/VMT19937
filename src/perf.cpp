@@ -64,9 +64,9 @@ extern "C" void init_by_array(unsigned long init_key[], int key_length);
 extern "C" unsigned long long genrand64_int64();
 extern "C" void init_by_array64(unsigned long long init_key[], unsigned long long key_length);
 
-enum GenMode {orig, sfmt, mkl_mt, mkl_sfmt, xmt32, vmt, vsfmt, xsfmt, stl_mt, xmt64, stl_mt64, orig64};
+enum GenMode {orig, sfmt, mkl_mt, mkl_sfmt, xmt32, vmt, vsfmt, xsfmt, stl_mt, xmt64, stl_mt64, orig64, vmt64};
 
-const char* modename[] = {"ORIG-MT19937", "ORIG-SFMT19937", "MKL-MT19937", "MKL-SFMT19937", "X-MT19937", "V-MT19937", "V-SFMT19937", "X-SFMT19937", "STL-MT19937", "X-MT19937-64", "STL-MT19937-64", "ORIG-MT19937-64"};
+const char* modename[] = {"ORIG-MT19937", "ORIG-SFMT19937", "MKL-MT19937", "MKL-SFMT19937", "X-MT19937", "V-MT19937", "V-SFMT19937", "X-SFMT19937", "STL-MT19937", "X-MT19937-64", "STL-MT19937-64", "ORIG-MT19937-64", "V-MT19937-64"};
 
 const size_t anySize[] = {/* 1, 4, 16, 64, 256, 624, 1024, 4096,*/ 16384 };
 
@@ -79,6 +79,7 @@ const auto pmt = std::make_unique<MT19937Matrix<32>>(dir + "/mt32/F19933.bits");
 // for maximum period, we should select the file based on the number of states
 // but these periods are so large anyway that who do not care!
 const auto psfmt = std::make_unique<SFMT19937Matrix>(dir + "/sfmt/F19935.bits");
+const auto pvmt64 = std::make_unique<MT19937Matrix<64>>(dir + "/mt64/F19933.bits");
 
 // use the same destination memory in all tests to avoid spurious difference in test results due to memory layout
 // sized for the largest 64-bit anySize block (each element = 8 bytes)
@@ -133,6 +134,16 @@ struct GenTraits<xmt64>
 
     template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw, std::enable_if_t<RegBitLen == RegBitLenHw, int> = 0>
     using gen_t = XMT19937_64<BitLenToIsa<RegBitLenHw>::isa, QM == QM_Block16>;
+};
+
+template <>
+struct GenTraits<vmt64>
+{
+    static const GenMode mode = vmt64;
+    static const MT19937Matrix<64>* jumpMatrix() { return pvmt64.get(); }
+
+    template <size_t RegBitLen, QryMode QM, size_t RegBitLenHw>
+    using gen_t = VMT19937_64<RegBitLen, QM == QM_Block16, BitLenToIsa<RegBitLenHw>::isa>;
 };
 
 const size_t s_messageSpacing[] = { 15, 9, 8, 8, 12 };
@@ -738,6 +749,7 @@ int main(int argc, const char** argv)
                 stlMt64Performance();
 #endif
                 vRandGenPerformance0<xmt64, SIMD_N_BITS>();
+                vRandGenPerformance0<vmt64, SIMD_N_BITS>();
             }
             size_t nResAfter = nResults();
             if (nResAfter == nResBefore)
