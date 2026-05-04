@@ -1,4 +1,5 @@
 #include "RandGen.h"
+#include "cli_args.h"
 
 using namespace xvmt;
 

@@ -1,4 +1,5 @@
 #include "TestUtils.h"
+#include "cli_args.h"
 
 #include <iostream>
 #include <iomanip>
@@ -14,6 +15,7 @@
 
 using namespace std;
 using namespace xvmt;
+using namespace xvmt::details;
 
 #define TEST_MKL 1
 #define TEST_VMT 1

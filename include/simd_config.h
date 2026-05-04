@@ -5,6 +5,8 @@
 
 #include "macros.h"
 
+namespace xvmt {
+
 enum class ISA {
     Scalar,
     SSE2,
@@ -22,6 +24,8 @@ template <> struct IsaTraits<ISA::AVX2>   { static constexpr size_t HwBitLen = 2
 template <> struct IsaTraits<ISA::AVX512> { static constexpr size_t HwBitLen = 512; };
 template <> struct IsaTraits<ISA::NEON>   { static constexpr size_t HwBitLen = 128; };
 
+namespace details {
+
 template <size_t Bits> struct BitLenToIsa;
 template <> struct BitLenToIsa<32>  { static constexpr ISA isa = ISA::Scalar; };
 template <> struct BitLenToIsa<128> {
@@ -34,6 +38,10 @@ template <> struct BitLenToIsa<128> {
 template <> struct BitLenToIsa<64>  { static constexpr ISA isa = ISA::Scalar; };
 template <> struct BitLenToIsa<256> { static constexpr ISA isa = ISA::AVX2; };
 template <> struct BitLenToIsa<512> { static constexpr ISA isa = ISA::AVX512; };
+
+} // namespace details
+
+} // namespace xvmt
 
 #if defined(_MSC_VER) && (_M_IX86_FP==2 || defined(_M_X64))
 #  define __SSE2__

@@ -6,6 +6,7 @@ extern "C" {
 
 #include "RandGen.h"
 #include "TestUtils.h"
+#include "cli_args.h"
 
 #include <cstdint>
 #include <functional>
@@ -15,6 +16,7 @@ extern "C" {
 
 using namespace std;
 using namespace xvmt;
+using namespace xvmt::details;
 //using namespace std::placeholders;
 
 MT19937Matrix<32> j19933(std::string("./dat/mt32/F19933.bits"));

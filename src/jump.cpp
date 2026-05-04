@@ -1,4 +1,5 @@
 #include "jump_matrix.h"
+#include "cli_args.h"
 
 #include <set>
 #include <thread>
@@ -10,6 +11,7 @@
 
 using namespace std;
 using namespace xvmt;
+using namespace xvmt::details;
 
 void wait()
 {

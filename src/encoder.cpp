@@ -1,4 +1,5 @@
 #include "jump_matrix.h"
+#include "cli_args.h"
 
 #include <iostream>
 #include <string>
@@ -6,6 +7,7 @@
 
 using namespace std;
 using namespace xvmt;
+using namespace xvmt::details;
 
 enum class EncodeMode {
     Base64,

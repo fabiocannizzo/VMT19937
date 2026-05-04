@@ -2,6 +2,7 @@
 
 #include "TestUtils.h"
 #include "SIMD.h"
+#include "cli_args.h"
 
 #define SFMT_MEXP 19937
 #include "../SFMT-src-1.5.1/SFMT.h"
@@ -11,6 +12,7 @@
 #include <random>
 
 using namespace xvmt;
+using namespace xvmt::details;
 
 const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };

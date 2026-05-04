@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <cstddef>
 
+namespace xvmt::details {
+
 #ifdef _MSC_VER
 
 inline int64_t popcnt(uint64_t x)
@@ -30,3 +32,5 @@ inline int32_t popcnt(uint32_t x)
 }
 
 #endif
+
+} // namespace xvmt::details
