@@ -148,17 +148,18 @@ struct GenTraits<vmt64>
     using gen_t = VMT19937_64<RegBitLen, QM == QM_Block16, BitLenToIsa<HwRegBitLen>::isa>;
 };
 
-const size_t s_messageSpacing[] = { 15, 9, 8, 8, 12 };
+const size_t s_messageSpacing[] = { 15, 9, 8, 8, 8, 12 };
 
 struct Results
 {
     Results(GenMode _mode, size_t _nb, size_t _ib, size_t _blk, QryMode _qryMode)
-        : mode(_mode), nBits(_nb), nBitsHw(_ib), blkSize(_blk), qryMode(_qryMode), mi(0), ma(0), avg(0), stdev(0)
+        : mode(_mode), nBits(_nb), nBitsHw(_ib), blkSize(_blk), qryMode(_qryMode), nStates(1), mi(0), ma(0), avg(0), stdev(0)
     {}
     GenMode mode;
     size_t nBits, nBitsHw;
     size_t blkSize;
     QryMode qryMode;
+    size_t nStates;
 
     mutable std::vector<double> singleRuns;
     mutable double mi, ma, avg, stdev;
@@ -169,6 +170,7 @@ struct Results
         std::cout
             << std::setw(s_messageSpacing[i++]) << modename[mode]
             << std::setw(s_messageSpacing[i++]) << nBits
+            << std::setw(s_messageSpacing[i++]) << nStates
             << std::setw(s_messageSpacing[i++]) << nBitsHw
             << std::setw(s_messageSpacing[i++]) << blkSize
             << std::setw(s_messageSpacing[i++]) << queryModeName(qryMode)
@@ -441,7 +443,10 @@ void vRandGenPerformance5(size_t blkSize)
 {
     MYASSERT(((blkSize > 0) && ((g_nRandom % blkSize) == 0)), "invalid blkSize " << blkSize);
 
+    using Gen = typename GenTraits<Mode>::template gen_t<L, QM, I>;
+
     Results key(Mode, L, I, blkSize, QM);
+    key.nStates = Gen::s_nStates;
 
     key.print();
 
@@ -450,7 +455,6 @@ void vRandGenPerformance5(size_t blkSize)
         return;
     }
 
-    using Gen = typename GenTraits<Mode>::template gen_t<L, QM, I>;
     using output_word_t = typename Gen::output_word_t;
 
     const typename Gen::matrix_t *jumpMatrixPtr = nullptr;
@@ -694,6 +698,7 @@ int main(int argc, const char** argv)
                 std::cout
                     << std::setw(s_messageSpacing[m++]) << "Generator"
                     << std::setw(s_messageSpacing[m++]) << "VReg"
+                    << std::setw(s_messageSpacing[m++]) << "nStates"
                     << std::setw(s_messageSpacing[m++]) << "HwReg"
                     << std::setw(s_messageSpacing[m++]) << "BlkSize"
                     << std::setw(s_messageSpacing[m++]) << "QueryMode"
@@ -760,11 +765,12 @@ int main(int argc, const char** argv)
 
         std::set<Results, TableCompare> sortedResults(results.begin(), results.end());
 
-        const size_t spacing[] = { 20, 8, 8, 8, 10, 6, 8, 8, 8, 8, 11, 12 };
+        const size_t spacing[] = { 20, 8, 8, 8, 8, 10, 6, 8, 8, 8, 8, 11, 12 };
         size_t s = 0;
         std::cout << "\n"
             << std::setw(spacing[s++]) << std::right << "prng"
             << std::setw(spacing[s++]) << std::right << "VReg"
+            << std::setw(spacing[s++]) << std::right << "nStates"
             << std::setw(spacing[s++]) << std::right << "HwReg"
             << std::setw(spacing[s++]) << std::right << "blksize"
             << std::setw(spacing[s++]) << std::right << "qrymode"
@@ -780,6 +786,7 @@ int main(int argc, const char** argv)
             s = 0;
             std::cout << std::setw(spacing[s++]) << std::right << modename[r.mode]
                 << std::setw(spacing[s++]) << std::right << r.nBits
+                << std::setw(spacing[s++]) << std::right << r.nStates
                 << std::setw(spacing[s++]) << std::right << r.nBitsHw
                 << std::setw(spacing[s++]) << std::right << r.blkSize
                 << std::setw(spacing[s++]) << std::right << queryModeName(r.qryMode)

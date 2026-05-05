@@ -1,14 +1,8 @@
 Define static constant with the number of Bits s_nBits in the jump matrix
 
-Implement tests for V-SFMT and complete tests for MT-64, with the proper jump matrices.
-
 review SFMT19937 matrix parameters
 
 define semantic of XMT vs VMT: I think XMT is when the vlensize = hwlensize. vmt is for vlensize > hwlensize
-
-vectorize XMT-64 and VMT-64
-
-wrap utils and other files in vxmt::details namespace
 
 Results
 - Generate results and save results in the log folder. For each set of results we save CPU features, OS, Compiler.
@@ -29,8 +23,6 @@ SFMT seems quite different from MT and the constants are different. Is it fair t
 Add descipriotn of XMT, which is my vectorization of the various algos as they are, it suffers from the said limittations, I consider it as an intrastate vectorization and can act as  a benchmark.
 
 Review README page
-
-The word size of sfmt should be 128?
 
 Use templates here
 template <> struct GenTraits<mt64>
@@ -56,9 +48,9 @@ There are some non-trivial SIMD methods. Some are etsted. Add tests for them.
 
 Simplify exposed templates
 
-Add more examples in Demo
+Add an easy constructor which pick the correct matrix?
 
-Let's cosndier if to generate all jump matrices up to 2^64 for common jumps?
+Let's consider if to generate all jump matrices up to 2^64 for common jumps?
 
 
 
