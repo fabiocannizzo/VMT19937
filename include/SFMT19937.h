@@ -76,58 +76,112 @@ private:
         return (z ^ y);
     }
 
-    template <int nIter, int JA, int JB, typename XVCst>
-    static FORCE_INLINE void unroll(uint32_t* p, XV& xC, XV& xD, const XVCst& bMask)
+    // Phase 1: xA=srcP[JA], xB=srcP[JB], write to dstP[JA].
+    // A=true: aligned loads/stores (in-place refill on m_state). A=false: unaligned (user buffer).
+    template <bool A, int nIter, int JA, int JB, typename XVCst>
+    static FORCE_INLINE void unrollD1(const uint32_t* srcP, uint32_t* dstP, XV& xC, XV& xD, const XVCst& bMask)
     {
         if constexpr (nIter > 0) {
-            XV xA(p + JA * s_n32inReg);
-            XV xB(p + JB * s_n32inReg);
+            XV xA = XV::template load<A>(srcP + JA * s_n32inReg);
+            XV xB = XV::template load<A>(srcP + JB * s_n32inReg);
             XV tmp = advance1(xA, xB, xC, xD, bMask);
             xC = xD;
             xD = tmp;
-            tmp.template store<true>(p + JA * s_n32inReg);
-            unroll<nIter - 1, JA + 1, JB + 1>(p, xC, xD, bMask);
+            tmp.template store<A>(dstP + JA * s_n32inReg);
+            unrollD1<A, nIter - 1, JA + 1, JB + 1>(srcP, dstP, xC, xD, bMask);
         }
     }
 
-    template <int nUnroll, int nIter, int JB, typename XVCst>
-    static FORCE_INLINE void advanceLoop(uint32_t*& p, XV& xC, XV& xD, const XVCst& bMask)
+    template <bool A, int nUnroll, int nIter, int JBstart, typename XVCst>
+    static FORCE_INLINE void advanceLoopD1(const uint32_t*& srcCur, uint32_t*& dstCur, XV& xC, XV& xD, const XVCst& bMask)
     {
-        // unroll main iterations
         const size_t nMainIter = nIter / nUnroll;
         if constexpr (nMainIter) {
-            auto pend = p + nMainIter * nUnroll * s_n32inReg;
-            // unroll the loop in blocks of UnrollBlkSize
+            auto pend = srcCur + nMainIter * nUnroll * s_n32inReg;
             do {
-                unroll<nUnroll, 0, JB>(p, xC, xD, bMask);
-                p += nUnroll * s_n32inReg;
-            } while (p != pend);
+                unrollD1<A, nUnroll, 0, JBstart>(srcCur, dstCur, xC, xD, bMask);
+                srcCur += nUnroll * s_n32inReg;
+                dstCur += nUnroll * s_n32inReg;
+            } while (srcCur != pend);
         }
-
-        // unroll residual iterations (if any)
         const size_t nResIter = nIter % nUnroll;
         if constexpr (nResIter) {
-            unroll<nResIter, 0, JB>(p, xC, xD, bMask);
-            p += nResIter * s_n32inReg;
+            unrollD1<A, nResIter, 0, JBstart>(srcCur, dstCur, xC, xD, bMask);
+            srcCur += nResIter * s_n32inReg;
+            dstCur += nResIter * s_n32inReg;
+        }
+    }
+
+    // Phase 2: xA=srcP[JA], xB=dstReadP[JA], write to dstReadP[WO+JA].
+    // WO = s_N-s_M (34 for SFMT19937). dstReadP non-const: write at WO+JA > JA.
+    template <bool A, int nIter, int JA, int WO, typename XVCst>
+    static FORCE_INLINE void unrollD2(const uint32_t* srcP, uint32_t* dstReadP, XV& xC, XV& xD, const XVCst& bMask)
+    {
+        if constexpr (nIter > 0) {
+            XV xA = XV::template load<A>(srcP + JA * s_n32inReg);
+            XV xB = XV::template load<A>(dstReadP + JA * s_n32inReg);
+            XV tmp = advance1(xA, xB, xC, xD, bMask);
+            xC = xD;
+            xD = tmp;
+            tmp.template store<A>(dstReadP + (WO + JA) * s_n32inReg);
+            unrollD2<A, nIter - 1, JA + 1, WO>(srcP, dstReadP, xC, xD, bMask);
+        }
+    }
+
+    template <bool A, int nUnroll, int nIter, int WO, typename XVCst>
+    static FORCE_INLINE void advanceLoopD2(const uint32_t*& srcCur, uint32_t*& dstReadCur, XV& xC, XV& xD, const XVCst& bMask)
+    {
+        const size_t nMainIter = nIter / nUnroll;
+        if constexpr (nMainIter) {
+            auto pend = srcCur + nMainIter * nUnroll * s_n32inReg;
+            do {
+                unrollD2<A, nUnroll, 0, WO>(srcCur, dstReadCur, xC, xD, bMask);
+                srcCur += nUnroll * s_n32inReg;
+                dstReadCur += nUnroll * s_n32inReg;
+            } while (srcCur != pend);
+        }
+        const size_t nResIter = nIter % nUnroll;
+        if constexpr (nResIter) {
+            unrollD2<A, nResIter, 0, WO>(srcCur, dstReadCur, xC, xD, bMask);
+            srcCur += nResIter * s_n32inReg;
+            dstReadCur += nResIter * s_n32inReg;
         }
     }
 
     NO_INLINE void refill()
     {
         const int s_M = SFMT19937Params::s_M;
+        const auto bMask = s_bMask;
 
-        // local variables
-        uint32_t* stCur = m_state;
-        XV xC(stCur + (s_N - 2) * s_n32inReg);
-        XV xD(stCur + (s_N - 1) * s_n32inReg);
+        const uint32_t* srcCur = m_state;
+        uint32_t* dstCur = m_state;
+        XV xC(srcCur + (s_N - 2) * s_n32inReg);
+        XV xD(srcCur + (s_N - 1) * s_n32inReg);
 
-        // unroll first part of the loop: (N-M) iterations
-        advanceLoop<2, s_N - s_M, s_M>(stCur, xC, xD, s_bMask);
-
-        // unroll second part of the loop: M iterations
-        advanceLoop<2, s_M, s_M - s_N>(stCur, xC, xD, s_bMask);
+        advanceLoopD1<true, 4, s_N - s_M, s_M>(srcCur, dstCur, xC, xD, bMask);
+        uint32_t* dstReadCur = m_state;
+        advanceLoopD2<true, 4, s_M, s_N - s_M>(srcCur, dstReadCur, xC, xD, bMask);
 
         m_prnd = begin();
+    }
+
+    // Generate one full state block directly into dst, reading state from src.
+    // Phase 1: 34 iters, xA=src[i], xB=src[i+s_M], write dst[i]
+    // Phase 2: 122 iters, xA=src[34+i], xB=dst[i], write dst[34+i]
+    NO_INLINE void refillDirect(const uint32_t* src, uint32_t* dst)
+    {
+        const int s_M = SFMT19937Params::s_M;
+        const auto bMask = s_bMask;
+
+        XV xC(src + (s_N - 2) * s_n32inReg);
+        XV xD(src + (s_N - 1) * s_n32inReg);
+
+        const uint32_t* srcCur = src;
+        uint32_t* dstCur = dst;
+        advanceLoopD1<false, 4, s_N - s_M, s_M>(srcCur, dstCur, xC, xD, bMask);
+
+        uint32_t* dstReadCur = dst;
+        advanceLoopD2<false, 4, s_M, s_N - s_M>(srcCur, dstReadCur, xC, xD, bMask);
     }
 
     const uint32_t* begin() const
@@ -339,6 +393,31 @@ protected:
         else {
             std::copy_n(m_prnd, n, dst);
             m_prnd += n;
+            return;
+        }
+
+        // Fast path: generate subsequent blocks directly into the output buffer,
+        // reading from the previously written output block instead of copying from m_state.
+        if (n >= s_n32InFullState) {
+            std::copy_n(begin(), s_n32InFullState, dst);
+            n -= s_n32InFullState;
+            dst += s_n32InFullState;
+
+            while (n >= s_n32InFullState) {
+                refillDirect(dst - s_n32InFullState, dst);
+                n -= s_n32InFullState;
+                dst += s_n32InFullState;
+            }
+
+            // Update m_state with the last generated block for future scalar/block access.
+            std::copy_n(dst - s_n32InFullState, s_n32InFullState, m_state);
+            m_prnd = end();
+
+            if (n > 0) {
+                refill();
+                std::copy_n(begin(), n, dst);
+                m_prnd += n;
+            }
             return;
         }
 

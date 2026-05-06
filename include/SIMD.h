@@ -104,6 +104,16 @@ public:
             m_v[i].template store<A>(p);
     }
 
+    template <bool A = true>
+    static FORCE_INLINE XV load(const void* p_void)
+    {
+        const uint32_t* p = (const uint32_t*)p_void;
+        XV r;
+        for (size_t i = 0; i < s_M; ++i, p += sizeof(XVHw) / sizeof(uint32_t))
+            r.m_v[i] = XVHw::template load<A>(p);
+        return r;
+    }
+
     friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { XV r; for (size_t i = 0; i < s_M; ++i) r.m_v[i] = a.m_v[i] & b.m_v[i]; return r; }
     template <typename XVI>
     friend FORCE_INLINE XV operator&(const XV& a, const XVI& b)
@@ -270,6 +280,9 @@ struct SimdRegister<32, Isa, void>
     template <bool A>
     FORCE_INLINE void store(uint32_t* dst) { *dst = m_v; }
 
+    template <bool A = true>
+    static FORCE_INLINE XV load(const void* p) { return *(const uint32_t*)p; }
+
     friend FORCE_INLINE XV operator&(const XV a, const XV b) { return a.m_v & b.m_v; }
     friend FORCE_INLINE XV operator^(const XV a, const XV b) { return a.m_v ^ b.m_v; }
     friend FORCE_INLINE XV operator|(const XV a, const XV b) { return a.m_v | b.m_v; }
@@ -393,6 +406,9 @@ struct SimdRegister<128, ISA::NEON, void> : VirtualRegBase<128, ISA::NEON>
     template <bool A>
     FORCE_INLINE void store(uint32_t* dst) { vst1q_u32(dst, m_v); }
 
+    template <bool A = true>
+    static FORCE_INLINE XV load(const void* p) { return vld1q_u32((const uint32_t*)p); }
+
     friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { return vandq_u32(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { return veorq_u32(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { return vorrq_u32(a.m_v, b.m_v); }
@@ -484,6 +500,9 @@ struct SimdRegister<128, Isa, std::enable_if_t<Isa == ISA::SSE2 || Isa == ISA::S
 
     template <bool A>
     FORCE_INLINE void store(uint32_t* dst) { if (A) _mm_store_si128((__m128i*)dst, m_v); else _mm_storeu_si128((__m128i*)dst, m_v); }
+
+    template <bool A = true>
+    static FORCE_INLINE XV load(const void* p) { if constexpr (A) return _mm_load_si128((const __m128i*)p); else return _mm_loadu_si128((const __m128i*)p); }
 
     friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { return _mm_and_si128(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { return _mm_xor_si128(a.m_v, b.m_v); }
@@ -585,6 +604,9 @@ struct SimdRegister<256, ISA::AVX2, void> : VirtualRegBase<256, ISA::AVX2>
 
     template <bool A>
     FORCE_INLINE void store(uint32_t* dst) { if (A) _mm256_store_si256((__m256i*)dst, m_v); else _mm256_storeu_si256((__m256i*)dst, m_v); }
+
+    template <bool A = true>
+    static FORCE_INLINE XV load(const void* p) { if constexpr (A) return _mm256_load_si256((const __m256i*)p); else return _mm256_loadu_si256((const __m256i*)p); }
 
     friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { return _mm256_and_si256(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { return _mm256_xor_si256(a.m_v, b.m_v); }
@@ -689,7 +711,8 @@ struct SimdRegister<512, ISA::AVX512, void> : VirtualRegBase<512, ISA::AVX512>
     template <bool A>
     FORCE_INLINE void store(uint32_t* dst) { if (A) _mm512_store_si512((__m512i*)dst, m_v); else _mm512_storeu_si512((__m512i*)dst, m_v); }
 
-    //    static FORCE_INLINE XV load(const void* p) { return _mm512_loadu_si512((const __m512i*) p); }
+    template <bool A = true>
+    static FORCE_INLINE XV load(const void* p) { if constexpr (A) return _mm512_load_si512(p); else return _mm512_loadu_si512(p); }
 
     friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { return _mm512_and_si512(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { return _mm512_xor_si512(a.m_v, b.m_v); }
