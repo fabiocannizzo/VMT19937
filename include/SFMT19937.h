@@ -76,19 +76,22 @@ private:
         return (z ^ y);
     }
 
-    // Phase 1: xA=srcP[JA], xB=srcP[JB], write to dstP[JA].
+    // xA=srcP[JA], xB=xBBase[JA], write to writeBase[WO+JA].
+    // Phase 1: xBBase=srcP+s_M, writeBase=dstP, WO=0.
+    // Phase 2: xBBase=writeBase=dstReadP, WO=s_N-s_M.
     // A=true: aligned loads/stores (in-place refill on m_state). A=false: unaligned (user buffer).
-    template <bool A, int nIter, int JA, int JB, typename XVCst>
-    static FORCE_INLINE void unrollD1(const uint32_t* srcP, uint32_t* dstP, XV& xC, XV& xD, const XVCst& bMask)
+    template <bool A, int nIter, int JA, int WO, typename XVCst>
+    static FORCE_INLINE void unrollD(const uint32_t* srcP, const uint32_t* xBBase,
+                                     uint32_t* writeBase, XV& xC, XV& xD, const XVCst& bMask)
     {
         if constexpr (nIter > 0) {
             XV xA = XV::template load<A>(srcP + JA * s_n32inReg);
-            XV xB = XV::template load<A>(srcP + JB * s_n32inReg);
+            XV xB = XV::template load<A>(xBBase + JA * s_n32inReg);
             XV tmp = advance1(xA, xB, xC, xD, bMask);
             xC = xD;
             xD = tmp;
-            tmp.template store<A>(dstP + JA * s_n32inReg);
-            unrollD1<A, nIter - 1, JA + 1, JB + 1>(srcP, dstP, xC, xD, bMask);
+            tmp.template store<A>(writeBase + (WO + JA) * s_n32inReg);
+            unrollD<A, nIter - 1, JA + 1, WO>(srcP, xBBase, writeBase, xC, xD, bMask);
         }
     }
 
@@ -99,32 +102,16 @@ private:
         if constexpr (nMainIter) {
             auto pend = srcCur + nMainIter * nUnroll * s_n32inReg;
             do {
-                unrollD1<A, nUnroll, 0, JBstart>(srcCur, dstCur, xC, xD, bMask);
+                unrollD<A, nUnroll, 0, 0>(srcCur, srcCur + JBstart * s_n32inReg, dstCur, xC, xD, bMask);
                 srcCur += nUnroll * s_n32inReg;
                 dstCur += nUnroll * s_n32inReg;
             } while (srcCur != pend);
         }
         const size_t nResIter = nIter % nUnroll;
         if constexpr (nResIter) {
-            unrollD1<A, nResIter, 0, JBstart>(srcCur, dstCur, xC, xD, bMask);
+            unrollD<A, nResIter, 0, 0>(srcCur, srcCur + JBstart * s_n32inReg, dstCur, xC, xD, bMask);
             srcCur += nResIter * s_n32inReg;
             dstCur += nResIter * s_n32inReg;
-        }
-    }
-
-    // Phase 2: xA=srcP[JA], xB=dstReadP[JA], write to dstReadP[WO+JA].
-    // WO = s_N-s_M (34 for SFMT19937). dstReadP non-const: write at WO+JA > JA.
-    template <bool A, int nIter, int JA, int WO, typename XVCst>
-    static FORCE_INLINE void unrollD2(const uint32_t* srcP, uint32_t* dstReadP, XV& xC, XV& xD, const XVCst& bMask)
-    {
-        if constexpr (nIter > 0) {
-            XV xA = XV::template load<A>(srcP + JA * s_n32inReg);
-            XV xB = XV::template load<A>(dstReadP + JA * s_n32inReg);
-            XV tmp = advance1(xA, xB, xC, xD, bMask);
-            xC = xD;
-            xD = tmp;
-            tmp.template store<A>(dstReadP + (WO + JA) * s_n32inReg);
-            unrollD2<A, nIter - 1, JA + 1, WO>(srcP, dstReadP, xC, xD, bMask);
         }
     }
 
@@ -135,14 +122,14 @@ private:
         if constexpr (nMainIter) {
             auto pend = srcCur + nMainIter * nUnroll * s_n32inReg;
             do {
-                unrollD2<A, nUnroll, 0, WO>(srcCur, dstReadCur, xC, xD, bMask);
+                unrollD<A, nUnroll, 0, WO>(srcCur, dstReadCur, dstReadCur, xC, xD, bMask);
                 srcCur += nUnroll * s_n32inReg;
                 dstReadCur += nUnroll * s_n32inReg;
             } while (srcCur != pend);
         }
         const size_t nResIter = nIter % nUnroll;
         if constexpr (nResIter) {
-            unrollD2<A, nResIter, 0, WO>(srcCur, dstReadCur, xC, xD, bMask);
+            unrollD<A, nResIter, 0, WO>(srcCur, dstReadCur, dstReadCur, xC, xD, bMask);
             srcCur += nResIter * s_n32inReg;
             dstReadCur += nResIter * s_n32inReg;
         }
