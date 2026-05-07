@@ -205,7 +205,7 @@ struct VMT19937 : details::RandGen<details::MT19937Base<VRegBitLen, Isa, false, 
     using base_t::RandGen; // reuse constructors
 };
 
-template < ISA Isa = details::BestIsa<512>::isa
+template < ISA Isa = SIMD_ISA
          , bool QryBlk16 = false
          >
 struct XMT19937 : details::RandGen<details::MT19937Base<IsaTraits<Isa>::HwBitLen, Isa, true, QryBlk16, details::MT19937Params<32>>, QryBlk16>
@@ -224,7 +224,7 @@ struct VMT19937_64 : details::RandGen<details::MT19937Base<VRegBitLen, Isa, fals
     using base_t::RandGen; // reuse constructors
 };
 
-template < ISA Isa = details::BestIsa<512>::isa
+template < ISA Isa = SIMD_ISA
          , bool QryBlk16 = false
          >
 struct XMT19937_64 : details::RandGen<details::MT19937Base<(IsaTraits<Isa>::HwBitLen >= 64 ? IsaTraits<Isa>::HwBitLen : 64), Isa, true, QryBlk16, details::MT19937Params<64>>, QryBlk16>

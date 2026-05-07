@@ -173,8 +173,8 @@ private:
         const int s_M = SFMT19937Params::s_M;
         const auto bMask = s_bMask;
 
-        XV xC(src + (s_N - 2) * s_n32inReg);
-        XV xD(src + (s_N - 1) * s_n32inReg);
+        XV xC = XV::template load<false>(src + (s_N - 2) * s_n32inReg);
+        XV xD = XV::template load<false>(src + (s_N - 1) * s_n32inReg);
 
         const uint32_t* srcCur = src;
         uint32_t* dstCur = dst;

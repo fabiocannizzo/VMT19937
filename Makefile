@@ -222,6 +222,12 @@ else
     # MKL Discovery for GCC
     ifndef MKLROOT
         MKLROOT := /opt/intel/oneapi/mkl/latest
+        ifeq ("$(wildcard $(MKLROOT)/include/mkl.h)","")
+            _MKL_H := $(firstword $(wildcard /opt/intel/oneapi/mkl/*/include/mkl.h))
+            ifneq ($(_MKL_H),)
+                MKLROOT := $(patsubst %/include/mkl.h,%,$(_MKL_H))
+            endif
+        endif
     endif
     ifneq ("$(wildcard $(MKLROOT)/include/mkl.h)","")
         MKL_AVAIL := 1
@@ -231,6 +237,11 @@ else
         else
             MKL_LIB_DIR := -L$(MKLROOT)/lib
         endif
+        MKL_LIBS := -lmkl_gf_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl
+    else ifneq ("$(wildcard /usr/include/mkl/mkl.h)","")
+        MKL_AVAIL := 1
+        MKL_INC   := -I/usr/include/mkl
+        MKL_LIB_DIR :=
         MKL_LIBS := -lmkl_gf_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl
     endif
 endif

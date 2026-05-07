@@ -676,7 +676,7 @@ struct SimdRegister<256, ISA::AVX2, void> : VirtualRegBase<256, ISA::AVX2>
 #ifdef __AVX512VL__
         return _mm256_ternarylogic_epi32(mask.m_v, a.m_v, b.m_v, 0xCA);
 #else
-        return _mm256_castps_si256(_mm256_blendv_ps(_mm256_castsi256_ps(b.m_v), _mm256_castsi256_ps(a.m_v), _mm256_castsi256_ps(mask.m_v)));
+        return _mm256_or_si256(_mm256_and_si256(mask.m_v, a.m_v), _mm256_andnot_si256(mask.m_v, b.m_v));
 #endif
     }
 
