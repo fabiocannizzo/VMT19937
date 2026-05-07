@@ -724,9 +724,13 @@ int main(int argc, const char** argv)
 
 #if TEST_MKL==1
             if (g_testMkl) {
+                if (g_testQry1)
+                    mklPerformance(VSL_BRNG_MT19937, 1);
                 for (auto sz : anySize)
                     mklPerformance(VSL_BRNG_MT19937, (MKL_INT)sz);
                 if (g_testSFMT) {
+                    if (g_testQry1)
+                        mklPerformance(VSL_BRNG_SFMT19937, 1);
                     for (auto sz : anySize)
                         mklPerformance(VSL_BRNG_SFMT19937, (MKL_INT)sz);
                 }
