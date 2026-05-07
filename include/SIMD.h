@@ -619,10 +619,15 @@ struct SimdRegister<256, ISA::AVX2, void> : VirtualRegBase<256, ISA::AVX2>
 
     FORCE_INLINE XV xorIfOddCst64(const XV& cond, const XV& cst) const
     {
+#ifdef __AVX512VL__
+        __mmask8 isOdd = _mm256_test_epi64_mask(cond.m_v, _mm256_set1_epi64x(1LL));
+        return _mm256_mask_xor_epi64(m_v, isOdd, m_v, cst.m_v);
+#else
         __m256i lowestBit = _mm256_slli_epi64(cond.m_v, 63);
         __m256i hi   = _mm256_shuffle_epi32(lowestBit, 0xF5);
         __m256i mask = _mm256_srai_epi32(hi, 31);
         return _mm256_xor_si256(m_v, _mm256_and_si256(mask, cst.m_v));
+#endif
     }
 
     template <unsigned n32FromSecond>
@@ -634,6 +639,10 @@ struct SimdRegister<256, ISA::AVX2, void> : VirtualRegBase<256, ISA::AVX2>
             return a;
         else if constexpr (n32FromSecond == 8)
             return b;
+#ifdef __AVX512VL__
+        else
+            return _mm256_alignr_epi32(b.m_v, a.m_v, n32FromSecond);
+#else
         else {
             // Combine the high 128 bits of v0 with the low 128 bits of v1.
             __m256i aHibLo = _mm256_permute2x128_si256(a.m_v, b.m_v, 0x21);
@@ -650,6 +659,7 @@ struct SimdRegister<256, ISA::AVX2, void> : VirtualRegBase<256, ISA::AVX2>
                 return _mm256_alignr_epi8(b.m_v, aHibLo, 4*n32FromSecond - 16);
             }
         }
+#endif
     }
 
     template <int n>
@@ -663,17 +673,28 @@ struct SimdRegister<256, ISA::AVX2, void> : VirtualRegBase<256, ISA::AVX2>
 
     FORCE_INLINE static XV bitwiseSelect(const XV mask, const XV a, const XV b)
     {
+#ifdef __AVX512VL__
+        return _mm256_ternarylogic_epi32(mask.m_v, a.m_v, b.m_v, 0xCA);
+#else
         return _mm256_castps_si256(_mm256_blendv_ps(_mm256_castsi256_ps(b.m_v), _mm256_castsi256_ps(a.m_v), _mm256_castsi256_ps(mask.m_v)));
+#endif
     }
+
+#ifdef __AVX512VL__
+    static FORCE_INLINE XV ternary(const XV& a, const XV& b, const XV& c, int imm)
+    {
+        return _mm256_ternarylogic_epi32(a.m_v, b.m_v, c.m_v, imm);
+    }
+#endif
 
     FORCE_INLINE XV ifOddCst32ElseZero(const XV cst32) const
     {
+#ifdef __AVX512VL__
+        __mmask8 isOdd = _mm256_test_epi32_mask(m_v, _mm256_set1_epi32(1));
+        return _mm256_maskz_mov_epi32(isOdd, cst32.m_v);
+#else
         const __m256i z = zero().m_v;
         const __m256i lowestBit = _mm256_slli_epi32(m_v, 31); // move least significant bit to most significant bit
-#if 0
-        const __m256i isOdd = _mm256_cmpgt_epi32(z, lowestBit);
-        return _mm256_and_si256(value.m_v, isOdd);
-#else
         const __m256 mask = _mm256_castsi256_ps(lowestBit);
         return _mm256_castps_si256(_mm256_blendv_ps(_mm256_castsi256_ps(z), _mm256_castsi256_ps(cst32.m_v), mask));
 #endif
