@@ -148,40 +148,30 @@ private:
         }
     }
 
-    NO_INLINE void refill()
+    // A=true: aligned loads/stores (src/dst == m_state). A=false: unaligned (caller buffer).
+    // Phase 1: s_N-s_M iters — xA=src[i], xB=src[i+s_M], write dst[i]
+    // Phase 2: s_M iters    — xA=src[s_N-s_M+i], xB=dst[i], write dst[s_N-s_M+i]
+    template <bool A>
+    static NO_INLINE void refillImpl(const uint32_t* src, uint32_t* dst)
     {
         const int s_M = SFMT19937Params::s_M;
         const auto bMask = s_bMask;
 
-        const uint32_t* srcCur = m_state;
-        uint32_t* dstCur = m_state;
-        XV xC(srcCur + (s_N - 2) * s_n32inReg);
-        XV xD(srcCur + (s_N - 1) * s_n32inReg);
-
-        advanceLoopD1<true, 4, s_N - s_M, s_M>(srcCur, dstCur, xC, xD, bMask);
-        uint32_t* dstReadCur = m_state;
-        advanceLoopD2<true, 4, s_M, s_N - s_M>(srcCur, dstReadCur, xC, xD, bMask);
-
-        m_prnd = begin();
-    }
-
-    // Generate one full state block directly into dst, reading state from src.
-    // Phase 1: 34 iters, xA=src[i], xB=src[i+s_M], write dst[i]
-    // Phase 2: 122 iters, xA=src[34+i], xB=dst[i], write dst[34+i]
-    NO_INLINE void refillDirect(const uint32_t* src, uint32_t* dst)
-    {
-        const int s_M = SFMT19937Params::s_M;
-        const auto bMask = s_bMask;
-
-        XV xC = XV::template load<false>(src + (s_N - 2) * s_n32inReg);
-        XV xD = XV::template load<false>(src + (s_N - 1) * s_n32inReg);
+        XV xC = XV::template load<A>(src + (s_N - 2) * s_n32inReg);
+        XV xD = XV::template load<A>(src + (s_N - 1) * s_n32inReg);
 
         const uint32_t* srcCur = src;
         uint32_t* dstCur = dst;
-        advanceLoopD1<false, 4, s_N - s_M, s_M>(srcCur, dstCur, xC, xD, bMask);
+        advanceLoopD1<A, 4, s_N - s_M, s_M>(srcCur, dstCur, xC, xD, bMask);
 
         uint32_t* dstReadCur = dst;
-        advanceLoopD2<false, 4, s_M, s_N - s_M>(srcCur, dstReadCur, xC, xD, bMask);
+        advanceLoopD2<A, 4, s_M, s_N - s_M>(srcCur, dstReadCur, xC, xD, bMask);
+    }
+
+    NO_INLINE void refill()
+    {
+        refillImpl<true>(m_state, m_state);
+        m_prnd = begin();
     }
 
     const uint32_t* begin() const
@@ -353,11 +343,8 @@ protected:
     // generates a random number on [0,0xffffffff] interval
     uint32_t FORCE_INLINE genrand_uint32()
     {
-        if (m_prnd != end())
-            return *m_prnd++;
-
-        refill();
-
+        if (m_prnd == end()) [[unlikely]]
+            refill();
         return *m_prnd++;
     }
 
@@ -365,13 +352,9 @@ protected:
     // for optimal performance the vector dst should be aligned on a 64 byte boundary
     void genrand_uint32_blk16(uint32_t* dst)
     {
-        if (m_prnd != end()) {
-            getBlock16(dst);
-        }
-        else {
+        if (m_prnd == end()) [[unlikely]]
             refill();
-            getBlock16(dst);
-        }
+        getBlock16(dst);
     }
 
     // generates a block of the same size as the state vector of uniform discrete random numbers in [0,0xffffffff] interval
@@ -404,7 +387,7 @@ protected:
             dst += s_n32InFullState;
 
             while (n >= s_n32InFullState) {
-                refillDirect(dst - s_n32InFullState, dst);
+                refillImpl<false>(dst - s_n32InFullState, dst);
                 n -= s_n32InFullState;
                 dst += s_n32InFullState;
             }
@@ -419,13 +402,6 @@ protected:
                 m_prnd += n;
             }
             return;
-        }
-
-        while (n >= s_n32InFullState) {
-            std::copy_n(m_prnd, s_n32InFullState, dst);
-            n -= s_n32InFullState;
-            dst += s_n32InFullState;
-            refill();
         }
 
         std::copy_n(begin(), n, dst);
