@@ -68,6 +68,7 @@ namespace details {
 } // namespace details
 } // namespace xvmt
 
+#ifndef SIMD_N_BITS
 #if defined(__AVX512F__)
 #   define SIMD_N_BITS 512
 #   define SIMD_ISA ISA::AVX512
@@ -85,6 +86,23 @@ namespace details {
 #   define SIMD_N_BITS 128
 #   define SIMD_ISA ISA::NEON
 #endif
+#endif /* SIMD_N_BITS */
+
+#ifndef SIMD_ISA
+#  if SIMD_N_BITS == 512
+#    define SIMD_ISA ISA::AVX512
+#  elif SIMD_N_BITS == 256
+#    define SIMD_ISA ISA::AVX2
+#  elif SIMD_N_BITS == 128
+#    if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__)
+#      define SIMD_ISA ISA::NEON
+#    else
+#      define SIMD_ISA ISA::SSE42
+#    endif
+#  else
+#    define SIMD_ISA ISA::Scalar
+#  endif
+#endif /* SIMD_ISA */
 
 #ifdef SIMD_N_BITS
 #   if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__)
