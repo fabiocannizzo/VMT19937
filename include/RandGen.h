@@ -195,6 +195,11 @@ public:
 
 } // namespace details
 
+// V-Family: Inter-state vectorized generators.
+// VRegBitLen determines the mathematical sequence (number of parallel states).
+// Isa determines the hardware optimization level. BestIsa<VRegBitLen> ensures 
+// the highest performance available on the current machine for the given VRegBitLen,
+// falling back to emulation if VRegBitLen > hardware register size.
 template < size_t VRegBitLen = SIMD_N_BITS
          , bool QryBlk16 = false
          , ISA Isa = details::BestIsa<VRegBitLen>::isa
@@ -214,6 +219,7 @@ struct XMT19937 : details::RandGen<details::MT19937Base<IsaTraits<Isa>::HwBitLen
     using base_t::RandGen; // reuse constructors
 };
 
+// V-Family: Inter-state vectorized 64-bit MT.
 template < size_t VRegBitLen = SIMD_N_BITS
          , bool QryBlk16 = false
          , ISA Isa = details::BestIsa<VRegBitLen>::isa
@@ -224,6 +230,7 @@ struct VMT19937_64 : details::RandGen<details::MT19937Base<VRegBitLen, Isa, fals
     using base_t::RandGen; // reuse constructors
 };
 
+// X-Family: Intra-state vectorized 64-bit MT.
 template < ISA Isa = SIMD_ISA
          , bool QryBlk16 = false
          >
@@ -233,6 +240,7 @@ struct XMT19937_64 : details::RandGen<details::MT19937Base<(IsaTraits<Isa>::HwBi
     using base_t::RandGen; // reuse constructors
 };
 
+// V-Family: Inter-state vectorized SFMT.
 template < size_t VRegBitLen = SIMD_N_BITS
          , bool QryBlk16 = false
          , ISA Isa = details::BestIsa<VRegBitLen>::isa
@@ -240,6 +248,16 @@ template < size_t VRegBitLen = SIMD_N_BITS
 struct VSFMT19937 : details::RandGen<details::SFMT19937Base<VRegBitLen, Isa>, QryBlk16>
 {
     using base_t = details::RandGen<details::SFMT19937Base<VRegBitLen, Isa>, QryBlk16>;
+    using base_t::RandGen; // reuse constructors
+};
+
+// X-Family: Intra-state vectorized SFMT.
+template < ISA Isa = SIMD_ISA
+         , bool QryBlk16 = false
+         >
+struct XSFMT19937 : details::RandGen<details::SFMT19937Base<128, Isa>, QryBlk16>
+{
+    using base_t = details::RandGen<details::SFMT19937Base<128, Isa>, QryBlk16>;
     using base_t::RandGen; // reuse constructors
 };
 

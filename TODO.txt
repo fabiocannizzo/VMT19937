@@ -22,15 +22,6 @@ d sometime is represented in hexadecimal, sometimes in binary. Let's be consiste
 SFMT seems quite different from MT and the constants are different. Is it fair that it share the "common framework" section with the others?
 Add descipriotn of XMT, which is my vectorization of the various algos as they are, it suffers from the said limittations, I consider it as an intrastate vectorization and can act as  a benchmark.
 
-Review README page
-
-Use templates here
-template <> struct GenTraits<mt64>
-{
-    typedef MT19937_64Matrix /*use template*/ matrix_t;
-    static const size_t power2 = 0;
-};
-
 Remove jump matrix argument from XMT constructors
 
 Encapsulate as methods generators classes code which used generator constants?
