@@ -95,43 +95,27 @@ private:
         }
     }
 
-    template <bool A, int nUnroll, int nIter, int JBstart, typename XVCst>
-    static FORCE_INLINE void advanceLoopD1(const uint32_t*& srcCur, uint32_t*& dstCur, XV& xC, XV& xD, const XVCst& bMask)
+    // XBBaseFromSrc=true  (phase 1): xBBase = srcCur + JBstart*..., writeBase = ptr2
+    // XBBaseFromSrc=false (phase 2): xBBase = ptr2 = writeBase
+    template <bool A, int nUnroll, int nIter, bool XBBaseFromSrc, int JBstart, int WO, typename XVCst>
+    static FORCE_INLINE void advanceLoopD(const uint32_t*& srcCur, uint32_t*& ptr2, XV& xC, XV& xD, const XVCst& bMask)
     {
         const size_t nMainIter = nIter / nUnroll;
         if constexpr (nMainIter) {
             auto pend = srcCur + nMainIter * nUnroll * s_n32inReg;
             do {
-                unrollD<A, nUnroll, 0, 0>(srcCur, srcCur + JBstart * s_n32inReg, dstCur, xC, xD, bMask);
+                const uint32_t* xBBase = XBBaseFromSrc ? srcCur + JBstart * s_n32inReg : ptr2;
+                unrollD<A, nUnroll, 0, WO>(srcCur, xBBase, ptr2, xC, xD, bMask);
                 srcCur += nUnroll * s_n32inReg;
-                dstCur += nUnroll * s_n32inReg;
+                ptr2 += nUnroll * s_n32inReg;
             } while (srcCur != pend);
         }
         const size_t nResIter = nIter % nUnroll;
         if constexpr (nResIter) {
-            unrollD<A, nResIter, 0, 0>(srcCur, srcCur + JBstart * s_n32inReg, dstCur, xC, xD, bMask);
+            const uint32_t* xBBase = XBBaseFromSrc ? srcCur + JBstart * s_n32inReg : ptr2;
+            unrollD<A, nResIter, 0, WO>(srcCur, xBBase, ptr2, xC, xD, bMask);
             srcCur += nResIter * s_n32inReg;
-            dstCur += nResIter * s_n32inReg;
-        }
-    }
-
-    template <bool A, int nUnroll, int nIter, int WO, typename XVCst>
-    static FORCE_INLINE void advanceLoopD2(const uint32_t*& srcCur, uint32_t*& dstReadCur, XV& xC, XV& xD, const XVCst& bMask)
-    {
-        const size_t nMainIter = nIter / nUnroll;
-        if constexpr (nMainIter) {
-            auto pend = srcCur + nMainIter * nUnroll * s_n32inReg;
-            do {
-                unrollD<A, nUnroll, 0, WO>(srcCur, dstReadCur, dstReadCur, xC, xD, bMask);
-                srcCur += nUnroll * s_n32inReg;
-                dstReadCur += nUnroll * s_n32inReg;
-            } while (srcCur != pend);
-        }
-        const size_t nResIter = nIter % nUnroll;
-        if constexpr (nResIter) {
-            unrollD<A, nResIter, 0, WO>(srcCur, dstReadCur, dstReadCur, xC, xD, bMask);
-            srcCur += nResIter * s_n32inReg;
-            dstReadCur += nResIter * s_n32inReg;
+            ptr2 += nResIter * s_n32inReg;
         }
     }
 
@@ -147,15 +131,17 @@ private:
         XV xC = XV::template load<A>(src + (s_N - 2) * s_n32inReg);
         XV xD = XV::template load<A>(src + (s_N - 1) * s_n32inReg);
 
+        // phase 1
         const uint32_t* srcCur = src;
         uint32_t* dstCur = dst;
-        advanceLoopD1<A, 4, s_N - s_M, s_M>(srcCur, dstCur, xC, xD, bMask);
+        advanceLoopD<A, 4, s_N - s_M, true,  s_M, 0        >(srcCur, dstCur,      xC, xD, bMask);
 
+        // phase 2
         uint32_t* dstReadCur = dst;
-        advanceLoopD2<A, 4, s_M, s_N - s_M>(srcCur, dstReadCur, xC, xD, bMask);
+        advanceLoopD<A, 4, s_M,       false, 0,   s_N - s_M>(srcCur, dstReadCur, xC, xD, bMask);
     }
 
-    NO_INLINE void refill()
+    FORCE_INLINE void refill()
     {
         refillImpl<true>(m_state, m_state);
         m_prnd = begin();
