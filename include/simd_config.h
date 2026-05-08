@@ -13,7 +13,8 @@ enum class ISA {
     SSE42,
     AVX2,
     AVX512,
-    NEON
+    NEON,
+    SVE256
 };
 
 template <ISA isa> struct IsaTraits;
@@ -23,6 +24,7 @@ template <> struct IsaTraits<ISA::SSE42>  { static constexpr size_t HwBitLen = 1
 template <> struct IsaTraits<ISA::AVX2>   { static constexpr size_t HwBitLen = 256; };
 template <> struct IsaTraits<ISA::AVX512> { static constexpr size_t HwBitLen = 512; };
 template <> struct IsaTraits<ISA::NEON>   { static constexpr size_t HwBitLen = 128; };
+template <> struct IsaTraits<ISA::SVE256> { static constexpr size_t HwBitLen = 256; };
 
 namespace details {
 
@@ -36,7 +38,13 @@ template <> struct BitLenToIsa<128> {
 #endif
 };
 template <> struct BitLenToIsa<64>  { static constexpr ISA isa = ISA::Scalar; };
-template <> struct BitLenToIsa<256> { static constexpr ISA isa = ISA::AVX2; };
+template <> struct BitLenToIsa<256> {
+#if defined(__ARM_FEATURE_SVE) && (defined(__aarch64__) || defined(_M_ARM64))
+    static constexpr ISA isa = ISA::SVE256;
+#else
+    static constexpr ISA isa = ISA::AVX2;
+#endif
+};
 template <> struct BitLenToIsa<512> { static constexpr ISA isa = ISA::AVX512; };
 
 } // namespace details
@@ -60,7 +68,11 @@ namespace details {
 #elif defined(__SSE4_2__)
         static constexpr ISA isa = ISA::SSE42;
 #elif defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__)
+#  if defined(__ARM_FEATURE_SVE) && (defined(__aarch64__) || defined(_M_ARM64))
+        static constexpr ISA isa = (Bits >= 256) ? ISA::SVE256 : ISA::NEON;
+#  else
         static constexpr ISA isa = ISA::NEON;
+#  endif
 #else
         static constexpr ISA isa = ISA::Scalar;
 #endif
@@ -83,8 +95,13 @@ namespace details {
 #elif defined(__SSE2__)
 #   error SSE4.2 is needed
 #elif defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__)
-#   define SIMD_N_BITS 128
-#   define SIMD_ISA ISA::NEON
+#   if defined(__ARM_FEATURE_SVE) && (defined(__aarch64__) || defined(_M_ARM64))
+#       define SIMD_N_BITS 256
+#       define SIMD_ISA ISA::SVE256
+#   else
+#       define SIMD_N_BITS 128
+#       define SIMD_ISA ISA::NEON
+#   endif
 #endif
 #endif /* SIMD_N_BITS */
 
@@ -92,7 +109,11 @@ namespace details {
 #  if SIMD_N_BITS == 512
 #    define SIMD_ISA ISA::AVX512
 #  elif SIMD_N_BITS == 256
-#    define SIMD_ISA ISA::AVX2
+#    if defined(__ARM_FEATURE_SVE) && (defined(__aarch64__) || defined(_M_ARM64))
+#      define SIMD_ISA ISA::SVE256
+#    else
+#      define SIMD_ISA ISA::AVX2
+#    endif
 #  elif SIMD_N_BITS == 128
 #    if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__)
 #      define SIMD_ISA ISA::NEON
@@ -107,6 +128,9 @@ namespace details {
 #ifdef SIMD_N_BITS
 #   if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__)
 #       include <arm_neon.h>
+#       if defined(__ARM_FEATURE_SVE)
+#           include <arm_sve.h>
+#       endif
 #   else
 #       include <immintrin.h>
 #       ifdef _MSC_VER

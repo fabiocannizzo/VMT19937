@@ -584,6 +584,148 @@ struct SimdRegister<128, Isa, std::enable_if_t<Isa == ISA::SSE2 || Isa == ISA::S
 #endif
 
 #if SIMD_N_BITS>=256
+
+#if defined(__ARM_FEATURE_SVE) && (defined(__aarch64__) || defined(_M_ARM64))
+template <>
+struct SimdRegister<256, ISA::SVE256, void> : VirtualRegBase<256, ISA::SVE256>
+{
+    svuint32_t m_v;
+
+    typedef SimdRegister<256, ISA::SVE256> XV;
+
+    SimdRegister() {}
+    FORCE_INLINE SimdRegister(uint32_t v) : m_v(svdup_u32(v)) {}
+    FORCE_INLINE SimdRegister(uint64_t v) : m_v(svreinterpret_u32_u64(svdup_u64(v))) {}
+    FORCE_INLINE SimdRegister(uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3)
+    {
+        alignas(32) uint32_t data[8] = { v0, v1, v2, v3, v0, v1, v2, v3 };
+        m_v = svld1_u32(svptrue_b32(), data);
+    }
+    FORCE_INLINE SimdRegister(const void* p)
+        : m_v(svld1_u32(svptrue_b32(), (const uint32_t*)p)) {}
+    FORCE_INLINE SimdRegister(svuint32_t v) : m_v(v) {}
+
+    template <bool A>
+    FORCE_INLINE void store(uint32_t* dst) const { svst1_u32(svptrue_b32(), dst, m_v); }
+
+    template <bool A = true>
+    static FORCE_INLINE XV load(const void* p)
+    {
+        return svld1_u32(svptrue_b32(), (const uint32_t*)p);
+    }
+
+    static FORCE_INLINE XV zero() { return svdup_u32(0); }
+
+    friend FORCE_INLINE XV operator&(const XV& a, const XV& b)
+    { return svand_u32_x(svptrue_b32(), a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator^(const XV& a, const XV& b)
+    { return sveor_u32_x(svptrue_b32(), a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator|(const XV& a, const XV& b)
+    { return svorr_u32_x(svptrue_b32(), a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator<<(const XV& a, const int n)
+    { return svlsl_u32_x(svptrue_b32(), a.m_v, svdup_u32(n)); }
+    friend FORCE_INLINE XV operator>>(const XV& a, const int n)
+    { return svlsr_u32_x(svptrue_b32(), a.m_v, svdup_u32(n)); }
+
+    friend FORCE_INLINE XV shl64(const XV& a, int n)
+    {
+        return svreinterpret_u32_u64(
+            svlsl_u64_x(svptrue_b64(), svreinterpret_u64_u32(a.m_v), svdup_u64(n)));
+    }
+    friend FORCE_INLINE XV shr64(const XV& a, int n)
+    {
+        return svreinterpret_u32_u64(
+            svlsr_u64_x(svptrue_b64(), svreinterpret_u64_u32(a.m_v), svdup_u64(n)));
+    }
+
+    // Treat the 256-bit SVE register as a contiguous array of 8 x uint32.
+    // result[i] = a[i+n32FromSecond] for i+n32FromSecond<8, else b[i+n32FromSecond-8]
+    template <unsigned n32FromSecond>
+    static FORCE_INLINE XV alignr32(const XV& a, const XV& b)
+    {
+        static_assert(n32FromSecond <= 8, "n32FromSecond must be <= 8 for SVE256");
+        if constexpr (n32FromSecond == 0) return a;
+        if constexpr (n32FromSecond == 8) return b;
+        return svext_u32(a.m_v, b.m_v, n32FromSecond);
+    }
+
+    // Per-128-bit-lane byte shift — matches AVX2 _mm256_bslli_epi128 / _mm256_bsrli_epi128 semantics.
+    // Each 128-bit lane is shifted independently, using NEON intrinsics on the extracted q-registers.
+    template <int n>
+    static FORCE_INLINE XV shl128(const XV& a)
+    {
+        if constexpr (n == 0) return a;
+        if constexpr (n >= 16) return zero();
+        svuint32_t z = svdup_u32(0);
+        uint32x4_t lo = svget_neonq_u32(a.m_v);
+        uint32x4_t hi = svget_neonq_u32(svext_u32(a.m_v, z, 4));
+        lo = vreinterpretq_u32_u8(vextq_u8(vdupq_n_u8(0), vreinterpretq_u8_u32(lo), 16 - n));
+        hi = vreinterpretq_u32_u8(vextq_u8(vdupq_n_u8(0), vreinterpretq_u8_u32(hi), 16 - n));
+        svuint32_t lo_sve = svset_neonq_u32(z, lo);
+        svuint32_t hi_sve = svset_neonq_u32(z, hi);
+        return svorr_u32_x(svptrue_b32(), lo_sve, svext_u32(z, hi_sve, 4));
+    }
+
+    template <int n>
+    static FORCE_INLINE XV shr128(const XV& a)
+    {
+        if constexpr (n == 0) return a;
+        if constexpr (n >= 16) return zero();
+        svuint32_t z = svdup_u32(0);
+        uint32x4_t lo = svget_neonq_u32(a.m_v);
+        uint32x4_t hi = svget_neonq_u32(svext_u32(a.m_v, z, 4));
+        lo = vreinterpretq_u32_u8(vextq_u8(vreinterpretq_u8_u32(lo), vdupq_n_u8(0), n));
+        hi = vreinterpretq_u32_u8(vextq_u8(vreinterpretq_u8_u32(hi), vdupq_n_u8(0), n));
+        svuint32_t lo_sve = svset_neonq_u32(z, lo);
+        svuint32_t hi_sve = svset_neonq_u32(z, hi);
+        return svorr_u32_x(svptrue_b32(), lo_sve, svext_u32(z, hi_sve, 4));
+    }
+
+    void broadcastLo128()
+    {
+        svuint32_t z = svdup_u32(0);
+        uint32x4_t lo = svget_neonq_u32(m_v);
+        svuint32_t lo_sve = svset_neonq_u32(z, lo);
+        m_v = svorr_u32_x(svptrue_b32(), lo_sve, svext_u32(z, lo_sve, 4));
+    }
+
+    // svbsl: result = (a & mask) | (b & ~mask)
+    static FORCE_INLINE XV bitwiseSelect(const XV mask, const XV a, const XV b)
+    {
+        return svbsl_u32_x(svptrue_b32(), a.m_v, b.m_v, mask.m_v);
+    }
+
+    FORCE_INLINE XV xorIfOddCst64(const XV& cond, const XV& cst) const
+    {
+        // sign-extend bit 0 of each 64-bit lane to a full-lane mask
+        svuint64_t shifted = svlsl_n_u64_x(svptrue_b64(), svreinterpret_u64_u32(cond.m_v), 63);
+        svint64_t  mask    = svasr_n_s64_x(svptrue_b64(), svreinterpret_s64_u64(shifted), 63);
+        return sveor_u32_x(svptrue_b32(), m_v,
+                           svand_u32_x(svptrue_b32(), svreinterpret_u32_s64(mask), cst.m_v));
+    }
+
+    FORCE_INLINE XV ifOddCst32ElseZero(const XV cst32) const
+    {
+        svuint32_t shifted = svlsl_n_u32_x(svptrue_b32(), m_v, 31);
+        svint32_t  mask    = svasr_n_s32_x(svptrue_b32(), svreinterpret_s32_u32(shifted), 31);
+        return svand_u32_x(svptrue_b32(), svreinterpret_u32_s32(mask), cst32.m_v);
+    }
+
+    FORCE_INLINE XV xorIfOddCst32(const XV& cond, const XV& cst) const
+    {
+        return *this ^ cond.ifOddCst32ElseZero(cst);
+    }
+
+    uint8_t parity() const
+    {
+        svuint32_t z = svdup_u32(0);
+        uint32x4_t lo = svget_neonq_u32(m_v);
+        uint32x4_t hi = svget_neonq_u32(svext_u32(m_v, z, 4));
+        return SimdRegister<128, ISA::NEON>(veorq_u32(lo, hi)).parity();
+    }
+};
+
+#else  // x86 AVX2
 template <>
 struct SimdRegister<256, ISA::AVX2, void> : VirtualRegBase<256, ISA::AVX2>
 {
@@ -712,7 +854,9 @@ struct SimdRegister<256, ISA::AVX2, void> : VirtualRegBase<256, ISA::AVX2>
         return SimdRegister<128, ISA::SSE2>(_mm_xor_si128(lo, hi)).parity();
     }
 };
-#endif
+#endif  // ARM_FEATURE_SVE vs x86 AVX2
+
+#endif  // SIMD_N_BITS >= 256
 
 #if SIMD_N_BITS>=512
 template <>
