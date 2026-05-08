@@ -586,10 +586,41 @@ struct SimdRegister<128, Isa, std::enable_if_t<Isa == ISA::SSE2 || Isa == ISA::S
 #if SIMD_N_BITS>=256
 
 #if defined(__ARM_FEATURE_SVE) && (defined(__aarch64__) || defined(_M_ARM64))
+// Fallback for SVE/NEON bridge intrinsics if missing
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ >= 10)
+    // Some GCC versions might be missing these or have them under different names
+    // We use a local helper to avoid name conflicts.
+    static FORCE_INLINE uint32x4_t safe_svget_neonq_u32(svuint32_t v) {
+        alignas(16) uint32_t buf[4];
+        svbool_t pg4 = svwhilelt_b32(0, 4);
+        svst1_u32(pg4, buf, v);
+        return vld1q_u32(buf);
+    }
+    static FORCE_INLINE svuint32_t safe_svset_neonq_u32(svuint32_t v, uint32x4_t neon) {
+        alignas(16) uint32_t buf[4];
+        vst1q_u32(buf, neon);
+        svbool_t pg4 = svwhilelt_b32(0, 4);
+        // We want to replace the bottom 128 bits. svld1_u32(pg, p) loads into a new vector with 0s elsewhere.
+        // We need to merge it.
+        return svsel_u32(pg4, svld1_u32(pg4, buf), v);
+    }
+    #define svget_neonq_u32 safe_svget_neonq_u32
+    #define svset_neonq_u32 safe_svset_neonq_u32
+#else
+    #define safe_svget_neonq_u32 svget_neonq_u32
+    #define safe_svset_neonq_u32 svset_neonq_u32
+#endif
+
+#if defined(__GNUC__) && !defined(__clang__) && defined(__ARM_FEATURE_SVE_BITS) && (__ARM_FEATURE_SVE_BITS == 256)
+    typedef svuint32_t svuint32_fixed_t __attribute__((arm_sve_vector_bits(256)));
+#else
+    typedef svuint32_t svuint32_fixed_t;
+#endif
+
 template <>
 struct SimdRegister<256, ISA::SVE256, void> : VirtualRegBase<256, ISA::SVE256>
 {
-    svuint32_t m_v;
+    svuint32_fixed_t m_v;
 
     typedef SimdRegister<256, ISA::SVE256> XV;
 
@@ -692,7 +723,12 @@ struct SimdRegister<256, ISA::SVE256, void> : VirtualRegBase<256, ISA::SVE256>
     // svbsl: result = (a & mask) | (b & ~mask)
     static FORCE_INLINE XV bitwiseSelect(const XV mask, const XV a, const XV b)
     {
+#if defined(__ARM_FEATURE_SVE2)
         return svbsl_u32_x(svptrue_b32(), a.m_v, b.m_v, mask.m_v);
+#else
+        svbool_t pg = svptrue_b32();
+        return svorr_u32_x(pg, svand_u32_x(pg, a.m_v, mask.m_v), svbic_u32_x(pg, b.m_v, mask.m_v));
+#endif
     }
 
     FORCE_INLINE XV xorIfOddCst64(const XV& cond, const XV& cst) const

@@ -169,6 +169,9 @@ else
             SIMD_N_BITS_VAL := 32
         endif
         SIMD := -march=native
+        ifeq ($(ISA), sve256)
+            SIMD += -msve-vector-bits=256
+        endif
     else
         SIMD_N_BITS_VAL := $(NBITS)
         # Derive default ISA from ARCH + NBITS
@@ -204,7 +207,7 @@ else
                 SIMD := -march=armv8-a+simd
             endif
         else ifeq ($(ISA), sve256)
-            SIMD := -march=armv8-a+sve
+            SIMD := -march=armv8-a+sve -msve-vector-bits=256
         endif
     endif
 
