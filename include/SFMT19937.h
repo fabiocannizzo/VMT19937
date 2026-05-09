@@ -120,8 +120,8 @@ private:
     }
 
     // A=true: aligned loads/stores (src/dst == m_state). A=false: unaligned (caller buffer).
-    // Phase 1: s_N-s_M iters — xA=src[i], xB=src[i+s_M], write dst[i]
-    // Phase 2: s_M iters    — xA=src[s_N-s_M+i], xB=dst[i], write dst[s_N-s_M+i]
+    // Phase 1: s_N-s_M iters -- xA=src[i], xB=src[i+s_M], write dst[i]
+    // Phase 2: s_M iters    -- xA=src[s_N-s_M+i], xB=dst[i], write dst[s_N-s_M+i]
     template <bool A>
     static NO_INLINE void refillImpl(const uint32_t* src, uint32_t* dst)
     {

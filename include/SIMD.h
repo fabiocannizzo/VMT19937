@@ -680,7 +680,7 @@ struct SimdRegister<256, ISA::SVE256, void> : VirtualRegBase<256, ISA::SVE256>
         return svext_u32(a.m_v, b.m_v, n32FromSecond);
     }
 
-    // Per-128-bit-lane byte shift — matches AVX2 _mm256_bslli_epi128 / _mm256_bsrli_epi128 semantics.
+    // Per-128-bit-lane byte shift -- matches AVX2 _mm256_bslli_epi128 / _mm256_bsrli_epi128 semantics.
     // Each 128-bit lane is shifted independently, using NEON intrinsics on the extracted q-registers.
     template <int n>
     static FORCE_INLINE XV shl128(const XV& a)

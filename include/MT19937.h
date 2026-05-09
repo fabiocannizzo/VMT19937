@@ -75,7 +75,7 @@ class MT19937Base;
 
 
 // ============================================================
-//  32-bit tempering policy — SIMD block temper
+//  32-bit tempering policy -- SIMD block temper
 // ============================================================
 template <ISA Isa>
 struct MT32TemperPolicy
@@ -118,7 +118,7 @@ public:
 
 
 // ============================================================
-//  32-bit refill policy — SIMD multi/mono-state advance
+//  32-bit refill policy -- SIMD multi/mono-state advance
 // ============================================================
 template <size_t VRegBitLen, ISA Isa, bool MonoState>
 struct MT32RefillPolicy
@@ -254,7 +254,7 @@ public:
 
 
 // ============================================================
-//  64-bit tempering policy — SIMD block temper
+//  64-bit tempering policy -- SIMD block temper
 // ============================================================
 template <ISA Isa>
 struct MT64TemperPolicy
@@ -324,7 +324,7 @@ struct MT64TemperPolicy<ISA::Scalar>
 
 
 // ============================================================
-//  64-bit refill policy — SIMD multi-state / scalar mono-state
+//  64-bit refill policy -- SIMD multi-state / scalar mono-state
 // ============================================================
 template <size_t VRegBitLen, ISA Isa, bool MonoState>
 struct MT64RefillPolicy
@@ -595,7 +595,7 @@ public:
 
 
 // ============================================================
-//  32-bit specialisation — wires MT32 policies; adds 32-bit
+//  32-bit specialisation -- wires MT32 policies; adds 32-bit
 //  state encoding and MT32-only genrand functions.
 // ============================================================
 template <size_t VRegBitLen, ISA Isa, bool MonoState, bool QryBlk16>
@@ -679,7 +679,7 @@ protected:
 
 
 // ============================================================
-//  64-bit specialisation — wires MT64 policies; adds 64-bit
+//  64-bit specialisation -- wires MT64 policies; adds 64-bit
 //  state encoding and uint64-seed reinit overloads.
 // ============================================================
 template <size_t VRegBitLen, ISA Isa, bool MonoState, bool QryBlk16>
