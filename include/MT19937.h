@@ -109,10 +109,16 @@ public:
     template <bool Aligned, typename Base>
     static FORCE_INLINE void execute(Base& b, typename Base::output_word_t* dst)
     {
-        static_assert(s_n32InBlock == 16);
-        XVline tmp = temper(XVline(b.m_pst), s_temperCst);
-        tmp.template store<Aligned>(dst);
+        execute<Aligned>(b.m_pst, dst);
         b.m_pst += s_n32InBlock;
+    }
+
+    template <bool Aligned>
+    static FORCE_INLINE void execute(const uint32_t* src, uint32_t* dst)
+    {
+        static_assert(s_n32InBlock == 16);
+        XVline tmp = temper(XVline(src), s_temperCst);
+        tmp.template store<Aligned>(dst);
     }
 };
 
@@ -289,11 +295,16 @@ public:
     template <bool Aligned, typename Base>
     static FORCE_INLINE void execute(Base& b, typename Base::output_word_t* dst)
     {
-        static_assert(s_n64InBlock == 8);
-        const auto* pst = reinterpret_cast<const uint32_t*>(b.m_pst);
-        XVline tmp = temper(XVline(pst), s_temperCst.m_mask_d, s_temperCst.m_mask_b, s_temperCst.m_mask_c);
-        tmp.template store<Aligned>(reinterpret_cast<uint32_t*>(dst));
+        execute<Aligned>(reinterpret_cast<const uint64_t*>(b.m_pst), reinterpret_cast<uint64_t*>(dst));
         b.m_pst += s_n64InBlock;
+    }
+
+    template <bool Aligned>
+    static FORCE_INLINE void execute(const uint64_t* src, uint64_t* dst)
+    {
+        static_assert(s_n64InBlock == 8);
+        XVline tmp = temper(XVline(reinterpret_cast<const uint32_t*>(src)), s_temperCst.m_mask_d, s_temperCst.m_mask_b, s_temperCst.m_mask_c);
+        tmp.template store<Aligned>(reinterpret_cast<uint32_t*>(dst));
     }
 };
 
@@ -307,18 +318,22 @@ struct MT64TemperPolicy<ISA::Scalar>
     template <bool Aligned, typename Base>
     static FORCE_INLINE void execute(Base& b, typename Base::output_word_t* dst)
     {
+        execute<Aligned>(reinterpret_cast<const uint64_t*>(b.m_pst), reinterpret_cast<uint64_t*>(dst));
+        b.m_pst += s_n64InBlock;
+    }
+
+    template <bool Aligned>
+    static FORCE_INLINE void execute(const uint64_t* src, uint64_t* dst)
+    {
         static_assert(s_n64InBlock == 8);
-        const uint64_t* pst = reinterpret_cast<const uint64_t*>(b.m_pst);
-        uint64_t* d = reinterpret_cast<uint64_t*>(dst);
         for (size_t k = 0; k < s_n64InBlock; ++k) {
-            uint64_t y = pst[k];
+            uint64_t y = src[k];
             y ^= (y >> Params::s_u) & uint64_t(Params::s_d);
             y ^= (y << Params::s_s) & uint64_t(Params::s_b);
             y ^= (y << Params::s_t) & uint64_t(Params::s_c);
             y ^= y >> Params::s_l;
-            d[k] = y;
+            dst[k] = y;
         }
-        b.m_pst += s_n64InBlock;
     }
 };
 
@@ -344,11 +359,11 @@ private:
     };
     alignas(64) inline static const RefillCst s_refillMasks{};
 
-    static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm)
+    static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, const RefillCst& masks)
     {
-        XV y = XV::bitwiseSelect(s_refillMasks.m_upperMask, s, sp);
+        XV y = XV::bitwiseSelect(masks.m_upperMask, s, sp);
         XV r = sm ^ shr64(y, 1);
-        return r.xorIfOddCst64(sp, s_refillMasks.m_matrixA);
+        return r.xorIfOddCst64(sp, masks.m_matrixA);
     }
 
     static FORCE_INLINE void scalarRefill(typename Params::output_word_t* state, size_t nStates)
@@ -387,13 +402,12 @@ public:
         else {
             uint32_t* st = reinterpret_cast<uint32_t*>(b.m_state);
             XV x0(st);
-
             // Phase 1: i = 0..N-M-1
             for (int i = 0; i < N - M; ++i) {
                 uint32_t* p = st + i * s_n32inReg;
                 XV x1(p + s_n32inReg);
                 XV xM(p + M * s_n32inReg);
-                XV r = advance1(x0, x1, xM);
+                XV r = advance1(x0, x1, xM, s_refillMasks);
                 r.template store<true>(p);
                 x0 = x1;
             }
@@ -403,7 +417,7 @@ public:
                 uint32_t* p = st + i * s_n32inReg;
                 XV x1(p + s_n32inReg);
                 XV xM(st + (i + M - N) * s_n32inReg);
-                XV r = advance1(x0, x1, xM);
+                XV r = advance1(x0, x1, xM, s_refillMasks);
                 r.template store<true>(p);
                 x0 = x1;
             }
@@ -413,7 +427,7 @@ public:
                 uint32_t* p = st + (N - 1) * s_n32inReg;
                 XV x1(st);
                 XV xM(st + (M - 1) * s_n32inReg);
-                XV r = advance1(x0, x1, xM);
+                XV r = advance1(x0, x1, xM, s_refillMasks);
                 r.template store<true>(p);
             }
         }
@@ -567,19 +581,51 @@ protected:
         static_assert(!QryBlk16);
 
         size_t fromCache = std::min(n, m_rndCache.nAvailable());
-        std::copy_n(m_rndCache.current(), fromCache, dst);
-        dst += fromCache;
-        m_rndCache += fromCache;
-        n -= fromCache;
+        if (fromCache > 0) {
+            std::copy_n(m_rndCache.current(), fromCache, dst);
+            dst += fromCache;
+            m_rndCache += fromCache;
+            n -= fromCache;
+        }
 
         while (n >= s_nWordsInBlock) {
-            __genrand_word_blk(dst);
-            dst += s_nWordsInBlock;
-            n -= s_nWordsInBlock;
+            if (m_pst == m_pstEnd) VM19937_UNLIKELY
+                refill();
+
+            size_t nReady = (size_t)(m_pstEnd - m_pst);
+            size_t nBlk = std::min(n / s_nWordsInBlock, nReady / s_nWordsInBlock);
+            
+            size_t i = 0;
+            auto unrollBatch = [&]<size_t BatchSize>(std::integral_constant<size_t, BatchSize>) {
+                if (i + BatchSize <= nBlk) {
+                    const output_word_t* src = m_pst;
+                    output_word_t* d = dst;
+                    
+                    auto op = [&]<size_t... Is>(std::index_sequence<Is...>) {
+                        (Temper::template execute<false>(src + Is * s_nWordsInBlock, d + Is * s_nWordsInBlock), ...);
+                    };
+                    op(std::make_index_sequence<BatchSize>{});
+
+                    m_pst += BatchSize * s_nWordsInBlock;
+                    dst += BatchSize * s_nWordsInBlock;
+                    i += BatchSize;
+                }
+            };
+
+            for (; i + 7 < nBlk; ) {
+                unrollBatch(std::integral_constant<size_t, 8>{});
+            }
+            for (; i < nBlk; ++i) {
+                temperBlock<false>(dst);
+                dst += s_nWordsInBlock;
+            }
+            n -= nBlk * s_nWordsInBlock;
         }
 
         if (n > 0) {
-            __genrand_word_blk(m_rndCache.begin());
+            if (m_pst == m_pstEnd) VM19937_UNLIKELY
+                refill();
+            temperBlock<true>(m_rndCache.begin());
             std::copy_n(m_rndCache.begin(), n, dst);
             m_rndCache.setAt(n);
         }
