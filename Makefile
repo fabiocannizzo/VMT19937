@@ -1,3 +1,6 @@
+MAKEFLAGS += -rR
+.SUFFIXES:
+
 # Build examples:
 #   make                              # NBITS=native, ISA auto-detected
 #   make NBITS=128                    # SSE4.2 (x86) or NEON (ARM)
@@ -7,6 +10,9 @@
 #   make CXX=cl NBITS=128             # MSVC SSE4.2
 #   make TESTU01_DIR=/path/to/testu01/install
 #   make MKLROOT=/path/to/mkl
+
+undefine CC
+undefine CXX
 
 ifndef NBITS
    NBITS := native
