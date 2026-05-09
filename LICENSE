@@ -13,7 +13,7 @@ this random number generator.
 
 MIT License with Attribution Requirement
 
-Copyright (c) 2023–2025 Bartolomeo Cannizzo
+Copyright (c) 2023-2025 Bartolomeo Cannizzo
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,11 +26,11 @@ furnished to do so, subject to the following conditions:
    all copies or substantial portions of the Software.
 
 2. If the Software, or substantial portions of it, are included in a commercial
-   product, documentation accompanying that product (such as an “About” page,
+   product, documentation accompanying that product (such as an "About" page,
    manual, or credits section) must include an acknowledgment substantially as
    follows:
 
-      "This product includes software developed by Bartolomeo Cannizzo (© 2023–2025)."
+      "This product includes software developed by Bartolomeo Cannizzo (@ 2023-2025)."
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,

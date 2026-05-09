@@ -2,7 +2,7 @@ Building VMT19937
 =================
 
 VMT19937 is a header-only library. To use it in your own project, simply add the
-include/ directory to your include path — no build step is required.
+include/ directory to your include path - no build step is required.
 
 Building is only necessary if you want to run the bundled executables:
   - test.exe    correctness tests
@@ -12,7 +12,7 @@ Building is only necessary if you want to run the bundled executables:
   - encoder.exe matrix encoder utility
 
 These require a C++20 compiler and GNU make.
-Note: Windows' built-in nmake is NOT compatible — the Makefile uses GNU make syntax.
+Note: Windows' built-in nmake is NOT compatible - the Makefile uses GNU make syntax.
 
 Jump matrices
 -------------
@@ -52,9 +52,9 @@ Binaries land in bin-128-g++/ and are native Windows executables.
 The build requires both cl.exe (from MSVC) and GNU make. Neither cmd nor PowerShell
 ship with GNU make. Obtain it from one of:
 
-  - Cygwin   — <cygwin-install>\bin\make.exe
-  - Git for Windows — C:\Program Files\Git\usr\bin\make.exe  (present if Git is installed)
-  - MSYS2    — C:\msys64\usr\bin\make.exe
+  - Cygwin   - <cygwin-install>\bin\make.exe
+  - Git for Windows - C:\Program Files\Git\usr\bin\make.exe  (present if Git is installed)
+  - MSYS2    - C:\msys64\usr\bin\make.exe
 
 vcvars64.bat is found under <VS-install>\VC\Auxiliary\Build\vcvars64.bat.
 Activate the MSVC toolchain, then call the appropriate make.exe:

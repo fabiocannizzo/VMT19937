@@ -76,7 +76,7 @@ ifeq ($(IS_MSVC),1)
         endif
     endif
 
-    # ISA → MSVC /arch flag
+    # ISA - MSVC /arch flag
     ifeq ($(ISA), avx512vl)
         SIMD := /arch:AVX512
     else ifeq ($(ISA), avx2)
@@ -193,7 +193,7 @@ else
                 ISA ?= sse42
             endif
         endif
-        # ISA → GCC flags (non-native)
+        # ISA - GCC flags (non-native)
         ifeq ($(ISA), avx512vl)
             SIMD := -mavx512f -mavx512vl -mavx512bw -mavx512dq
         else ifeq ($(ISA), avx2)
@@ -284,7 +284,7 @@ endif
 MAKEFILE_DEPS := Makefile
 
 CPP_SRC := $(wildcard src/*.cpp)
-# Files with main() — cpuid_probe.c is C only, excluded from C++ targets
+# Files with main() - cpuid_probe.c is C only, excluded from C++ targets
 CPP_WITH_MAIN    := src/perf.cpp src/test.cpp src/demo.cpp src/encoder.cpp src/jump.cpp src/testu01.cpp
 CPP_WITHOUT_MAIN := src/cpu.cpp
 
