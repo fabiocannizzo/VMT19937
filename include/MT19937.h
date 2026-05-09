@@ -202,7 +202,12 @@ private:
                     XVMT_PREFETCH(p + n32PerBlk + J1 * s_n32inReg);
                     XVMT_PREFETCH(p + n32PerBlk + JM * s_n32inReg);
                 }
-                (multiStateIteration<Is, J1 + Is, JM + Is>(p, x0, masks), ...);
+                
+                auto op = [&]<int... Ks>(std::integer_sequence<int, Ks...>) {
+                    (multiStateIteration<Ks, J1 + Ks, JM + Ks>(p, x0, masks), ...);
+                };
+                op(std::integer_sequence<int, Is...>{});
+
                 p += n32PerBlk;
             } while (p != pend);
             return pend;
@@ -224,7 +229,7 @@ public:
         XV x0(stCur);
 
         if constexpr (!MonoState) {
-            constexpr size_t nUnroll = 4;
+            constexpr size_t nUnroll = (VRegBitLen <= IsaTraits<Isa>::HwBitLen) ? 8 : 4;
 
             constexpr size_t n1 = (N - M) / nUnroll;
             constexpr size_t r1 = (N - M) % nUnroll;
