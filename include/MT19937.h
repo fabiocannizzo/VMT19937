@@ -87,8 +87,8 @@ private:
     static FORCE_INLINE XVI temper(XVI y, const M& masks)
     {
         y = y ^ (y >> 11);
-        y = y ^ ((y << 7) & masks.m_mask1);
-        y = y ^ ((y << 15) & masks.m_mask2);
+        y = XVI::bitwiseXorAnd(y, y << 7, masks.m_mask1);
+        y = XVI::bitwiseXorAnd(y, y << 15, masks.m_mask2);
         y = y ^ (y >> 18);
         return y;
     }
@@ -265,9 +265,9 @@ private:
     template <typename XVI>
     static FORCE_INLINE XVI temper(XVI y, const XVI& mask_d, const XVI& mask_b, const XVI& mask_c)
     {
-        y = y ^ (shr64(y, Params::s_u) & mask_d);
-        y = y ^ (shl64(y, Params::s_s) & mask_b);
-        y = y ^ (shl64(y, Params::s_t) & mask_c);
+        y = XVI::bitwiseXorAnd(y, shr64(y, Params::s_u), mask_d);
+        y = XVI::bitwiseXorAnd(y, shl64(y, Params::s_s), mask_b);
+        y = XVI::bitwiseXorAnd(y, shl64(y, Params::s_t), mask_c);
         y = y ^ shr64(y, Params::s_l);
         return y;
     }

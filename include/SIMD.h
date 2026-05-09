@@ -156,6 +156,16 @@ public:
         return r;
     }
 
+    // result = a ^ (b & c)
+    FORCE_INLINE static XV bitwiseXorAnd(const XV a, const XV b, const XV c)
+    {
+        XV r;
+        for (size_t i = 0; i < s_M; ++i)
+            r.m_v[i] = XVHw::bitwiseXorAnd(a.m_v[i], b.m_v[i], c.m_v[i]);
+        return r;
+    }
+
+
     // Per-128-bit lane shift left by nBytes.
     template <int nBytes>
     FORCE_INLINE static XV shl128(const XV& a)
@@ -349,6 +359,12 @@ struct SimdRegister<32, Isa, void>
         return (mask.m_v & a.m_v) | (~mask.m_v & b.m_v);
     }
 
+    // result = a ^ (b & c)
+    FORCE_INLINE static XV bitwiseXorAnd(const XV a, const XV b, const XV c)
+    {
+        return a.m_v ^ (b.m_v & c.m_v);
+    }
+
     // Conditional XOR: result = m_v ^ (cond & 1 ? cst : 0).
     FORCE_INLINE XV xorIfOddCst32(const XV& cond, const XV& cst) const
     {
@@ -393,6 +409,12 @@ struct SimdRegister<64, Isa, void>
     FORCE_INLINE static XV bitwiseSelect(const XV mask, const XV a, const XV b)
     {
         return (mask.m_v & a.m_v) | (~mask.m_v & b.m_v);
+    }
+
+    // result = a ^ (b & c)
+    FORCE_INLINE static XV bitwiseXorAnd(const XV a, const XV b, const XV c)
+    {
+        return a.m_v ^ (b.m_v & c.m_v);
     }
 
     // Conditional XOR: result = m_v ^ (cond & 1 ? cst : 0).
@@ -484,6 +506,12 @@ struct SimdRegister<128, ISA::NEON, void> : VirtualRegBase<128, ISA::NEON>
         return vbslq_u32(mask.m_v, a.m_v, b.m_v);
     }
 
+    // result = a ^ (b & c)
+    FORCE_INLINE static XV bitwiseXorAnd(const XV a, const XV b, const XV c)
+    {
+        return a ^ (b & c);
+    }
+
     // Conditional masking: For each 32-bit lane i, result[i] = (this[i] & 1) ? cst32[i] : 0.
     FORCE_INLINE XV ifOddCst32ElseZero(const XV cst32) const
     {
@@ -573,8 +601,23 @@ struct SimdRegister<128, Isa, std::enable_if_t<Isa == ISA::SSE2 || Isa == ISA::S
     // Bitwise Selection: For each bit, result = (mask & a) | (~mask & b).
     FORCE_INLINE static XV bitwiseSelect(const XV mask, const XV a, const XV b)
     {
-        return _mm_or_si128(_mm_and_si128(mask.m_v, a.m_v), _mm_andnot_si128(mask.m_v, b.m_v));
+    #if defined(__AVX512VL__)
+        return _mm_ternarylogic_epi32(mask.m_v, a.m_v, b.m_v, 0xCA);
+    #else
+        return b ^ (mask & (a ^ b));
+    #endif
     }
+
+    // result = a ^ (b & c)
+    FORCE_INLINE static XV bitwiseXorAnd(const XV a, const XV b, const XV c)
+    {
+    #if defined(__AVX512VL__)
+        return _mm_ternarylogic_epi32(a.m_v, b.m_v, c.m_v, 0x78);
+    #else
+        return a ^ (b & c);
+    #endif
+    }
+
 
     // Conditional masking: For each 32-bit lane i, result[i] = (this[i] & 1) ? cst32[i] : 0.
     FORCE_INLINE XV ifOddCst32ElseZero(const XV cst32) const
@@ -763,13 +806,20 @@ struct SimdRegister<256, ISA::SVE256, void> : VirtualRegBase<256, ISA::SVE256>
     // Bitwise Selection: For each bit, result = (mask & a) | (~mask & b). Uses svbsl if SVE2 available.
     static FORCE_INLINE XV bitwiseSelect(const XV mask, const XV a, const XV b)
     {
-#if defined(__ARM_FEATURE_SVE2)
+    #if defined(__ARM_FEATURE_SVE2)
         return svbsl_u32_x(svptrue_b32(), a.m_v, b.m_v, mask.m_v);
-#else
-        svbool_t pg = svptrue_b32();
-        return svorr_u32_x(pg, svand_u32_x(pg, a.m_v, mask.m_v), svbic_u32_x(pg, b.m_v, mask.m_v));
-#endif
+    #else
+        svbool_t p = svptrue_b32();
+        return svorr_u32_x(p, svand_u32_x(p, mask.m_v, a.m_v), svbic_u32_x(p, b.m_v, mask.m_v));
+    #endif
     }
+
+    // result = a ^ (b & c)
+    FORCE_INLINE static XV bitwiseXorAnd(const XV a, const XV b, const XV c)
+    {
+        return a ^ (b & c);
+    }
+
 
     // Conditional XOR: For each 64-bit lane i, result[i] = m_v[i] ^ (cond[i] & 1 ? cst[i] : 0).
     FORCE_INLINE XV xorIfOddCst64(const XV& cond, const XV& cst) const
@@ -906,7 +956,17 @@ struct SimdRegister<256, ISA::AVX2, void> : VirtualRegBase<256, ISA::AVX2>
 #ifdef __AVX512VL__
         return _mm256_ternarylogic_epi32(mask.m_v, a.m_v, b.m_v, 0xCA);
 #else
-        return _mm256_or_si256(_mm256_and_si256(mask.m_v, a.m_v), _mm256_andnot_si256(mask.m_v, b.m_v));
+        return b ^ (mask & (a ^ b));
+#endif
+    }
+
+    // result = a ^ (b & c)
+    FORCE_INLINE static XV bitwiseXorAnd(const XV a, const XV b, const XV c)
+    {
+#ifdef __AVX512VL__
+        return _mm256_ternarylogic_epi32(a.m_v, b.m_v, c.m_v, 0x78);
+#else
+        return a ^ (b & c);
 #endif
     }
 
@@ -1033,6 +1093,12 @@ struct SimdRegister<512, ISA::AVX512, void> : VirtualRegBase<512, ISA::AVX512>
     FORCE_INLINE static XV bitwiseSelect(const XV mask, const XV a, const XV b)
     {
         return _mm512_ternarylogic_epi32(mask.m_v, a.m_v, b.m_v, 0xCA);
+    }
+
+    // result = a ^ (b & c)
+    FORCE_INLINE static XV bitwiseXorAnd(const XV a, const XV b, const XV c)
+    {
+        return _mm512_ternarylogic_epi32(a.m_v, b.m_v, c.m_v, 0x78);
     }
 
     // Conditional XOR: For each 32-bit lane i, result[i] = m_v[i] ^ (cond[i] & 1 ? cst[i] : 0).
