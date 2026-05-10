@@ -71,9 +71,7 @@ private:
         z = z ^ xA;
         z = z ^ v;
         XV x(XV::template shl128<SFMT_SL2>(xA));
-        y = y & bMask;
-        z = z ^ x;
-        return (z ^ y);
+        return XV::bitwiseXorAnd(z ^ x, y, bMask);
     }
 
     // xA=srcP[JA], xB=xBBase[JA], write to writeBase[WO+JA].
@@ -131,14 +129,16 @@ private:
         XV xC = XV::template load<A>(src + (s_N - 2) * s_n32inReg);
         XV xD = XV::template load<A>(src + (s_N - 1) * s_n32inReg);
 
+        constexpr size_t nUnroll = (s_regLenBits <= s_regLenBitsHw) ? 8 : 4;
+
         // phase 1
         const uint32_t* srcCur = src;
         uint32_t* dstCur = dst;
-        advanceLoopD<A, 4, s_N - s_M, true,  s_M, 0        >(srcCur, dstCur,      xC, xD, bMask);
+        advanceLoopD<A, nUnroll, s_N - s_M, true,  s_M, 0        >(srcCur, dstCur,      xC, xD, bMask);
 
         // phase 2
         uint32_t* dstReadCur = dst;
-        advanceLoopD<A, 4, s_M,       false, 0,   s_N - s_M>(srcCur, dstReadCur, xC, xD, bMask);
+        advanceLoopD<A, nUnroll, s_M,       false, 0,   s_N - s_M>(srcCur, dstReadCur, xC, xD, bMask);
     }
 
     FORCE_INLINE void refill()
@@ -340,22 +340,22 @@ protected:
 
     void genrand_uint32_anySize(uint32_t* dst, size_t n)
     {
-        if (size_t nAvail = std::distance(m_prnd, end());  nAvail <= n) {
-            std::copy_n(m_prnd, nAvail, dst);
-            n -= nAvail;
-            dst += nAvail;
-            refill();
-        }
-        else {
-            std::copy_n(m_prnd, n, dst);
-            m_prnd += n;
-            return;
+        // 1. Consume available from current buffer
+        size_t nAvail = std::distance(m_prnd, end());
+        if (nAvail > 0) {
+            size_t nChunk = std::min(n, nAvail);
+            std::copy_n(m_prnd, nChunk, dst);
+            m_prnd += nChunk;
+            dst += nChunk;
+            n -= nChunk;
         }
 
-        // Fast path: generate subsequent blocks directly into the output buffer,
-        // reading from the previously written output block instead of copying from m_state.
+        if (n == 0) return;
+
+        // 2. Generate blocks directly into dst if possible
         if (n >= s_n32InFullState) {
-            std::copy_n(begin(), s_n32InFullState, dst);
+            // Use the last block in m_state as the source for the first direct refill
+            refillImpl<false>(m_state, dst);
             n -= s_n32InFullState;
             dst += s_n32InFullState;
 
@@ -365,20 +365,17 @@ protected:
                 dst += s_n32InFullState;
             }
 
-            // Update m_state with the last generated block for future scalar/block access.
+            // Sync m_state with the last block generated for future calls
             std::copy_n(dst - s_n32InFullState, s_n32InFullState, m_state);
             m_prnd = end();
-
-            if (n > 0) {
-                refill();
-                std::copy_n(begin(), n, dst);
-                m_prnd += n;
-            }
-            return;
         }
 
-        std::copy_n(begin(), n, dst);
-        m_prnd += n;
+        // 3. Final partial block
+        if (n > 0) {
+            refill();
+            std::copy_n(m_prnd, n, dst);
+            m_prnd += n;
+        }
     }
 
 public:
