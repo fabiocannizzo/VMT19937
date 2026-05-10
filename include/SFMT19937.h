@@ -54,7 +54,7 @@ private:
     const uint32_t* const m_state_end;
     const uint32_t* m_prnd;
 
-    using MaskType = SimdRegister<std::max<size_t>(128, HwBitLen), Isa>;
+    using MaskType = XV;
     alignas(64) inline static const MaskType s_bMask{SFMT19937Params::s_SFMT_MSK1, SFMT19937Params::s_SFMT_MSK2, SFMT19937Params::s_SFMT_MSK3, SFMT19937Params::s_SFMT_MSK4};
 
     template <typename XVCst>
