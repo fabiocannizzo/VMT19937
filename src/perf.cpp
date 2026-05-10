@@ -17,42 +17,101 @@ using namespace std;
 using namespace xvmt;
 using namespace xvmt::details;
 
-#define TEST_MKL 1
-#define TEST_VMT 1
-#define TEST_VSFMT 1
-#define TEST_XMT 1
-#define TEST_ORIG 1
-
-#if TEST_MKL==1
+#ifdef NO_MKL
+constexpr bool c_skip_mkl = true;
+#else
 #   if __has_include(<mkl.h>)
-#       include <mkl.h>
+#       define MKL_AVAIL 1
+        constexpr bool c_skip_mkl = false;
 #   else
 #       if !defined(__arm__) && !defined(__aarch64__)
 #           pragma message("MKL not found, disabling MKL tests")
 #       endif
-#       undef TEST_MKL
-#       define TEST_MKL 0
+        constexpr bool c_skip_mkl = true;
 #   endif
 #endif
 
-#if TEST_ORIG==1
+#ifdef MKL_AVAIL
+#   include <mkl.h>
+#endif
+
+#ifdef NO_ORIG
+constexpr bool c_skip_original = true;
+#else
+constexpr bool c_skip_original = false;
+#endif
+
+#if !c_skip_original
 #   define SFMT_MEXP 19937
 #   include "../SFMT-src-1.5.1/SFMT.h"
 #endif
 
+#ifdef NO_STL
+constexpr bool c_skip_stl = true;
+#else
+constexpr bool c_skip_stl = false;
+#endif
+
+#ifdef NO_XMT
+constexpr bool c_skip_xmt = true;
+#else
+constexpr bool c_skip_xmt = false;
+#endif
+
+#ifdef NO_SFMT
+constexpr bool c_skip_sfmt = true;
+#else
+constexpr bool c_skip_sfmt = false;
+#endif
+
+#ifdef NO_VMT
+constexpr bool c_skip_vmt = true;
+#else
+constexpr bool c_skip_vmt = false;
+#endif
+
+#ifdef NO_VMT_SMALL
+constexpr bool c_skip_vmt_small = true;
+#else
+constexpr bool c_skip_vmt_small = false;
+#endif
+
+#ifdef NO_GEN_32
+constexpr bool c_skip_gen_32 = true;
+#else
+constexpr bool c_skip_gen_32 = false;
+#endif
+
+#ifdef NO_GEN_64
+constexpr bool c_skip_gen_64 = true;
+#else
+constexpr bool c_skip_gen_64 = false;
+#endif
+
+#ifdef NO_GEN_SFMT
+constexpr bool c_skip_gen_sfmt = true;
+#else
+constexpr bool c_skip_gen_sfmt = false;
+#endif
+
 // global variables
-bool g_testMkl = TEST_MKL;
-bool g_testOriginal = true;
-bool g_testVMT = true;
-bool g_testXMT = true;
-bool g_testXMT64 = true;
-bool g_testSFMT = true;
-bool g_testQry1 = true;
-bool g_testQryN = true;
-bool g_testQry16 = true;
+bool g_skip_mkl = c_skip_mkl;
+bool g_skip_original = c_skip_original;
+bool g_skip_stl = c_skip_stl;
+bool g_skip_xmt = c_skip_xmt;
+bool g_skip_sfmt = c_skip_sfmt;
+bool g_skip_vmt = c_skip_vmt;
+bool g_skip_vmt_small = c_skip_vmt_small;
+bool g_skip_gen_32 = c_skip_gen_32;
+bool g_skip_gen_64 = c_skip_gen_64;
+bool g_skip_gen_sfmt = c_skip_gen_sfmt;
+
+bool g_skip_qry1 = false;
+bool g_skip_qry16 = false;
+bool g_skip_qryN = false;
+string g_dir = "dat";
 size_t g_nRepeat = 1;
 double g_stDev = 0.0;
-std::string dir = "dat";
 
 // this might be changed via cli arguments
 size_t g_nRandom = size_t(624) * 32 * 800;
@@ -77,11 +136,11 @@ struct GenTraits;
 
 // for maximum period, we should select the file based on the number of states
 // but these periods are so large anyway that who do not care!
-const auto pmt = std::make_unique<MT19937Matrix<32>>(dir + "/mt32/F19933.bits");
+const auto pmt = std::make_unique<MT19937Matrix<32>>(g_dir + "/mt32/F19933.bits");
 // for maximum period, we should select the file based on the number of states
 // but these periods are so large anyway that who do not care!
-const auto psfmt = std::make_unique<SFMT19937Matrix>(dir + "/sfmt/F19935.bits");
-const auto pvmt64 = std::make_unique<MT19937Matrix<64>>(dir + "/mt64/F19933.bits");
+const auto psfmt = std::make_unique<SFMT19937Matrix>(g_dir + "/sfmt/F19935.bits");
+const auto pvmt64 = std::make_unique<MT19937Matrix<64>>(g_dir + "/mt64/F19933.bits");
 
 // use the same destination memory in all tests to avoid spurious difference in test results due to memory layout
 // sized for the largest 64-bit anySize block (each element = 8 bytes)
@@ -237,7 +296,7 @@ bool alreadyHaveEnoughIter(const Results& key)
     return !notEnough;
 }
 
-#if TEST_ORIG==1
+#ifndef NO_ORIG
 void mtOrigPerformance()
 {
     Results key(orig, 32, 32, 1, QM_Scalar);
@@ -297,7 +356,7 @@ void mtOrig64Performance()
 }
 #endif
 
-#if TEST_ORIG==1
+#ifndef NO_STL
 void stlMtPerformance()
 {
     Results key(stl_mt, 32, 32, 1, QM_Scalar);
@@ -343,6 +402,7 @@ void stlMt64Performance()
 }
 #endif
 
+#ifndef NO_ORIG
 template <bool ScalarQry>
 void sfmtOrigPerformance(size_t BlkSize)
 {
@@ -374,8 +434,9 @@ void sfmtOrigPerformance(size_t BlkSize)
 
     addResult(key, nSeconds);
 }
+#endif
 
-#if TEST_MKL==1
+#ifdef MKL_AVAIL
 
 template <int N>
 struct MKLTraits
@@ -425,7 +486,7 @@ void mklPerformance(MKL_INT GenCode, MKL_INT BlkSize)
 
     auto start = std::chrono::system_clock::now();
     for (size_t i = 0, n = g_nRandom / BlkSize; i < n; ++i)
-        viRngUniformBits32(VSL_RNG_METHOD_UNIFORMBITS32_STD, stream, BlkSize, aligneddst.data());
+        viRngUniformBits32(VSL_RNG_METHOD_UNIFORMBITS32_STD, stream, (int)BlkSize, aligneddst.data());
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
     double nSeconds = elapsed_seconds.count();
@@ -509,18 +570,18 @@ void vRandGenPerformance4()
 {
     using output_word_t = typename GenTraits<Mode>::template gen_t<L, QM, I>::output_word_t;
     if constexpr (QM == QM_Any) {
-        if (g_testQryN)
+        if (!g_skip_qryN)
             for (auto sz : anySize)
                 vRandGenPerformance5<Mode, L, I, QM>(sz);
     }
     else if constexpr (QM == QM_Block16) {
-        if (g_testQry16) {
+        if (!g_skip_qry16) {
             constexpr size_t blkSz = (sizeof(output_word_t) == 8) ? 8 : 16;
             vRandGenPerformance5<Mode, L, I, QM>(blkSz);
         }
     }
     else if constexpr (QM == QM_Scalar) {
-        if (g_testQry1)
+        if (!g_skip_qry1)
             vRandGenPerformance5<Mode, L, I, QM>(1);
     }
 }
@@ -529,8 +590,13 @@ template <GenMode Mode, size_t L, size_t I, QryMode...QMs>
 void vRandGenPerformance2()
 {
     constexpr size_t M = std::min<size_t>(L, SIMD_N_BITS);
-    if constexpr (I <= M && (Mode != xmt32 || I == L) && (Mode != xmt64 || I == L) && (Mode != xsfmt || I == L))
-        (vRandGenPerformance4<Mode, L, I, QMs>(), ...);
+    if constexpr (I <= M && (Mode != xmt32 || I == L) && (Mode != xmt64 || I == L) && (Mode != xsfmt || I == L)) {
+        if constexpr (!c_skip_vmt_small || I == L) {
+            if (!g_skip_vmt_small || I == L) {
+                (vRandGenPerformance4<Mode, L, I, QMs>(), ...);
+            }
+        }
+    }
 }
 
 template <GenMode Mode, size_t L, size_t...Is>
@@ -547,25 +613,30 @@ void vRandGenPerformance0()
 
 void syntax()
 {
-    std::cerr
-        << "Invalid command line arguments\n"
-        << "Syntax:\n"
-        << "   perf [-n=<nRepeats>] [-s=<nRndScaler>] [--no-mkl] [--no-original] [--no-vmt] [--no-sfmt]\n"
-        << "        [--no-xmt32] [--dir=<datpath>] [--no-qry1] [--no-qry16] [--no-qryN] [--stdev=<val>] [-wait]\n"
-        << "  -n=<nRepeats>: number of performance test iterations (default 1)\n"
-        << "  --no-mkl: skip MKL tests\n"
-        << "  --no-vmt: skip VMT tests\n"
-        << "  --no-xmt32: skip XMT tests\n"
-        << "  --no-mt64: skip 64-bit MT tests\n"
-        << "  --no-sfmt: skip SFMT tests\n"
-        << "  --no-qry1: skip scalar query tests\n"
-        << "  --no-qry16: skip block-16 query tests\n"
-        << "  --no-qryN: skip vectorial query tests\n"
-        << "  --no-original: skip original implementations tests\n"
-        << "  --slow: increase the number of random numbers generated by 1000 times\n"
-        << "  --dir=<datpath>: folder where to find jump matrix files\n"
-        << "  --stdev=<1.0>: stop iteratng when stdev/avg<1.0% (nRepeats is treated like a minimum)\n"
-        << "  -wait: wait for debugger attachment\n";
+    std::cout
+        << "Usage: perf [OPTIONS]\n"
+        << "Options:\n"
+        << "  -h, --help            Show this help message\n"
+        << "  -n=<nRepeats>         Number of performance test iterations (default 1)\n"
+        << "  -s=<nRndScaler>       Multiply nRandom by this scaler\n"
+        << "  --slow                Increase the number of random numbers generated by 1000 times\n"
+        << "  --dir=<datpath>       Folder where to find jump matrix files (default: dat)\n"
+        << "  --stdev=<val>         Stop iterating when stdev/avg < val% (nRepeats is treated as minimum)\n"
+        << "  -wait                 Wait for debugger attachment\n"
+        << "Exclusion flags:\n"
+        << "  --no-original         Skip original MT19937/SFMT19937 tests\n"
+        << "  --no-stl              Skip std::mt19937 tests\n"
+        << "  --no-mkl              Skip MKL tests\n"
+        << "  --no-xmt              Skip XMT tests\n"
+        << "  --no-sfmt             Skip SFMT-related tests\n"
+        << "  --no-vmt              Skip VMT tests\n"
+        << "  --no-vmt-small        Skip VMT/VSFMT tests where HwRegBitLen < VRegBitLen\n"
+        << "  --no-gen-32           Skip all 32-bit generators (MT19937)\n"
+        << "  --no-gen-64           Skip all 64-bit generators (MT19937-64)\n"
+        << "  --no-gen-sfmt         Skip all SFMT generators\n"
+        << "  --no-qry1             Skip scalar query tests\n"
+        << "  --no-qry16            Skip block-16 query tests\n"
+        << "  --no-qryN             Skip vectorial query tests\n";
 }
 
 // CPU initialization
@@ -586,11 +657,15 @@ void initCpu()
     }
 }
 
+#ifdef MKL_AVAIL
+void mklPerformance(MKL_INT GenCode, MKL_INT BlkSize);
+#endif
+
 // init MKL dispatching
 void initMKL()
 {
-#if TEST_MKL==1
-    if (g_testMkl) {
+#ifdef MKL_AVAIL
+    if (!g_skip_mkl) {
         try {
 #  if (SIMD_N_BITS==128)
             std::cout << "Force MKL dispatching to SSE2\n";
@@ -620,25 +695,34 @@ void initMKL()
 void parseCliArgs(ArgMap& args)
 {
     // parse command line arguments
-    g_nRepeat = 1;
     try {
+        if (consumeArg(args, "h") || consumeArg(args, "help")) {
+            syntax();
+            std::exit(0);
+        }
+
         consumeArg(args, "n", false, g_nRepeat);
 
-        g_testMkl &= !consumeArg(args, "no-mkl");
-        g_testOriginal &= !consumeArg(args, "no-original");
-        g_testVMT &= !consumeArg(args, "no-vmt");
-        g_testSFMT &= !consumeArg(args, "no-sfmt");
-        g_testXMT &= !consumeArg(args, "no-xmt32");
-        g_testXMT64 &= !consumeArg(args, "no-mt64");
-        g_testQry1 &= !consumeArg(args, "no-qry1");
-        g_testQry16 &= !consumeArg(args, "no-qry16");
-        g_testQryN &= !consumeArg(args, "no-qryN");
+        if (consumeArg(args, "no-mkl")) g_skip_mkl = true;
+        if (consumeArg(args, "no-original")) g_skip_original = true;
+        if (consumeArg(args, "no-stl")) g_skip_stl = true;
+        if (consumeArg(args, "no-vmt")) g_skip_vmt = true;
+        if (consumeArg(args, "no-vmt-small")) g_skip_vmt_small = true;
+        if (consumeArg(args, "no-sfmt")) g_skip_sfmt = true;
+        if (consumeArg(args, "no-xmt")) g_skip_xmt = true;
+        if (consumeArg(args, "no-gen-32")) g_skip_gen_32 = true;
+        if (consumeArg(args, "no-gen-64")) g_skip_gen_64 = true;
+        if (consumeArg(args, "no-gen-sfmt")) g_skip_gen_sfmt = true;
+
+        if (consumeArg(args, "no-qry1")) g_skip_qry1 = true;
+        if (consumeArg(args, "no-qry16")) g_skip_qry16 = true;
+        if (consumeArg(args, "no-qryN")) g_skip_qryN = true;
 
         size_t rndScaler = 1;
         if (consumeArg(args, "s", false, rndScaler)) g_nRandom *= rndScaler;
 
         consumeArg(args, "stdev", false, g_stDev);
-        consumeArg(args, "dir", false, dir);
+        consumeArg(args, "dir", false, g_dir);
         if (consumeArg(args, "slow")) g_nRandom *= 1000;
 
         if (!args.empty()) {
@@ -676,8 +760,12 @@ int main(int argc, const char** argv)
     std::cout << "nRepeat = " << g_nRepeat << "\n";
     std::cout << "stDev = " << g_stDev << "\n";
     std::cout << "nRandom = " << g_nRandom << "\n";
-    std::cout << (g_testMkl ? "including" : "skipping") << " MKL tests\n";
-    std::cout << (g_testOriginal ? "including" : "skipping") << " original implementation tests\n";
+    std::cout << (!g_skip_mkl ? "including" : "skipping") << " MKL tests\n";
+    std::cout << (!g_skip_original ? "including" : "skipping") << " original implementation tests\n";
+    std::cout << (!g_skip_stl ? "including" : "skipping") << " STL tests\n";
+    std::cout << (!g_skip_vmt ? "including" : "skipping") << " VMT tests\n";
+    std::cout << (!g_skip_xmt ? "including" : "skipping") << " XMT tests\n";
+    std::cout << (!g_skip_sfmt ? "including" : "skipping") << " SFMT tests\n";
 
     // run all tests
     try {
@@ -705,63 +793,110 @@ int main(int argc, const char** argv)
                     << "\n";
             }
 
-#if TEST_ORIG==1
-            if (g_testOriginal) {
-                // original Matsumoto - Tsukamoto MT19937 implementation
-                mtOrigPerformance();
-                stlMtPerformance();
-                if (g_testSFMT) {
-                    if (g_testQry1)
+            // Original & STL MT32
+            if constexpr (!c_skip_gen_32) {
+#ifndef NO_ORIG
+                if (!g_skip_original && !g_skip_gen_32) {
+                    mtOrigPerformance();
+                }
+#endif
+                if constexpr (!c_skip_stl) {
+                    if (!g_skip_stl && !g_skip_gen_32) {
+                        stlMtPerformance();
+                    }
+                }
+            }
+
+            // Original SFMT
+            if constexpr (!c_skip_original && !c_skip_sfmt && !c_skip_gen_sfmt) {
+#ifndef NO_ORIG
+                if (!g_skip_original && !g_skip_sfmt && !g_skip_gen_sfmt) {
+                    if (!g_skip_qry1)
                         sfmtOrigPerformance<true>(1);
-                    if (g_testQryN) {
+                    if (!g_skip_qryN) {
                         for (auto sz : anySize)
                             if (sz >= 624)
                                 sfmtOrigPerformance<false>(sz);
                     }
                 }
-            }
 #endif
+            }
 
-#if TEST_MKL==1
-            if (g_testMkl) {
-                if (g_testQry1)
-                    mklPerformance(VSL_BRNG_MT19937, 1);
-                for (auto sz : anySize)
-                    mklPerformance(VSL_BRNG_MT19937, (MKL_INT)sz);
-                if (g_testSFMT) {
-                    if (g_testQry1)
-                        mklPerformance(VSL_BRNG_SFMT19937, 1);
-                    for (auto sz : anySize)
-                        mklPerformance(VSL_BRNG_SFMT19937, (MKL_INT)sz);
+            // MKL MT32 & SFMT
+            if constexpr (!c_skip_mkl) {
+#ifdef MKL_AVAIL
+                if (!g_skip_mkl) {
+                    if constexpr (!c_skip_gen_32) {
+                        if (!g_skip_gen_32) {
+                            if (!g_skip_qry1)
+                                mklPerformance(VSL_BRNG_MT19937, 1);
+                            if (!g_skip_qryN) {
+                                for (auto sz : anySize)
+                                    mklPerformance(VSL_BRNG_MT19937, (MKL_INT)sz);
+                            }
+                        }
+                    }
+                    if constexpr (!c_skip_sfmt && !c_skip_gen_sfmt) {
+                        if (!g_skip_sfmt && !g_skip_gen_sfmt) {
+                            if (!g_skip_qry1)
+                                mklPerformance(VSL_BRNG_SFMT19937, 1);
+                            if (!g_skip_qryN) {
+                                for (auto sz : anySize)
+                                    mklPerformance(VSL_BRNG_SFMT19937, (MKL_INT)sz);
+                            }
+                        }
+                    }
+                }
+#endif
+            }
+
+            // VMT MT32
+            if constexpr (!c_skip_vmt && !c_skip_gen_32) {
+                if (!g_skip_vmt && !g_skip_gen_32) {
+                    vRandGenPerformance0<vmt, SIMD_N_BITS>();
                 }
             }
-#endif
-#if TEST_VMT==1
-            if (g_testVMT) {
-                vRandGenPerformance0<vmt, /*32, 128, 256, 512*/ SIMD_N_BITS>();
+
+            // XMT MT32
+            if constexpr (!c_skip_xmt && !c_skip_gen_32) {
+                if (!g_skip_xmt && !g_skip_gen_32) {
+                    vRandGenPerformance0<xmt32, SIMD_N_BITS>();
+                }
             }
-#endif
-#if TEST_VSFMT==1
-            if (g_testSFMT) {
-                vRandGenPerformance0<xsfmt, 128>();
+
+            // SFMT (VMT & XMT)
+            if constexpr (!c_skip_sfmt && !c_skip_gen_sfmt) {
+                if (!g_skip_sfmt && !g_skip_gen_sfmt) {
+                    // xsfmt is single-state VSFMT, treated as "small" or just SFMT
+                    vRandGenPerformance0<xsfmt, 128>();
+                    if constexpr (!c_skip_vmt) {
+                        if (!g_skip_vmt) {
 #if SIMD_N_BITS >= 256
-                vRandGenPerformance0<vsfmt, /*256, 512*/ SIMD_N_BITS>();
+                            vRandGenPerformance0<vsfmt, SIMD_N_BITS>();
 #endif
+                        }
+                    }
+                }
             }
+
+            // 64-bit MT
+            if constexpr (!c_skip_gen_64) {
+                if (!g_skip_gen_64) {
+#ifndef NO_ORIG
+                    if (!g_skip_original) mtOrig64Performance();
 #endif
-#if TEST_XMT==1
-            if (g_testXMT) {
-                vRandGenPerformance0<xmt32, /*32, 128, 256, 512*/ SIMD_N_BITS>();
+                    if constexpr (!c_skip_stl) {
+                        if (!g_skip_stl) stlMt64Performance();
+                    }
+                    if constexpr (!c_skip_xmt) {
+                        if (!g_skip_xmt) vRandGenPerformance0<xmt64, SIMD_N_BITS>();
+                    }
+                    if constexpr (!c_skip_vmt) {
+                        if (!g_skip_vmt) vRandGenPerformance0<vmt64, SIMD_N_BITS>();
+                    }
+                }
             }
-#endif
-            if (g_testXMT64) {
-#if TEST_ORIG==1
-                mtOrig64Performance();
-                stlMt64Performance();
-#endif
-                vRandGenPerformance0<xmt64, SIMD_N_BITS>();
-                vRandGenPerformance0<vmt64, SIMD_N_BITS>();
-            }
+
             size_t nResAfter = nResults();
             if (nResAfter == nResBefore)
                 break; // no new results added
