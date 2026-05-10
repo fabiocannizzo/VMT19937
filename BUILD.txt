@@ -4,6 +4,15 @@ Building VMT19937
 VMT19937 is a header-only library. To use it in your own project, simply add the
 include/ directory to your include path - no build step is required.
 
+Include Macros
+--------------
+When compiling against the headers, you can define the following macros:
+
+  SIMD_N_BITS   Explicitly set SIMD width (128, 256, 512). If not defined,
+                it is automatically detected based on compiler flags (e.g.,
+                -mavx2, /arch:AVX2).
+  SIMD_ISA      Explicitly set the target ISA (e.g., sse42, avx2, avx512vl).
+
 Building is only necessary if you want to run the bundled executables:
   - test.exe    correctness tests
   - perf.exe    throughput benchmarks
@@ -16,10 +25,27 @@ Note: Windows' built-in nmake is NOT compatible - the Makefile uses GNU make syn
 
 Jump matrices
 -------------
-The dat/ matrices live in the remote branch "jumpfiles". They have been restored and uncompressed in the dat/ folder.
-If you need to fetch them again:
-    git checkout origin/jumpfiles -- dat/
-    # Then extract .7z files if needed, or sync from a known good source.
+The jump matrices are under the `dat/` folder. They are stored in compressed `.7z` format
+to save space and **must be decompressed** before use.
+
+Commonly used matrices are located in:
+
+| Folder      | Generator    | Description                             |
+|-------------|--------------|-----------------------------------------|
+| `dat/mt32/` | MT19937-32   | Standard 32-bit Mersenne Twister        |
+| `dat/mt64/` | MT19937-64   | 64-bit Mersenne Twister                 |
+| `dat/sfmt/` | SFMT19937    | SIMD-oriented Fast Mersenne Twister     |
+
+### Generating New Jump Matrices
+If you need to build new jump matrices for $2^n$ jumps, use the `jump.exe` utility:
+
+    # Example: Generate MT19937-32 matrices for 2^20000 jumps
+    .\bin-128-cl\jump.exe -g=mt32 -t=20000
+
+To build an arbitrary jump matrix for $J$ jumps:
+1. Decompose $J$ into powers of 2 (binary representation).
+2. Compute the necessary $2^n$ jump matrices using `jump.exe`.
+3. Multiply the resulting matrices to get the final jump transformation.
 
 Build System
 ------------
@@ -29,21 +55,16 @@ Makefile variables (all optional):
 
   NBITS         SIMD width: 128 (SSE4.2) / 256 (AVX2) / 512 (AVX-512).
                 Default: native (-march=native) on GCC, 128 on MSVC.
+  ISA           Instruction Set Architecture. Overrides auto-detection.
+                Values: sse42, avx2, avx512vl (x86); neon, sve256 (ARM).
   CXX           C++ compiler. Default: g++. Pass CXX=cl for MSVC.
   MKLROOT       Path to Intel MKL root. Auto-discovered if not set (see MKL section).
   TESTU01_DIR   Path to TestU01 install. Default: ../testu01/install.
 
-### Linux
+### Linux, Cygwin, MSYS2, or Git for Windows (GCC)
 
     make                        # NBITS defaults to native
     make NBITS=256
-
-### Cygwin
-
-Invoke make via the full Cygwin path so it is found regardless of the calling shell's PATH:
-
-    /path/to/cygwin/bin/bash.exe -c \
-      "cd /cygdrive/path/to/repo && make NBITS=128"
 
 Binaries land in bin-128-g++/ and are native Windows executables.
 
