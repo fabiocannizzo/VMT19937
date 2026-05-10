@@ -120,6 +120,15 @@ public:
         XVline tmp = temper(XVline(src), s_temperCst);
         tmp.template store<Aligned>(dst);
     }
+
+    static FORCE_INLINE uint32_t temperScalar(uint32_t y)
+    {
+        y ^= (y >> 11);
+        y ^= (y << 7) & uint32_t(Params::s_b);
+        y ^= (y << 15) & uint32_t(Params::s_c);
+        y ^= (y >> 18);
+        return y;
+    }
 };
 
 
@@ -311,6 +320,15 @@ public:
         XVline tmp = temper(XVline(reinterpret_cast<const uint32_t*>(src)), s_temperCst.m_mask_d, s_temperCst.m_mask_b, s_temperCst.m_mask_c);
         tmp.template store<Aligned>(reinterpret_cast<uint32_t*>(dst));
     }
+
+    static FORCE_INLINE uint64_t temperScalar(uint64_t y)
+    {
+        y ^= (y >> Params::s_u) & uint64_t(Params::s_d);
+        y ^= (y << Params::s_s) & uint64_t(Params::s_b);
+        y ^= (y << Params::s_t) & uint64_t(Params::s_c);
+        y ^= (y >> Params::s_l);
+        return y;
+    }
 };
 
 
@@ -339,6 +357,15 @@ struct MT64TemperPolicy<ISA::Scalar>
             y ^= y >> Params::s_l;
             dst[k] = y;
         }
+    }
+
+    static FORCE_INLINE uint64_t temperScalar(uint64_t y)
+    {
+        y ^= (y >> Params::s_u) & uint64_t(Params::s_d);
+        y ^= (y << Params::s_s) & uint64_t(Params::s_b);
+        y ^= (y << Params::s_t) & uint64_t(Params::s_c);
+        y ^= (y >> Params::s_l);
+        return y;
     }
 };
 
@@ -531,110 +558,165 @@ protected:
         m_rndCache.setEnd();
     }
 
-    FORCE_INLINE output_word_t genrand_word()
-    {
-        static_assert(!QryBlk16);
+    #if defined(__aarch64__) || defined(_M_ARM64)
+        #define VM19937_USE_SCALAR_TEMPERING 1
+    #elif defined(__AVX2__)
+        #define VM19937_USE_SCALAR_TEMPERING 1
+    #else
+        #define VM19937_USE_SCALAR_TEMPERING 0
+    #endif
 
-        if (!m_rndCache.isAtEnd())
-            return *m_rndCache++;
+        FORCE_INLINE output_word_t genrand_word()
+        {
+            static_assert(!QryBlk16);
 
-        if (m_pst == m_pstEnd) VM19937_UNLIKELY
-            refill();
+    #if VM19937_USE_SCALAR_TEMPERING
+            if (m_pst == m_pstEnd) VM19937_UNLIKELY
+                refill();
+            return Temper::temperScalar(*m_pst++);
+    #else
+            if (!m_rndCache.isAtEnd())
+                return *m_rndCache++;
 
-        temperBlock<true>(m_rndCache.begin());
-        m_rndCache.setBegin();
-
-        return *m_rndCache++;
-    }
-
-private:
-    FORCE_INLINE void __genrand_word_blk(output_word_t* dst)
-    {
-        if (m_pst == m_pstEnd) VM19937_UNLIKELY
-            refill();
-        temperBlock<false>(dst);
-    }
-
-protected:
-    template <bool B = !QryBlk16, std::enable_if_t<B == !QryBlk16, int> = 0>
-    FORCE_INLINE uint32_t genrand_uint32()
-    {
-        static_assert(!QryBlk16);
-        return (uint32_t)genrand_word();
-    }
-
-    template <bool B = !QryBlk16, std::enable_if_t<B == !QryBlk16, int> = 0>
-    FORCE_INLINE uint64_t genrand_uint64()
-    {
-        static_assert(!QryBlk16);
-        if constexpr (sizeof(output_word_t) == 4)
-            return (uint64_t(genrand_word()) << 32) | genrand_word();
-        else
-            return genrand_word();
-    }
-
-    template <bool B = QryBlk16, std::enable_if_t<B == QryBlk16, int> = 0>
-    void genrand_word_blk(output_word_t* dst)
-    {
-        static_assert(QryBlk16);
-        __genrand_word_blk(dst);
-    }
-
-    template <bool B = !QryBlk16, std::enable_if_t<B == !QryBlk16, int> = 0>
-    void genrand_word_anySize(output_word_t* dst, size_t n)
-    {
-        static_assert(!QryBlk16);
-
-        size_t fromCache = std::min(n, m_rndCache.nAvailable());
-        if (fromCache > 0) {
-            std::copy_n(m_rndCache.current(), fromCache, dst);
-            dst += fromCache;
-            m_rndCache += fromCache;
-            n -= fromCache;
-        }
-
-        while (n >= s_nWordsInBlock) {
             if (m_pst == m_pstEnd) VM19937_UNLIKELY
                 refill();
 
-            size_t nReady = (size_t)(m_pstEnd - m_pst);
-            size_t nBlk = std::min(n / s_nWordsInBlock, nReady / s_nWordsInBlock);
-            
-            size_t i = 0;
-            auto unrollBatch = [&]<size_t BatchSize>(std::integral_constant<size_t, BatchSize>) {
-                if (i + BatchSize <= nBlk) {
-                    const output_word_t* src = m_pst;
-                    output_word_t* d = dst;
-                    
-                    auto op = [&]<size_t... Is>(std::index_sequence<Is...>) {
-                        (Temper::template execute<false>(src + Is * s_nWordsInBlock, d + Is * s_nWordsInBlock), ...);
-                    };
-                    op(std::make_index_sequence<BatchSize>{});
-
-                    m_pst += BatchSize * s_nWordsInBlock;
-                    dst += BatchSize * s_nWordsInBlock;
-                    i += BatchSize;
-                }
-            };
-
-            for (; i + 7 < nBlk; ) {
-                unrollBatch(std::integral_constant<size_t, 8>{});
-            }
-            for (; i < nBlk; ++i) {
-                temperBlock<false>(dst);
-                dst += s_nWordsInBlock;
-            }
-            n -= nBlk * s_nWordsInBlock;
-        }
-
-        if (n > 0) {
-            if (m_pst == m_pstEnd) VM19937_UNLIKELY
-                refill();
             temperBlock<true>(m_rndCache.begin());
-            std::copy_n(m_rndCache.begin(), n, dst);
-            m_rndCache.setAt(n);
+            m_rndCache.setBegin();
+
+            return *m_rndCache++;
+    #endif
         }
-    }
+
+    private:
+        FORCE_INLINE void __genrand_word_blk(output_word_t* dst)
+        {
+            if (m_pst == m_pstEnd) VM19937_UNLIKELY
+                refill();
+            temperBlock<false>(dst);
+        }
+
+    protected:
+        template <bool B = !QryBlk16, std::enable_if_t<B == !QryBlk16, int> = 0>
+        FORCE_INLINE uint32_t genrand_uint32()
+        {
+            static_assert(!QryBlk16);
+            return (uint32_t)genrand_word();
+        }
+
+        template <bool B = !QryBlk16, std::enable_if_t<B == !QryBlk16, int> = 0>
+        FORCE_INLINE uint64_t genrand_uint64()
+        {
+            static_assert(!QryBlk16);
+            if constexpr (sizeof(output_word_t) == 4)
+                return (uint64_t(genrand_word()) << 32) | genrand_word();
+            else
+                return genrand_word();
+        }
+
+        template <bool B = QryBlk16, std::enable_if_t<B == QryBlk16, int> = 0>
+        void genrand_word_blk(output_word_t* dst)
+        {
+            static_assert(QryBlk16);
+            __genrand_word_blk(dst);
+        }
+
+        template <bool B = !QryBlk16, std::enable_if_t<B == !QryBlk16, int> = 0>
+        void genrand_word_anySize(output_word_t* dst, size_t n)
+        {
+            static_assert(!QryBlk16);
+
+    #if defined(__aarch64__) || defined(_M_ARM64)
+            // Keep direct writing for ARM (huge gains)
+            while (n >= s_nWordsInBlock) {
+                if (m_pst == m_pstEnd) VM19937_UNLIKELY
+                    refill();
+
+                size_t nReady = (size_t)(m_pstEnd - m_pst);
+                size_t nBlk = std::min(n / s_nWordsInBlock, nReady / s_nWordsInBlock);
+
+                size_t i = 0;
+                auto unrollBatch = [&]<size_t BatchSize>(std::integral_constant<size_t, BatchSize>) {
+                    if (i + BatchSize <= nBlk) {
+                        const output_word_t* src = m_pst;
+                        output_word_t* d = dst;
+
+                        auto op = [&]<size_t... Is>(std::index_sequence<Is...>) {
+                            (Temper::template execute<false>(src + Is * s_nWordsInBlock, d + Is * s_nWordsInBlock), ...);
+                        };
+                        op(std::make_index_sequence<BatchSize>{});
+                        m_pst += BatchSize * s_nWordsInBlock;
+                        dst += BatchSize * s_nWordsInBlock;
+                        i += BatchSize;
+                    }
+                };
+
+                for (; i + 7 < nBlk; ) {
+                    unrollBatch(std::integral_constant<size_t, 8>{});
+                }
+                for (; i < nBlk; ++i) {
+                    temperBlock<false>(dst);
+                    dst += s_nWordsInBlock;
+                }
+                n -= nBlk * s_nWordsInBlock;
+            }
+
+            while (n > 0) {
+                *dst++ = genrand_word();
+                n--;
+            }
+    #else
+            // Revert to original cached approach for all x86 (AVX512/AVX2/SSE)
+            size_t fromCache = std::min(n, m_rndCache.nAvailable());
+            if (fromCache > 0) {
+                std::copy_n(m_rndCache.current(), fromCache, dst);
+                dst += fromCache;
+                m_rndCache += fromCache;
+                n -= fromCache;
+            }
+
+            while (n >= s_nWordsInBlock) {
+                if (m_pst == m_pstEnd) VM19937_UNLIKELY
+                    refill();
+
+                size_t nReady = (size_t)(m_pstEnd - m_pst);
+                size_t nBlk = std::min(n / s_nWordsInBlock, nReady / s_nWordsInBlock);
+
+                size_t i = 0;
+                auto unrollBatch = [&]<size_t BatchSize>(std::integral_constant<size_t, BatchSize>) {
+                    if (i + BatchSize <= nBlk) {
+                        const output_word_t* src = m_pst;
+                        output_word_t* d = dst;
+
+                        auto op = [&]<size_t... Is>(std::index_sequence<Is...>) {
+                            (Temper::template execute<false>(src + Is * s_nWordsInBlock, d + Is * s_nWordsInBlock), ...);
+                        };
+                        op(std::make_index_sequence<BatchSize>{});
+                        m_pst += BatchSize * s_nWordsInBlock;
+                        dst += BatchSize * s_nWordsInBlock;
+                        i += BatchSize;
+                    }
+                };
+
+                for (; i + 7 < nBlk; ) {
+                    unrollBatch(std::integral_constant<size_t, 8>{});
+                }
+                for (; i < nBlk; ++i) {
+                    temperBlock<false>(dst);
+                    dst += s_nWordsInBlock;
+                }
+                n -= nBlk * s_nWordsInBlock;
+            }
+
+            if (n > 0) {
+                if (m_pst == m_pstEnd) VM19937_UNLIKELY
+                    refill();
+                temperBlock<true>(m_rndCache.begin());
+                std::copy_n(m_rndCache.begin(), n, dst);
+                m_rndCache.setAt(n);
+            }
+    #endif
+        }
 
 public:
     MT19937BaseImpl()

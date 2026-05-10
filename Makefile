@@ -11,8 +11,12 @@ MAKEFLAGS += -rR
 #   make TESTU01_DIR=/path/to/testu01/install
 #   make MKLROOT=/path/to/mkl
 
-undefine CC
-undefine CXX
+ifeq ($(origin CC),default)
+    CC := gcc
+endif
+ifeq ($(origin CXX),default)
+    CXX := g++
+endif
 
 ifndef NBITS
    NBITS := native
