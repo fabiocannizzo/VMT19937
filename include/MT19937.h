@@ -560,7 +560,7 @@ protected:
 
     #if defined(__aarch64__) || defined(_M_ARM64)
         #define VM19937_USE_SCALAR_TEMPERING 1
-    #elif defined(__AVX2__)
+    #elif defined(__AVX2__) && !defined(__AVX512F__)
         #define VM19937_USE_SCALAR_TEMPERING 1
     #else
         #define VM19937_USE_SCALAR_TEMPERING 0
