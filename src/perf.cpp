@@ -317,8 +317,9 @@ void mtOrigPerformance()
     init_by_array(init, s_seedlength);
 
     auto start = std::chrono::system_clock::now();
-    for (size_t i = 0; i < g_nRandom; ++i)
-        dst[0] = genrand_int32();
+    for (size_t i = 0; i < g_nRandom; ++i) {
+        volatile uint32_t val = genrand_int32();
+    }
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
     double nSeconds = elapsed_seconds.count();
@@ -345,8 +346,9 @@ void mtOrig64Performance()
     init_by_array64(init, s_seedlength);
 
     auto start = std::chrono::system_clock::now();
-    for (size_t i = 0; i < g_nRandom; ++i)
-        aligneddst[0] = (uint32_t)genrand64_int64();
+    for (size_t i = 0; i < g_nRandom; ++i) {
+        volatile uint64_t val = genrand64_int64();
+    }
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
     double nSeconds = elapsed_seconds.count();
@@ -369,8 +371,32 @@ void stlMtPerformance()
     std::mt19937 gen(5489);
 
     auto start = std::chrono::system_clock::now();
+    for (size_t i = 0; i < g_nRandom; ++i) {
+        volatile uint32_t val = gen();
+    }
+    auto end = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end - start;
+    double nSeconds = elapsed_seconds.count();
+    done(nSeconds);
+
+    addResult(key, nSeconds);
+}
+
+void stlMtPerformanceVectorial()
+{
+    Results key(stl_mt, 32, 32, 1, QM_Any);
+    key.print();
+    if (alreadyHaveEnoughIter(key)) {
+        std::cout << "skip\n";
+        return;
+    }
+
+    std::mt19937 gen(5489);
+
+    auto start = std::chrono::system_clock::now();
+    uint32_t sum = 0;
     for (size_t i = 0; i < g_nRandom; ++i)
-        aligneddst[0] = gen();
+        sum += gen();
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
     double nSeconds = elapsed_seconds.count();
@@ -391,8 +417,32 @@ void stlMt64Performance()
     std::mt19937_64 gen(5489ULL);
 
     auto start = std::chrono::system_clock::now();
+    for (size_t i = 0; i < g_nRandom; ++i) {
+        volatile uint64_t val = gen();
+    }
+    auto end = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end - start;
+    double nSeconds = elapsed_seconds.count();
+    done(nSeconds);
+
+    addResult(key, nSeconds);
+}
+
+void stlMt64PerformanceVectorial()
+{
+    Results key(stl_mt64, 64, 64, 1, QM_Any);
+    key.print();
+    if (alreadyHaveEnoughIter(key)) {
+        std::cout << "skip\n";
+        return;
+    }
+
+    std::mt19937_64 gen(5489ULL);
+
+    auto start = std::chrono::system_clock::now();
+    uint64_t sum = 0;
     for (size_t i = 0; i < g_nRandom; ++i)
-        aligneddst[0] = (uint32_t)gen();
+        sum += gen();
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
     double nSeconds = elapsed_seconds.count();
@@ -422,8 +472,9 @@ void sfmtOrigPerformance(size_t BlkSize)
 
     auto start = std::chrono::system_clock::now();
     for (size_t i = 0, n = g_nRandom / BlkSize; i < n; ++i) {
-        if constexpr (ScalarQry)
-            aligneddst[0] = sfmt_genrand_uint32(&sfmtgen);
+        if constexpr (ScalarQry) {
+            volatile uint32_t val = sfmt_genrand_uint32(&sfmtgen);
+        }
         else
             sfmt_fill_array32(&sfmtgen, aligneddst.data(), (int) BlkSize);
     }
@@ -532,27 +583,35 @@ void vRandGenPerformance5(size_t blkSize)
 
     auto start = std::chrono::system_clock::now();
 
-    for (size_t i = 0, n = g_nRandom / blkSize; i < n; ++i) {
-        if constexpr (QM == QM_Scalar) {
-            if constexpr (sizeof(output_word_t) == 8)
-                aligneddst[0] = (uint32_t)mt.genrand_uint64();
-            else
-                aligneddst[0] = mt.genrand_uint32();
+    if constexpr (QM == QM_Scalar) {
+        if constexpr (sizeof(output_word_t) == 8) {
+            for (size_t i = 0, n = g_nRandom / blkSize; i < n; ++i) {
+                volatile uint64_t val = mt.genrand_uint64();
+            }
         }
-        else if constexpr (QM == QM_Block16) {
-            if constexpr (sizeof(output_word_t) == 8)
-                mt.genrand_word_blk(reinterpret_cast<output_word_t*>(aligneddst.data()));
-            else
-                mt.genrand_uint32_blk16(aligneddst.data());
+        else {
+            for (size_t i = 0, n = g_nRandom / blkSize; i < n; ++i) {
+                volatile uint32_t val = mt.genrand_uint32();
+            }
         }
-        else if constexpr (QM == QM_Any) {
-            if constexpr (sizeof(output_word_t) == 8)
-                mt.genrand_word_anySize(reinterpret_cast<output_word_t*>(aligneddst.data()), blkSize);
+    }
+    else {
+        for (size_t i = 0, n = g_nRandom / blkSize; i < n; ++i) {
+            if constexpr (QM == QM_Block16) {
+                if constexpr (sizeof(output_word_t) == 8)
+                    mt.genrand_word_blk(reinterpret_cast<output_word_t*>(aligneddst.data()));
+                else
+                    mt.genrand_uint32_blk16(aligneddst.data());
+            }
+            else if constexpr (QM == QM_Any) {
+                if constexpr (sizeof(output_word_t) == 8)
+                    mt.genrand_word_anySize(reinterpret_cast<output_word_t*>(aligneddst.data()), blkSize);
+                else
+                    mt.genrand_uint32_anySize(aligneddst.data(), blkSize);
+            }
             else
-                mt.genrand_uint32_anySize(aligneddst.data(), blkSize);
+                NOT_IMPLEMENTED;
         }
-        else
-            NOT_IMPLEMENTED;
     }
 
     auto end = std::chrono::system_clock::now();
@@ -802,7 +861,8 @@ int main(int argc, const char** argv)
 #endif
                 if constexpr (!c_skip_stl) {
                     if (!g_skip_stl && !g_skip_gen_32) {
-                        stlMtPerformance();
+                        if (!g_skip_qry1) stlMtPerformance();
+                        if (!g_skip_qryN) stlMtPerformanceVectorial();
                     }
                 }
             }
@@ -886,7 +946,10 @@ int main(int argc, const char** argv)
                     if (!g_skip_original) mtOrig64Performance();
 #endif
                     if constexpr (!c_skip_stl) {
-                        if (!g_skip_stl) stlMt64Performance();
+                        if (!g_skip_stl) {
+                            if (!g_skip_qry1) stlMt64Performance();
+                            if (!g_skip_qryN) stlMt64PerformanceVectorial();
+                        }
                     }
                     if constexpr (!c_skip_xmt) {
                         if (!g_skip_xmt) vRandGenPerformance0<xmt64, SIMD_N_BITS>();
