@@ -33,3 +33,11 @@
 
 # IDEs
 .vs/
+
+# Binary folders
+bin-*
+
+# scripts
+*.sh
+*.md
+
