@@ -635,6 +635,8 @@ protected:
                 size_t nReady = (size_t)(m_pstEnd - m_pst);
                 size_t nBlk = std::min(n / s_nWordsInBlock, nReady / s_nWordsInBlock);
 
+                if (nBlk == 0) VM19937_UNLIKELY break;
+
                 size_t i = 0;
                 auto unrollBatch = [&]<size_t BatchSize>(std::integral_constant<size_t, BatchSize>) {
                     if (i + BatchSize <= nBlk) {
@@ -681,6 +683,8 @@ protected:
 
                 size_t nReady = (size_t)(m_pstEnd - m_pst);
                 size_t nBlk = std::min(n / s_nWordsInBlock, nReady / s_nWordsInBlock);
+
+                if (nBlk == 0) VM19937_UNLIKELY break;
 
                 size_t i = 0;
                 auto unrollBatch = [&]<size_t BatchSize>(std::integral_constant<size_t, BatchSize>) {
