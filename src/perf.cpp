@@ -397,6 +397,7 @@ void stlMtPerformanceVectorial()
     uint32_t sum = 0;
     for (size_t i = 0; i < g_nRandom; ++i)
         sum += gen();
+    volatile uint32_t trap = sum;
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
     double nSeconds = elapsed_seconds.count();
@@ -443,6 +444,7 @@ void stlMt64PerformanceVectorial()
     uint64_t sum = 0;
     for (size_t i = 0; i < g_nRandom; ++i)
         sum += gen();
+    volatile uint64_t trap = sum;
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
     double nSeconds = elapsed_seconds.count();
@@ -477,6 +479,9 @@ void sfmtOrigPerformance(size_t BlkSize)
         }
         else
             sfmt_fill_array32(&sfmtgen, aligneddst.data(), (int) BlkSize);
+    }
+    if constexpr (!ScalarQry) {
+        volatile uint32_t trap = aligneddst[0];
     }
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
@@ -538,6 +543,7 @@ void mklPerformance(MKL_INT GenCode, MKL_INT BlkSize)
     auto start = std::chrono::system_clock::now();
     for (size_t i = 0, n = g_nRandom / BlkSize; i < n; ++i)
         viRngUniformBits32(VSL_RNG_METHOD_UNIFORMBITS32_STD, stream, (int)BlkSize, aligneddst.data());
+    volatile uint32_t trap = aligneddst[0];
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
     double nSeconds = elapsed_seconds.count();
@@ -612,8 +618,8 @@ void vRandGenPerformance5(size_t blkSize)
             else
                 NOT_IMPLEMENTED;
         }
+        volatile auto trap = aligneddst[0];
     }
-
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
     double nSeconds = elapsed_seconds.count();

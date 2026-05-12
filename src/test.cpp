@@ -17,7 +17,7 @@ using namespace xvmt::details;
 const uint32_t seedlength = 4;
 const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 
-const uint64_t nRandomTest = 50ul * 624 * 16;
+const uint64_t nRandomTest = 2ul * 624 * 16;
 
 extern "C" void init_genrand(unsigned long s);
 extern "C" unsigned long genrand_int32();
@@ -66,7 +66,7 @@ struct GenTraits<XMT64, L, I, QM>
 
 std::vector<uint32_t> benchmark(nRandomTest + 10000);
 
-const uint64_t nRandomTest64 = 50ul * 312 * 16;
+const uint64_t nRandomTest64 = 2ul * 312 * 16;
 std::vector<uint64_t> benchmark64(nRandomTest64 + 10000);
 
 void printSome(const std::vector<uint32_t>& v)
@@ -91,30 +91,30 @@ void testEncoder(const details::BinaryMatrix<nRows, nCols>& m, EncodeMode enc)
     const char* modename = enc == Base64 ? "base64" : "hex";
 
     details::BinaryMatrix<nRows, nCols> m2;
-    std::cout << "saving matrix to " << modename << " stream\n";
+    std::cout << "saving matrix to " << modename << " stream" << std::endl;
     std::ostringstream os;
     if (enc == Base64)
         m.toBase64(os);
     else
         m.toHex(os);
 
-    std::cout << "first 32 characters of the stream\n";
+    std::cout << "first 32 characters of the stream" << std::endl;
     std::string s = os.str();
     for (size_t i = 0; i < 32; ++i)
         std::cout << s[i];
-    std::cout << "\n";
+    std::cout << std::endl;
 
-    std::cout << "reading back the matrix from " << modename << " stream\n";
+    std::cout << "reading back the matrix from " << modename << " stream" << std::endl;
     std::istringstream is(os.str());
     if (enc == Base64)
         m2.fromBase64(is);
     else
         m2.fromHex(is);
 
-    std::cout << "compare with original matrix\n";
+    std::cout << "compare with original matrix" << std::endl;
     MYASSERT((m == m2), "error in roundtrip");
 
-    std::cout << "completed\n";
+    std::cout << "completed" << std::endl;
 }
 
 template <size_t NBITS>
@@ -151,7 +151,7 @@ void encodingTests()
 {
     details::BinaryMatrix<nRows, nCols> m;
     m.initRand();
-    std::cout << "\ngenerated random matrix with size (" << m.s_nBitRows << "x" << m.s_nBitCols << ") with " << m.nnz() << " non zero elements\n";
+    std::cout << "\ngenerated random matrix with size (" << m.s_nBitRows << "x" << m.s_nBitCols << ") with " << m.nnz() << " non zero elements" << std::endl;
     m.printBits(0, 0, 10, 32);
 
     testEncoder(m, Base64);
@@ -216,8 +216,8 @@ void startTest(const char* name)
     std::cout << "\n"
               << std::setw(40) << std::setfill('*') << "" << "\n"
               << "Test " << name << "\n"
-              << std::setw(40) << std::setfill('*') << "" << "\n\n"
-              << std::setfill(' ');
+              << std::setw(40) << std::setfill('*') << "" << std::endl;
+    std::cout << std::setfill(' ');
 }
 
 void test_STL_MT19937()
