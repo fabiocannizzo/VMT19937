@@ -115,6 +115,7 @@ string g_dir = "dat";
 BenchmarkParams g_benchParams;
 size_t g_nBlocks = 800;
 size_t g_blkSize = 640 * 16;
+size_t g_nRandom = 0;
 
 constexpr uint32_t s_seedlength = 4;
 constexpr uint32_t s_seedinit[s_seedlength] = { 0x123, 0x234, 0x345, 0x456 };
@@ -282,16 +283,15 @@ void mtOrigPerformance()
         init[i] = s_seedinit[i];
     init_by_array(init, s_seedlength);
 
-    size_t nRandom = g_nBlocks * 1; // blkSize = 1
     auto bench_func = [&]() {
-        for (size_t i = 0; i < nRandom; ++i) {
+        for (size_t i = 0; i < g_nRandom; ++i) {
             volatile uint32_t val = genrand_int32();
         }
     };
 
     BenchmarkResult br = run_adaptive_benchmark(bench_func, g_benchParams);
-    done(br, nRandom);
-    addResult(key, br, nRandom);
+    done(br, g_nRandom);
+    addResult(key, br, g_nRandom);
 }
 
 void mtOrig64Performance()
@@ -304,16 +304,15 @@ void mtOrig64Performance()
         init[i] = s_seedinit[i];
     init_by_array64(init, s_seedlength);
 
-    size_t nRandom = g_nBlocks * 1; // blkSize = 1
     auto bench_func = [&]() {
-        for (size_t i = 0; i < nRandom; ++i) {
+        for (size_t i = 0; i < g_nRandom; ++i) {
             volatile uint64_t val = genrand64_int64();
         }
     };
 
     BenchmarkResult br = run_adaptive_benchmark(bench_func, g_benchParams);
-    done(br, nRandom);
-    addResult(key, br, nRandom);
+    done(br, g_nRandom);
+    addResult(key, br, g_nRandom);
 }
 #endif
 
@@ -325,16 +324,15 @@ void stlMtPerformance()
 
     std::mt19937 gen(5489);
 
-    size_t nRandom = g_nBlocks * 1;
     auto bench_func = [&]() {
-        for (size_t i = 0; i < nRandom; ++i) {
+        for (size_t i = 0; i < g_nRandom; ++i) {
             volatile uint32_t val = gen();
         }
     };
 
     BenchmarkResult br = run_adaptive_benchmark(bench_func, g_benchParams);
-    done(br, nRandom);
-    addResult(key, br, nRandom);
+    done(br, g_nRandom);
+    addResult(key, br, g_nRandom);
 }
 
 void stlMtPerformanceVectorial()
@@ -344,17 +342,16 @@ void stlMtPerformanceVectorial()
 
     std::mt19937 gen(5489);
 
-    size_t nRandom = g_nBlocks * 1;
     auto bench_func = [&]() {
         uint32_t sum = 0;
-        for (size_t i = 0; i < nRandom; ++i)
+        for (size_t i = 0; i < g_nRandom; ++i)
             sum += gen();
         volatile uint32_t trap = sum;
     };
 
     BenchmarkResult br = run_adaptive_benchmark(bench_func, g_benchParams);
-    done(br, nRandom);
-    addResult(key, br, nRandom);
+    done(br, g_nRandom);
+    addResult(key, br, g_nRandom);
 }
 
 void stlMt64Performance()
@@ -364,16 +361,15 @@ void stlMt64Performance()
 
     std::mt19937_64 gen(5489ULL);
 
-    size_t nRandom = g_nBlocks * 1;
     auto bench_func = [&]() {
-        for (size_t i = 0; i < nRandom; ++i) {
+        for (size_t i = 0; i < g_nRandom; ++i) {
             volatile uint64_t val = gen();
         }
     };
 
     BenchmarkResult br = run_adaptive_benchmark(bench_func, g_benchParams);
-    done(br, nRandom);
-    addResult(key, br, nRandom);
+    done(br, g_nRandom);
+    addResult(key, br, g_nRandom);
 }
 
 void stlMt64PerformanceVectorial()
@@ -383,17 +379,16 @@ void stlMt64PerformanceVectorial()
 
     std::mt19937_64 gen(5489ULL);
 
-    size_t nRandom = g_nBlocks * 1;
     auto bench_func = [&]() {
         uint64_t sum = 0;
-        for (size_t i = 0; i < nRandom; ++i)
+        for (size_t i = 0; i < g_nRandom; ++i)
             sum += gen();
         volatile uint64_t trap = sum;
     };
 
     BenchmarkResult br = run_adaptive_benchmark(bench_func, g_benchParams);
-    done(br, nRandom);
-    addResult(key, br, nRandom);
+    done(br, g_nRandom);
+    addResult(key, br, g_nRandom);
 }
 #endif
 
@@ -409,9 +404,9 @@ void sfmtOrigPerformance(size_t BlkSize)
     sfmt_t sfmtgen;
     sfmt_init_gen_rand(&sfmtgen, 12345);
 
-    size_t nRandom = g_nBlocks * BlkSize;
+    size_t nIter = g_nRandom / BlkSize;
     auto bench_func = [&]() {
-        for (size_t i = 0; i < g_nBlocks; ++i) {
+        for (size_t i = 0; i < nIter; ++i) {
             if constexpr (ScalarQry) {
                 volatile uint32_t val = sfmt_genrand_uint32(&sfmtgen);
             }
@@ -424,8 +419,8 @@ void sfmtOrigPerformance(size_t BlkSize)
     };
 
     BenchmarkResult br = run_adaptive_benchmark(bench_func, g_benchParams);
-    done(br, nRandom);
-    addResult(key, br, nRandom);
+    done(br, g_nRandom);
+    addResult(key, br, g_nRandom);
 }
 #endif
 
@@ -470,22 +465,23 @@ void mklPerformance(MKL_INT GenCode, MKL_INT BlkSize)
     VSLStreamStatePtr stream;
     vslNewStream(&stream, GenCode, 5489);
 
-    size_t nRandom = g_nBlocks * (size_t)BlkSize;
+    size_t nIter = g_nRandom / (size_t)BlkSize;
     auto bench_func = [&]() {
-        for (size_t i = 0; i < g_nBlocks; ++i)
+        for (size_t i = 0; i < nIter; ++i)
             viRngUniformBits32(VSL_RNG_METHOD_UNIFORMBITS32_STD, stream, (int)BlkSize, aligneddst.data());
         volatile uint32_t trap = aligneddst[0];
     };
 
     BenchmarkResult br = run_adaptive_benchmark(bench_func, g_benchParams);
-    done(br);
+    done(br, g_nRandom);
 
     // Deleting the stream
     vslDeleteStream(&stream);
 
-    addResult(key, br, nRandom);
-}
-#endif
+    addResult(key, br, g_nRandom);
+    }
+    #endif
+
 
 template <GenMode Mode, size_t L, size_t I, QryMode QM>
 void vRandGenPerformance5(size_t blkSize)
@@ -511,22 +507,22 @@ void vRandGenPerformance5(size_t blkSize)
     };
     Gen mt = makeGen();
 
-    size_t nRandom = g_nBlocks * blkSize;
+    size_t nIter = g_nRandom / blkSize;
     auto bench_func = [&]() {
         if constexpr (QM == QM_Scalar) {
             if constexpr (sizeof(output_word_t) == 8) {
-                for (size_t i = 0; i < g_nBlocks; ++i) {
+                for (size_t i = 0; i < g_nRandom; ++i) {
                     volatile uint64_t val = mt.genrand_uint64();
                 }
             }
             else {
-                for (size_t i = 0; i < g_nBlocks; ++i) {
+                for (size_t i = 0; i < g_nRandom; ++i) {
                     volatile uint32_t val = mt.genrand_uint32();
                 }
             }
         }
         else {
-            for (size_t i = 0; i < g_nBlocks; ++i) {
+            for (size_t i = 0; i < nIter; ++i) {
                 if constexpr (QM == QM_Block16) {
                     if constexpr (sizeof(output_word_t) == 8)
                         mt.genrand_word_blk(reinterpret_cast<output_word_t*>(aligneddst.data()));
@@ -547,8 +543,8 @@ void vRandGenPerformance5(size_t blkSize)
     };
 
     BenchmarkResult br = run_adaptive_benchmark(bench_func, g_benchParams);
-    done(br, nRandom);
-    addResult(key, br, nRandom);
+    done(br, g_nRandom);
+    addResult(key, br, g_nRandom);
 }
 
 
@@ -744,6 +740,9 @@ int main(int argc, const char** argv)
     // parse command line arguments
     parseCliArgs(args);
 
+    g_nRandom = g_nBlocks * g_blkSize;
+    MYASSERT(g_nRandom % 16 == 0, "n-random (" << g_nRandom << ") must be a multiple of 16");
+
     // print some test information
     std::cout << "Target hardware SIMD register size (bits): " << SIMD_N_BITS << "\n";
     std::cout << "Adaptive Benchmark Configuration:\n";
@@ -755,6 +754,7 @@ int main(int argc, const char** argv)
     std::cout << "  warmup      = " << g_benchParams.warmup << "\n";
     std::cout << "  n-blocks    = " << g_nBlocks << "\n";
     std::cout << "  blk-size    = " << g_blkSize << " (for vectorial tests)\n";
+    std::cout << "  n-random    = " << g_nRandom << " per experiment\n";
     std::cout << (!g_skip_mkl ? "including" : "skipping") << " MKL tests\n";
     std::cout << (!g_skip_original ? "including" : "skipping") << " original implementation tests\n";
     std::cout << (!g_skip_stl ? "including" : "skipping") << " STL tests\n";
