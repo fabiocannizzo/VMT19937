@@ -1,5 +1,6 @@
 #include "TestUtils.h"
 #include "cli_args.h"
+#include "measure.h"
 
 #include <iostream>
 #include <iomanip>
@@ -110,11 +111,10 @@ bool g_skip_qry1 = false;
 bool g_skip_qry16 = false;
 bool g_skip_qryN = false;
 string g_dir = "dat";
-size_t g_nRepeat = 1;
-double g_stDev = 0.0;
 
-// this might be changed via cli arguments
-size_t g_nRandom = size_t(624) * 32 * 800;
+BenchmarkParams g_benchParams;
+size_t g_nBlocks = 800;
+size_t g_blkSize = 16384;
 
 constexpr uint32_t s_seedlength = 4;
 constexpr uint32_t s_seedinit[s_seedlength] = { 0x123, 0x234, 0x345, 0x456 };
@@ -212,16 +212,17 @@ const size_t s_messageSpacing[] = { 15, 9, 8, 8, 8, 12 };
 struct Results
 {
     Results(GenMode _mode, size_t _nb, size_t _ib, size_t _blk, QryMode _qryMode)
-        : mode(_mode), nBits(_nb), nBitsHw(_ib), blkSize(_blk), qryMode(_qryMode), nStates(1), mi(0), ma(0), avg(0), stdev(0)
+        : mode(_mode), nBits(_nb), nBitsHw(_ib), blkSize(_blk), qryMode(_qryMode), nStates(1), nRandom(0), mean_us(0), stdev_us(0), rel_error(0), total_samples(0), filtered_samples(0)
     {}
     GenMode mode;
     size_t nBits, nBitsHw;
     size_t blkSize;
     QryMode qryMode;
     size_t nStates;
+    mutable size_t nRandom;
 
-    mutable std::vector<double> singleRuns;
-    mutable double mi, ma, avg, stdev;
+    mutable double mean_us, stdev_us, rel_error;
+    mutable size_t total_samples, filtered_samples;
 
     void print() const
     {
@@ -246,115 +247,73 @@ struct TableCompare
 {
     bool operator()(const Results& a, const Results& b) const
     {
-        return std::tuple(a.nBitsHw, a.blkSize, a.avg) < std::tuple(b.nBitsHw, b.blkSize, b.avg);
+        return std::tuple(a.nBitsHw, a.blkSize, a.mean_us) < std::tuple(b.nBitsHw, b.blkSize, b.mean_us);
     }
 };
 
 
 std::set<Results> results;
 
-void done(double nSeconds)
+void done(const BenchmarkResult& br, size_t nRandom)
 {
-    std::cout << "done in: " << std::setw(8) << std::fixed << std::setprecision(2) << nSeconds << "s\n";
+    std::cout << "done (" << br.filtered_samples << "/" << br.total_samples << " runs, nRandom=" << nRandom << "), error: " << std::fixed << std::setprecision(2) << br.rel_error * 100.0 << "%\n";
 }
 
-struct Results;
-bool alreadyHaveEnoughIter(const Results& key);
-
-// add results and update statistics
-void addResult(const Results& key, double seconds)
+// add results
+void addResult(const Results& key, const BenchmarkResult& br, size_t nRandom)
 {
     const Results& r = *results.insert(key).first;
-    auto& v = r.singleRuns;
-    v.push_back(seconds);
-    double f = v.front();
-    double n = (double) v.size();
-    r.mi = f;
-    r.ma = f;
-    double s = f, s2 = f*f;
-    for (size_t i = 1; i < n; ++i) {
-        f = v[i];
-        r.mi = std::min(r.mi, f);
-        r.ma = std::max(r.ma, f);
-        s += f;
-        s2 += f * f;
-    }
-    r.avg = s / n;
-    if (n > 1)
-        r.stdev = std::sqrt((s2 - s * r.avg) / (n - 1));
-}
-
-NO_INLINE
-bool alreadyHaveEnoughIter(const Results& key)
-{
-    auto iter = results.find(key);
-    bool notEnough = (iter == results.end())
-        || (iter->singleRuns.size() < g_nRepeat)
-        || (std::abs(iter->stdev / iter->avg) > g_stDev / 100.0);
-    //if (notEnough)
-    //    std::cout << "running test...\n";
-    return !notEnough;
+    r.mean_us = br.mean_us;
+    r.stdev_us = br.stdev_us;
+    r.rel_error = br.rel_error;
+    r.total_samples = br.total_samples;
+    r.filtered_samples = br.filtered_samples;
+    r.nRandom = nRandom;
 }
 
 #ifndef NO_ORIG
 void mtOrigPerformance()
 {
     Results key(orig, 32, 32, 1, QM_Scalar);
-
     key.print();
-
-    if (alreadyHaveEnoughIter(key)) {
-        std::cout << "skip\n";
-        return;
-    }
-
-    std::vector<uint32_t> dst(1);
 
     unsigned long init[s_seedlength];
     for (size_t i = 0; i < s_seedlength; ++i)
         init[i] = s_seedinit[i];
-
     init_by_array(init, s_seedlength);
 
-    auto start = std::chrono::system_clock::now();
-    for (size_t i = 0; i < g_nRandom; ++i) {
-        volatile uint32_t val = genrand_int32();
-    }
-    auto end = std::chrono::system_clock::now();
-    std::chrono::duration<double> elapsed_seconds = end - start;
-    double nSeconds = elapsed_seconds.count();
-    done(nSeconds);
+    size_t nRandom = g_nBlocks * 1; // blkSize = 1
+    auto bench_func = [&]() {
+        for (size_t i = 0; i < nRandom; ++i) {
+            volatile uint32_t val = genrand_int32();
+        }
+    };
 
-    addResult(key, nSeconds);
+    BenchmarkResult br = run_adaptive_benchmark(bench_func, g_benchParams);
+    done(br, nRandom);
+    addResult(key, br, nRandom);
 }
 
 void mtOrig64Performance()
 {
     Results key(orig64, 64, 64, 1, QM_Scalar);
-
     key.print();
-
-    if (alreadyHaveEnoughIter(key)) {
-        std::cout << "skip\n";
-        return;
-    }
 
     unsigned long long init[s_seedlength];
     for (size_t i = 0; i < s_seedlength; ++i)
         init[i] = s_seedinit[i];
-
     init_by_array64(init, s_seedlength);
 
-    auto start = std::chrono::system_clock::now();
-    for (size_t i = 0; i < g_nRandom; ++i) {
-        volatile uint64_t val = genrand64_int64();
-    }
-    auto end = std::chrono::system_clock::now();
-    std::chrono::duration<double> elapsed_seconds = end - start;
-    double nSeconds = elapsed_seconds.count();
-    done(nSeconds);
+    size_t nRandom = g_nBlocks * 1; // blkSize = 1
+    auto bench_func = [&]() {
+        for (size_t i = 0; i < nRandom; ++i) {
+            volatile uint64_t val = genrand64_int64();
+        }
+    };
 
-    addResult(key, nSeconds);
+    BenchmarkResult br = run_adaptive_benchmark(bench_func, g_benchParams);
+    done(br, nRandom);
+    addResult(key, br, nRandom);
 }
 #endif
 
@@ -363,94 +322,78 @@ void stlMtPerformance()
 {
     Results key(stl_mt, 32, 32, 1, QM_Scalar);
     key.print();
-    if (alreadyHaveEnoughIter(key)) {
-        std::cout << "skip\n";
-        return;
-    }
 
     std::mt19937 gen(5489);
 
-    auto start = std::chrono::system_clock::now();
-    for (size_t i = 0; i < g_nRandom; ++i) {
-        volatile uint32_t val = gen();
-    }
-    auto end = std::chrono::system_clock::now();
-    std::chrono::duration<double> elapsed_seconds = end - start;
-    double nSeconds = elapsed_seconds.count();
-    done(nSeconds);
+    size_t nRandom = g_nBlocks * 1;
+    auto bench_func = [&]() {
+        for (size_t i = 0; i < nRandom; ++i) {
+            volatile uint32_t val = gen();
+        }
+    };
 
-    addResult(key, nSeconds);
+    BenchmarkResult br = run_adaptive_benchmark(bench_func, g_benchParams);
+    done(br, nRandom);
+    addResult(key, br, nRandom);
 }
 
 void stlMtPerformanceVectorial()
 {
     Results key(stl_mt, 32, 32, 1, QM_Any);
     key.print();
-    if (alreadyHaveEnoughIter(key)) {
-        std::cout << "skip\n";
-        return;
-    }
 
     std::mt19937 gen(5489);
 
-    auto start = std::chrono::system_clock::now();
-    uint32_t sum = 0;
-    for (size_t i = 0; i < g_nRandom; ++i)
-        sum += gen();
-    volatile uint32_t trap = sum;
-    auto end = std::chrono::system_clock::now();
-    std::chrono::duration<double> elapsed_seconds = end - start;
-    double nSeconds = elapsed_seconds.count();
-    done(nSeconds);
+    size_t nRandom = g_nBlocks * 1;
+    auto bench_func = [&]() {
+        uint32_t sum = 0;
+        for (size_t i = 0; i < nRandom; ++i)
+            sum += gen();
+        volatile uint32_t trap = sum;
+    };
 
-    addResult(key, nSeconds);
+    BenchmarkResult br = run_adaptive_benchmark(bench_func, g_benchParams);
+    done(br, nRandom);
+    addResult(key, br, nRandom);
 }
 
 void stlMt64Performance()
 {
     Results key(stl_mt64, 64, 64, 1, QM_Scalar);
     key.print();
-    if (alreadyHaveEnoughIter(key)) {
-        std::cout << "skip\n";
-        return;
-    }
 
     std::mt19937_64 gen(5489ULL);
 
-    auto start = std::chrono::system_clock::now();
-    for (size_t i = 0; i < g_nRandom; ++i) {
-        volatile uint64_t val = gen();
-    }
-    auto end = std::chrono::system_clock::now();
-    std::chrono::duration<double> elapsed_seconds = end - start;
-    double nSeconds = elapsed_seconds.count();
-    done(nSeconds);
+    size_t nRandom = g_nBlocks * 1;
+    auto bench_func = [&]() {
+        for (size_t i = 0; i < nRandom; ++i) {
+            volatile uint64_t val = gen();
+        }
+    };
 
-    addResult(key, nSeconds);
+    BenchmarkResult br = run_adaptive_benchmark(bench_func, g_benchParams);
+    done(br, nRandom);
+    addResult(key, br, nRandom);
 }
 
 void stlMt64PerformanceVectorial()
 {
     Results key(stl_mt64, 64, 64, 1, QM_Any);
     key.print();
-    if (alreadyHaveEnoughIter(key)) {
-        std::cout << "skip\n";
-        return;
-    }
 
     std::mt19937_64 gen(5489ULL);
 
-    auto start = std::chrono::system_clock::now();
-    uint64_t sum = 0;
-    for (size_t i = 0; i < g_nRandom; ++i)
-        sum += gen();
-    volatile uint64_t trap = sum;
-    auto end = std::chrono::system_clock::now();
-    std::chrono::duration<double> elapsed_seconds = end - start;
-    double nSeconds = elapsed_seconds.count();
-    done(nSeconds);
+    size_t nRandom = g_nBlocks * 1;
+    auto bench_func = [&]() {
+        uint64_t sum = 0;
+        for (size_t i = 0; i < nRandom; ++i)
+            sum += gen();
+        volatile uint64_t trap = sum;
+    };
 
-    addResult(key, nSeconds);
+    BenchmarkResult br = run_adaptive_benchmark(bench_func, g_benchParams);
+    done(br, nRandom);
+    addResult(key, br, nRandom);
 }
 #endif
 
@@ -460,35 +403,29 @@ void sfmtOrigPerformance(size_t BlkSize)
 {
     Results key(sfmt, 128, 128, BlkSize, ScalarQry ? QM_Scalar : QM_Any);
     key.print();
-    if (alreadyHaveEnoughIter(key)) {
-        std::cout << "skip\n";
-        return;
-    }
 
     MYASSERT((BlkSize == 1) || (BlkSize % 4 == 0 && BlkSize >= SFMT_N32), "BlkSize must be a multiple of 4 and >=156*128");
-    MYASSERT((g_nRandom % BlkSize) == 0, "nRandom must be a multiple of BlkSize");
 
     sfmt_t sfmtgen;
-    sfmt_init_gen_rand(&sfmtgen,12345);
+    sfmt_init_gen_rand(&sfmtgen, 12345);
 
-
-    auto start = std::chrono::system_clock::now();
-    for (size_t i = 0, n = g_nRandom / BlkSize; i < n; ++i) {
-        if constexpr (ScalarQry) {
-            volatile uint32_t val = sfmt_genrand_uint32(&sfmtgen);
+    size_t nRandom = g_nBlocks * BlkSize;
+    auto bench_func = [&]() {
+        for (size_t i = 0; i < g_nBlocks; ++i) {
+            if constexpr (ScalarQry) {
+                volatile uint32_t val = sfmt_genrand_uint32(&sfmtgen);
+            }
+            else
+                sfmt_fill_array32(&sfmtgen, aligneddst.data(), (int)BlkSize);
         }
-        else
-            sfmt_fill_array32(&sfmtgen, aligneddst.data(), (int) BlkSize);
-    }
-    if constexpr (!ScalarQry) {
-        volatile uint32_t trap = aligneddst[0];
-    }
-    auto end = std::chrono::system_clock::now();
-    std::chrono::duration<double> elapsed_seconds = end - start;
-    double nSeconds = elapsed_seconds.count();
-    done(nSeconds);
+        if constexpr (!ScalarQry) {
+            volatile uint32_t trap = aligneddst[0];
+        }
+    };
 
-    addResult(key, nSeconds);
+    BenchmarkResult br = run_adaptive_benchmark(bench_func, g_benchParams);
+    done(br, nRandom);
+    addResult(key, br, nRandom);
 }
 #endif
 
@@ -527,51 +464,38 @@ void mklPerformance(MKL_INT GenCode, MKL_INT BlkSize)
         default: THROW("how did we get here?");
     }
 
-    MYASSERT(g_nRandom % BlkSize == 0, "incorrect count");
-
     Results key(mode, wordSize, SIMD_N_BITS, BlkSize, QM_Any);
     key.print();
-
-    if (alreadyHaveEnoughIter(key)) {
-        std::cout << "skip\n";
-        return;
-    }
 
     VSLStreamStatePtr stream;
     vslNewStream(&stream, GenCode, 5489);
 
-    auto start = std::chrono::system_clock::now();
-    for (size_t i = 0, n = g_nRandom / BlkSize; i < n; ++i)
-        viRngUniformBits32(VSL_RNG_METHOD_UNIFORMBITS32_STD, stream, (int)BlkSize, aligneddst.data());
-    volatile uint32_t trap = aligneddst[0];
-    auto end = std::chrono::system_clock::now();
-    std::chrono::duration<double> elapsed_seconds = end - start;
-    double nSeconds = elapsed_seconds.count();
-    done(nSeconds);
+    size_t nRandom = g_nBlocks * (size_t)BlkSize;
+    auto bench_func = [&]() {
+        for (size_t i = 0; i < g_nBlocks; ++i)
+            viRngUniformBits32(VSL_RNG_METHOD_UNIFORMBITS32_STD, stream, (int)BlkSize, aligneddst.data());
+        volatile uint32_t trap = aligneddst[0];
+    };
+
+    BenchmarkResult br = run_adaptive_benchmark(bench_func, g_benchParams);
+    done(br);
 
     // Deleting the stream
     vslDeleteStream(&stream);
 
-    addResult(key, nSeconds);
+    addResult(key, br, nRandom);
 }
 #endif
 
 template <GenMode Mode, size_t L, size_t I, QryMode QM>
 void vRandGenPerformance5(size_t blkSize)
 {
-    MYASSERT(((blkSize > 0) && ((g_nRandom % blkSize) == 0)), "invalid blkSize " << blkSize);
-
     using Gen = typename GenTraits<Mode>::template gen_t<L, QM, I>;
 
     Results key(Mode, L, I, blkSize, QM);
     key.nStates = Gen::s_nStates;
 
     key.print();
-
-    if (alreadyHaveEnoughIter(key)) {
-        std::cout << "skip\n";
-        return;
-    }
 
     using output_word_t = typename Gen::output_word_t;
 
@@ -587,46 +511,44 @@ void vRandGenPerformance5(size_t blkSize)
     };
     Gen mt = makeGen();
 
-    auto start = std::chrono::system_clock::now();
-
-    if constexpr (QM == QM_Scalar) {
-        if constexpr (sizeof(output_word_t) == 8) {
-            for (size_t i = 0, n = g_nRandom / blkSize; i < n; ++i) {
-                volatile uint64_t val = mt.genrand_uint64();
+    size_t nRandom = g_nBlocks * blkSize;
+    auto bench_func = [&]() {
+        if constexpr (QM == QM_Scalar) {
+            if constexpr (sizeof(output_word_t) == 8) {
+                for (size_t i = 0; i < g_nBlocks; ++i) {
+                    volatile uint64_t val = mt.genrand_uint64();
+                }
+            }
+            else {
+                for (size_t i = 0; i < g_nBlocks; ++i) {
+                    volatile uint32_t val = mt.genrand_uint32();
+                }
             }
         }
         else {
-            for (size_t i = 0, n = g_nRandom / blkSize; i < n; ++i) {
-                volatile uint32_t val = mt.genrand_uint32();
-            }
-        }
-    }
-    else {
-        for (size_t i = 0, n = g_nRandom / blkSize; i < n; ++i) {
-            if constexpr (QM == QM_Block16) {
-                if constexpr (sizeof(output_word_t) == 8)
-                    mt.genrand_word_blk(reinterpret_cast<output_word_t*>(aligneddst.data()));
+            for (size_t i = 0; i < g_nBlocks; ++i) {
+                if constexpr (QM == QM_Block16) {
+                    if constexpr (sizeof(output_word_t) == 8)
+                        mt.genrand_word_blk(reinterpret_cast<output_word_t*>(aligneddst.data()));
+                    else
+                        mt.genrand_uint32_blk16(aligneddst.data());
+                }
+                else if constexpr (QM == QM_Any) {
+                    if constexpr (sizeof(output_word_t) == 8)
+                        mt.genrand_word_anySize(reinterpret_cast<output_word_t*>(aligneddst.data()), blkSize);
+                    else
+                        mt.genrand_uint32_anySize(aligneddst.data(), blkSize);
+                }
                 else
-                    mt.genrand_uint32_blk16(aligneddst.data());
+                    NOT_IMPLEMENTED;
             }
-            else if constexpr (QM == QM_Any) {
-                if constexpr (sizeof(output_word_t) == 8)
-                    mt.genrand_word_anySize(reinterpret_cast<output_word_t*>(aligneddst.data()), blkSize);
-                else
-                    mt.genrand_uint32_anySize(aligneddst.data(), blkSize);
-            }
-            else
-                NOT_IMPLEMENTED;
+            volatile auto trap = aligneddst[0];
         }
-        volatile auto trap = aligneddst[0];
-    }
-    auto end = std::chrono::system_clock::now();
-    std::chrono::duration<double> elapsed_seconds = end - start;
-    double nSeconds = elapsed_seconds.count();
+    };
 
-    done(nSeconds);
-
-    addResult(key, nSeconds);
+    BenchmarkResult br = run_adaptive_benchmark(bench_func, g_benchParams);
+    done(br, nRandom);
+    addResult(key, br, nRandom);
 }
 
 
@@ -636,8 +558,7 @@ void vRandGenPerformance4()
     using output_word_t = typename GenTraits<Mode>::template gen_t<L, QM, I>::output_word_t;
     if constexpr (QM == QM_Any) {
         if (!g_skip_qryN)
-            for (auto sz : anySize)
-                vRandGenPerformance5<Mode, L, I, QM>(sz);
+            vRandGenPerformance5<Mode, L, I, QM>(g_blkSize);
     }
     else if constexpr (QM == QM_Block16) {
         if (!g_skip_qry16) {
@@ -682,11 +603,16 @@ void syntax()
         << "Usage: perf [OPTIONS]\n"
         << "Options:\n"
         << "  -h, --help            Show this help message\n"
-        << "  -n=<nRepeats>         Number of performance test iterations (default 1)\n"
-        << "  -s=<nRndScaler>       Multiply nRandom by this scaler\n"
-        << "  --slow                Increase the number of random numbers generated by 1000 times\n"
         << "  --dir=<datpath>       Folder where to find jump matrix files (default: dat)\n"
-        << "  --stdev=<val>         Stop iterating when stdev/avg < val% (nRepeats is treated as minimum)\n"
+        << "  --n-blocks=<val>      Number of blocks per experiment (default 800)\n"
+        << "  --blk-size=<val>      Block size for vectorial tests (default 16384)\n"
+        << "Adaptive Benchmark Options:\n"
+        << "  --alpha=<val>         Relative error margin (default 0.01 = 1%)\n"
+        << "  --conf=<val>          Confidence level (default 0.95 = 95%)\n"
+        << "  --outlier=<val>       Outlier rejection threshold in sigma (default 3.0)\n"
+        << "  --min-reps=<val>      Minimum repetitions (default 30)\n"
+        << "  --max-reps=<val>      Maximum repetitions (default 10000)\n"
+        << "  --warmup=<val>        Number of warmup runs (default 10)\n"
         << "  -wait                 Wait for debugger attachment\n"
         << "Exclusion flags:\n"
         << "  --no-original         Skip original MT19937/SFMT19937 tests\n"
@@ -766,8 +692,6 @@ void parseCliArgs(ArgMap& args)
             std::exit(0);
         }
 
-        consumeArg(args, "n", false, g_nRepeat);
-
         if (consumeArg(args, "no-mkl")) g_skip_mkl = true;
         if (consumeArg(args, "no-original")) g_skip_original = true;
         if (consumeArg(args, "no-stl")) g_skip_stl = true;
@@ -783,21 +707,21 @@ void parseCliArgs(ArgMap& args)
         if (consumeArg(args, "no-qry16")) g_skip_qry16 = true;
         if (consumeArg(args, "no-qryN")) g_skip_qryN = true;
 
-        size_t rndScaler = 1;
-        if (consumeArg(args, "s", false, rndScaler)) g_nRandom *= rndScaler;
-
-        consumeArg(args, "stdev", false, g_stDev);
+        consumeArg(args, "n-blocks", false, g_nBlocks);
+        consumeArg(args, "blk-size", false, g_blkSize);
+        consumeArg(args, "alpha", false, g_benchParams.alpha);
+        consumeArg(args, "conf", false, g_benchParams.confidence);
+        consumeArg(args, "outlier", false, g_benchParams.outlier_sigma);
+        consumeArg(args, "min-reps", false, g_benchParams.min_reps);
+        consumeArg(args, "max-reps", false, g_benchParams.max_reps);
+        consumeArg(args, "warmup", false, g_benchParams.warmup);
         consumeArg(args, "dir", false, g_dir);
-        if (consumeArg(args, "slow")) g_nRandom *= 1000;
 
         if (!args.empty()) {
             syntax();
             std::exit(-1);
         }
 
-        if (g_stDev > 0.0)
-            g_nRepeat = std::max<size_t>(g_nRepeat, 2);
-        MYASSERT(g_nRepeat > 0, "nRepeat must be positive");
     }
     catch (const std::exception& ex) {
         std::cerr << "Error parsing CLI arguments: " << ex.what() << "\n";
@@ -822,9 +746,15 @@ int main(int argc, const char** argv)
 
     // print some test information
     std::cout << "Target hardware SIMD register size (bits): " << SIMD_N_BITS << "\n";
-    std::cout << "nRepeat = " << g_nRepeat << "\n";
-    std::cout << "stDev = " << g_stDev << "\n";
-    std::cout << "nRandom = " << g_nRandom << "\n";
+    std::cout << "Adaptive Benchmark Configuration:\n";
+    std::cout << "  alpha       = " << g_benchParams.alpha << " (target error)\n";
+    std::cout << "  confidence  = " << g_benchParams.confidence << "\n";
+    std::cout << "  outlier     = " << g_benchParams.outlier_sigma << " sigma\n";
+    std::cout << "  min_reps    = " << g_benchParams.min_reps << "\n";
+    std::cout << "  max_reps    = " << g_benchParams.max_reps << "\n";
+    std::cout << "  warmup      = " << g_benchParams.warmup << "\n";
+    std::cout << "  n-blocks    = " << g_nBlocks << "\n";
+    std::cout << "  blk-size    = " << g_blkSize << " (for vectorial tests)\n";
     std::cout << (!g_skip_mkl ? "including" : "skipping") << " MKL tests\n";
     std::cout << (!g_skip_original ? "including" : "skipping") << " original implementation tests\n";
     std::cout << (!g_skip_stl ? "including" : "skipping") << " STL tests\n";
@@ -834,146 +764,126 @@ int main(int argc, const char** argv)
 
     // run all tests
     try {
+        {
+            size_t m = 0;
+            std::cout << "\nRunning Experiments...\n"
+                << std::setw(s_messageSpacing[m++]) << "Generator"
+                << std::setw(s_messageSpacing[m++]) << "VReg"
+                << std::setw(s_messageSpacing[m++]) << "nStates"
+                << std::setw(s_messageSpacing[m++]) << "HwReg"
+                << std::setw(s_messageSpacing[m++]) << "BlkSize"
+                << std::setw(s_messageSpacing[m++]) << "QueryMode"
+                << "\n";
+        }
 
-        auto nResults = []() {
-            return std::accumulate(results.begin(), results.end(), size_t(0),
-                [](size_t s, const Results& r) { return s + r.singleRuns.size(); });
-        };
-
-        for (size_t i = 0; i < g_nRepeat || g_stDev > 0; ++i) {
-
-            size_t nResBefore = nResults();
-
-            std::cout << "Iteration: " << std::setw(2) << i + 1 << ": "
-                      << "generating " << g_nRandom << " 32-bits random numbers\n";
-            {
-                size_t m = 0;
-                std::cout
-                    << std::setw(s_messageSpacing[m++]) << "Generator"
-                    << std::setw(s_messageSpacing[m++]) << "VReg"
-                    << std::setw(s_messageSpacing[m++]) << "nStates"
-                    << std::setw(s_messageSpacing[m++]) << "HwReg"
-                    << std::setw(s_messageSpacing[m++]) << "BlkSize"
-                    << std::setw(s_messageSpacing[m++]) << "QueryMode"
-                    << "\n";
-            }
-
-            // Original & STL MT32
-            if constexpr (!c_skip_gen_32) {
+        // Original & STL MT32
+        if constexpr (!c_skip_gen_32) {
 #ifndef NO_ORIG
-                if (!g_skip_original && !g_skip_gen_32) {
-                    mtOrigPerformance();
+            if (!g_skip_original && !g_skip_gen_32) {
+                mtOrigPerformance();
+            }
+#endif
+            if constexpr (!c_skip_stl) {
+                if (!g_skip_stl && !g_skip_gen_32) {
+                    if (!g_skip_qry1) stlMtPerformance();
+                    if (!g_skip_qryN) stlMtPerformanceVectorial();
                 }
+            }
+        }
+
+        // Original SFMT
+        if constexpr (!c_skip_original && !c_skip_sfmt && !c_skip_gen_sfmt) {
+#ifndef NO_ORIG
+            if (!g_skip_original && !g_skip_sfmt && !g_skip_gen_sfmt) {
+                if (!g_skip_qry1)
+                    sfmtOrigPerformance<true>(1);
+                if (!g_skip_qryN) {
+                    if (g_blkSize >= 624)
+                        sfmtOrigPerformance<false>(g_blkSize);
+                }
+            }
+#endif
+        }
+
+        // MKL MT32 & SFMT
+        if constexpr (!c_skip_mkl) {
+#ifdef MKL_AVAIL
+            if (!g_skip_mkl) {
+                if constexpr (!c_skip_gen_32) {
+                    if (!g_skip_gen_32) {
+                        if (!g_skip_qry1)
+                            mklPerformance(VSL_BRNG_MT19937, 1);
+                        if (!g_skip_qryN) {
+                            mklPerformance(VSL_BRNG_MT19937, (MKL_INT)g_blkSize);
+                        }
+                    }
+                }
+                if constexpr (!c_skip_sfmt && !c_skip_gen_sfmt) {
+                    if (!g_skip_sfmt && !g_skip_gen_sfmt) {
+                        if (!g_skip_qry1)
+                            mklPerformance(VSL_BRNG_SFMT19937, 1);
+                        if (!g_skip_qryN) {
+                            mklPerformance(VSL_BRNG_SFMT19937, (MKL_INT)g_blkSize);
+                        }
+                    }
+                }
+            }
+#endif
+        }
+
+        // VMT MT32
+        if constexpr (!c_skip_vmt && !c_skip_gen_32) {
+            if (!g_skip_vmt && !g_skip_gen_32) {
+                vRandGenPerformance0<vmt, SIMD_N_BITS>();
+            }
+        }
+
+        // XMT MT32
+        if constexpr (!c_skip_xmt && !c_skip_gen_32) {
+            if (!g_skip_xmt && !g_skip_gen_32) {
+                vRandGenPerformance0<xmt32, SIMD_N_BITS>();
+            }
+        }
+
+        // SFMT (VMT & XMT)
+        if constexpr (!c_skip_sfmt && !c_skip_gen_sfmt) {
+            if (!g_skip_sfmt && !g_skip_gen_sfmt) {
+                // xsfmt is single-state VSFMT, treated as "small" or just SFMT
+                vRandGenPerformance0<xsfmt, 128>();
+                if constexpr (!c_skip_vmt) {
+                    if (!g_skip_vmt) {
+#if SIMD_N_BITS >= 256
+                        vRandGenPerformance0<vsfmt, SIMD_N_BITS>();
+#endif
+                    }
+                }
+            }
+        }
+
+        // 64-bit MT
+        if constexpr (!c_skip_gen_64) {
+            if (!g_skip_gen_64) {
+#ifndef NO_ORIG
+                if (!g_skip_original) mtOrig64Performance();
 #endif
                 if constexpr (!c_skip_stl) {
-                    if (!g_skip_stl && !g_skip_gen_32) {
-                        if (!g_skip_qry1) stlMtPerformance();
-                        if (!g_skip_qryN) stlMtPerformanceVectorial();
+                    if (!g_skip_stl) {
+                        if (!g_skip_qry1) stlMt64Performance();
+                        if (!g_skip_qryN) stlMt64PerformanceVectorial();
                     }
                 }
-            }
-
-            // Original SFMT
-            if constexpr (!c_skip_original && !c_skip_sfmt && !c_skip_gen_sfmt) {
-#ifndef NO_ORIG
-                if (!g_skip_original && !g_skip_sfmt && !g_skip_gen_sfmt) {
-                    if (!g_skip_qry1)
-                        sfmtOrigPerformance<true>(1);
-                    if (!g_skip_qryN) {
-                        for (auto sz : anySize)
-                            if (sz >= 624)
-                                sfmtOrigPerformance<false>(sz);
-                    }
+                if constexpr (!c_skip_xmt) {
+                    if (!g_skip_xmt) vRandGenPerformance0<xmt64, SIMD_N_BITS>();
                 }
-#endif
-            }
-
-            // MKL MT32 & SFMT
-            if constexpr (!c_skip_mkl) {
-#ifdef MKL_AVAIL
-                if (!g_skip_mkl) {
-                    if constexpr (!c_skip_gen_32) {
-                        if (!g_skip_gen_32) {
-                            if (!g_skip_qry1)
-                                mklPerformance(VSL_BRNG_MT19937, 1);
-                            if (!g_skip_qryN) {
-                                for (auto sz : anySize)
-                                    mklPerformance(VSL_BRNG_MT19937, (MKL_INT)sz);
-                            }
-                        }
-                    }
-                    if constexpr (!c_skip_sfmt && !c_skip_gen_sfmt) {
-                        if (!g_skip_sfmt && !g_skip_gen_sfmt) {
-                            if (!g_skip_qry1)
-                                mklPerformance(VSL_BRNG_SFMT19937, 1);
-                            if (!g_skip_qryN) {
-                                for (auto sz : anySize)
-                                    mklPerformance(VSL_BRNG_SFMT19937, (MKL_INT)sz);
-                            }
-                        }
-                    }
-                }
-#endif
-            }
-
-            // VMT MT32
-            if constexpr (!c_skip_vmt && !c_skip_gen_32) {
-                if (!g_skip_vmt && !g_skip_gen_32) {
-                    vRandGenPerformance0<vmt, SIMD_N_BITS>();
+                if constexpr (!c_skip_vmt) {
+                    if (!g_skip_vmt) vRandGenPerformance0<vmt64, SIMD_N_BITS>();
                 }
             }
-
-            // XMT MT32
-            if constexpr (!c_skip_xmt && !c_skip_gen_32) {
-                if (!g_skip_xmt && !g_skip_gen_32) {
-                    vRandGenPerformance0<xmt32, SIMD_N_BITS>();
-                }
-            }
-
-            // SFMT (VMT & XMT)
-            if constexpr (!c_skip_sfmt && !c_skip_gen_sfmt) {
-                if (!g_skip_sfmt && !g_skip_gen_sfmt) {
-                    // xsfmt is single-state VSFMT, treated as "small" or just SFMT
-                    vRandGenPerformance0<xsfmt, 128>();
-                    if constexpr (!c_skip_vmt) {
-                        if (!g_skip_vmt) {
-#if SIMD_N_BITS >= 256
-                            vRandGenPerformance0<vsfmt, SIMD_N_BITS>();
-#endif
-                        }
-                    }
-                }
-            }
-
-            // 64-bit MT
-            if constexpr (!c_skip_gen_64) {
-                if (!g_skip_gen_64) {
-#ifndef NO_ORIG
-                    if (!g_skip_original) mtOrig64Performance();
-#endif
-                    if constexpr (!c_skip_stl) {
-                        if (!g_skip_stl) {
-                            if (!g_skip_qry1) stlMt64Performance();
-                            if (!g_skip_qryN) stlMt64PerformanceVectorial();
-                        }
-                    }
-                    if constexpr (!c_skip_xmt) {
-                        if (!g_skip_xmt) vRandGenPerformance0<xmt64, SIMD_N_BITS>();
-                    }
-                    if constexpr (!c_skip_vmt) {
-                        if (!g_skip_vmt) vRandGenPerformance0<vmt64, SIMD_N_BITS>();
-                    }
-                }
-            }
-
-            size_t nResAfter = nResults();
-            if (nResAfter == nResBefore)
-                break; // no new results added
         }
 
         std::set<Results, TableCompare> sortedResults(results.begin(), results.end());
 
-        const size_t spacing[] = { 20, 8, 8, 8, 8, 10, 6, 8, 8, 8, 8, 11, 12 };
+        const size_t spacing[] = { 20, 8, 8, 8, 8, 10, 8, 8, 8, 11, 12, 12 };
         size_t s = 0;
         std::cout << "\n"
             << std::setw(spacing[s++]) << std::right << "prng"
@@ -982,12 +892,11 @@ int main(int argc, const char** argv)
             << std::setw(spacing[s++]) << std::right << "HwReg"
             << std::setw(spacing[s++]) << std::right << "blksize"
             << std::setw(spacing[s++]) << std::right << "qrymode"
-            << std::setw(spacing[s++]) << std::right << "nruns"
-            << std::setw(spacing[s++]) << std::right << "tmin"
-            << std::setw(spacing[s++]) << std::right << "tmax"
-            << std::setw(spacing[s++]) << std::right << "tavg"
-            << std::setw(spacing[s++]) << std::right << "tdev"
-            << std::setw(1 + spacing[s++]) << std::right << "tdev/tavg"
+            << std::setw(spacing[s++]) << std::right << "samples"
+            << std::setw(spacing[s++]) << std::right << "tavg_us"
+            << std::setw(spacing[s++]) << std::right << "tdev_us"
+            << std::setw(1 + spacing[s++]) << std::right << "error"
+            << std::setw(spacing[s++]) << std::right << "nRandom"
             << std::setw(spacing[s++]) << std::right << "throughput"
             << "\n";
         for (auto& r : sortedResults) {
@@ -998,13 +907,12 @@ int main(int argc, const char** argv)
                 << std::setw(spacing[s++]) << std::right << r.nBitsHw
                 << std::setw(spacing[s++]) << std::right << r.blkSize
                 << std::setw(spacing[s++]) << std::right << queryModeName(r.qryMode)
-                << std::setw(spacing[s++]) << std::right << r.singleRuns.size()
-                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << r.mi
-                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << r.ma
-                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << r.avg
-                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << r.stdev
-                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << r.stdev / r.avg * 100 << "%"
-                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(1) << g_nRandom / 1.0e6 / r.avg
+                << std::setw(spacing[s++]) << std::right << (std::to_string(r.filtered_samples) + "/" + std::to_string(r.total_samples))
+                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << r.mean_us
+                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << r.stdev_us
+                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(3) << r.rel_error * 100 << "%"
+                << std::setw(spacing[s++]) << std::right << r.nRandom
+                << std::setw(spacing[s++]) << std::right << std::fixed << std::setprecision(1) << r.nRandom / r.mean_us
                 << "\n";
         }
     }
