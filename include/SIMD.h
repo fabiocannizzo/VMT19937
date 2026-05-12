@@ -248,17 +248,20 @@ public:
 
     // Conditional masking: For each 32-bit lane i, result[i] = (this[i] & 1) ? value[i] : 0.
     template <typename XVI>
-    FORCE_INLINE XV ifOddCst32ElseZero(const XVI value) const
+    FORCE_INLINE XV ifOddCstThenZero(const XVI value) const
     {
         XV r;
         for (size_t i = 0; i < s_M; ++i) {
             if constexpr (XVI::s_virtualBitLen > HwBitLen)
-                r.m_v[i] = m_v[i].ifOddCst32ElseZero(value.m_v[i]);
+                r.m_v[i] = m_v[i].ifOddCstThenZero(value.m_v[i]);
             else
-                r.m_v[i] = m_v[i].ifOddCst32ElseZero(value);
+                r.m_v[i] = m_v[i].ifOddCstThenZero(value);
         }
         return r;
     }
+
+    template <typename XVI>
+    FORCE_INLINE XV ifOddCst32ElseZero(const XVI value) const { return ifOddCstThenZero(value); }
 
     // Conditional XOR: For each 32-bit lane i, result[i] = m_v[i] ^ (cond[i] & 1 ? cst[i] : 0).
     FORCE_INLINE XV xorIfOddCst32(const XV& cond, const XV& cst) const
@@ -310,30 +313,23 @@ struct SimdRegister<32, Isa, void>
 
     FORCE_INLINE bool eq(const XV& rhs) const { return m_v == rhs.m_v; }
 
-    // Conditional masking: result = (this & 1) ? cst32 : 0.
-    FORCE_INLINE XV ifOddCst32ElseZero(const XV cst32) const
+    // Conditional masking: result = (this & 1) ? cst : 0.
+    FORCE_INLINE XV ifOddCstThenZero(const XV cst) const
     {
-#if 0 && defined(__GNUC__) && defined(__x86_64__)
-        // force the use of cmov with gcc
-        uint32_t z;
-        __asm__(
-            "mov %[a], %[z]\n"
-            "and $0x1, %[z]\n"
-            "cmovne %[b], %[z]\n"
-            : [z] "=r"(z)
-            : [a] "r"(m_v), [b] "r"(cst32.m_v)
-            : "cc"
-        );
-        return z;
-#elif defined(_MSC_VER)
-        const uint32_t lowestBit = m_v & 0x1;
-        return lowestBit ? cst32 : zero();
+        if constexpr (Isa == ISA::AVX2 || Isa == ISA::AVX512) {
+            return (m_v & 1) * cst.m_v;
+        }
+        else {
+#if defined(_MSC_VER)
+            return (m_v & 0x1) ? cst : zero();
 #else
-        const uint32_t x[2] = { 0, cst32.m_v };
-        const uint32_t lowestBit = m_v & 0x1;
-        return x[lowestBit];
+            const uint32_t x[2] = { 0, cst.m_v };
+            return x[m_v & 0x1];
 #endif
+        }
     }
+
+    FORCE_INLINE XV ifOddCst32ElseZero(const XV cst32) const { return ifOddCstThenZero(cst32); }
 
     // Concatenates registers a and b, then extracts a register-sized window starting from the n32-th word.
     // Effectively shifts the combined [a, b] window left by n32 words.
@@ -405,6 +401,19 @@ struct SimdRegister<64, Isa, void>
 
     static FORCE_INLINE XV zero() { return uint64_t(0); }
 
+    // Conditional masking: result = (this & 1) ? cst : 0.
+    FORCE_INLINE XV ifOddCstThenZero(const XV cst) const
+    {
+        if constexpr (Isa == ISA::AVX2 || Isa == ISA::AVX512) {
+            return (m_v & 1) * cst.m_v;
+        }
+        else {
+            return (m_v & 1) ? cst.m_v : uint64_t(0);
+        }
+    }
+
+    FORCE_INLINE XV ifOddCst64ElseZero(const XV cst64) const { return ifOddCstThenZero(cst64); }
+
     // Bitwise Selection: result = (mask & a) | (~mask & b).
     FORCE_INLINE static XV bitwiseSelect(const XV mask, const XV a, const XV b)
     {
@@ -453,6 +462,7 @@ struct SimdRegister<128, ISA::NEON, void> : VirtualRegBase<128, ISA::NEON>
     friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { return vandq_u32(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { return veorq_u32(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { return vorrq_u32(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator*(const XV& a, const XV& b) { return vmulq_u32(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return vshlq_u32(a.m_v, vdupq_n_s32(n)); }
     friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return vshrq_n_u32(a.m_v, n); }
     friend FORCE_INLINE XV shl64(const XV& a, int n) { return vreinterpretq_u32_u64(vshlq_u64(vreinterpretq_u64_u32(a.m_v), vdupq_n_s64( n))); }
@@ -519,6 +529,15 @@ struct SimdRegister<128, ISA::NEON, void> : VirtualRegBase<128, ISA::NEON>
         return vandq_u32(vreinterpretq_u32_s32(mask), cst32.m_v);
     }
 
+    FORCE_INLINE XV ifOddCstThenZero(const XV cst) const { return ifOddCst32ElseZero(cst); }
+
+    // Conditional masking: For each 64-bit lane i, result[i] = (this[i] & 1) ? cst64[i] : 0.
+    FORCE_INLINE XV ifOddCst64ElseZero(const XV cst64) const
+    {
+        int64x2_t mask = vshrq_n_s64(vreinterpretq_s64_u64(vshlq_n_u64(vreinterpretq_u64_u32(m_v), 63)), 63);
+        return vandq_u32(vreinterpretq_u32_s64(mask), cst64.m_v);
+    }
+
     // Conditional XOR: For each 32-bit lane i, result[i] = m_v[i] ^ (cond[i] & 1 ? cst[i] : 0).
     FORCE_INLINE XV xorIfOddCst32(const XV& cond, const XV& cst) const
     {
@@ -528,9 +547,7 @@ struct SimdRegister<128, ISA::NEON, void> : VirtualRegBase<128, ISA::NEON>
     // Conditional XOR: For each 64-bit lane i, result[i] = m_v[i] ^ (cond[i] & 1 ? cst[i] : 0).
     FORCE_INLINE XV xorIfOddCst64(const XV& cond, const XV& cst) const
     {
-        // sign-extend bit 0 of each 64-bit lane to a full-lane mask
-        int64x2_t mask = vshrq_n_s64(vreinterpretq_s64_u64(vshlq_n_u64(vreinterpretq_u64_u32(cond.m_v), 63)), 63);
-        return veorq_u32(m_v, vandq_u32(vreinterpretq_u32_s64(mask), cst.m_v));
+        return *this ^ cond.ifOddCst64ElseZero(cst);
     }
 
     // Returns the parity (reduction XOR) of all bits in the register.
@@ -565,6 +582,7 @@ struct SimdRegister<128, Isa, std::enable_if_t<Isa == ISA::SSE2 || Isa == ISA::S
     friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { return _mm_and_si128(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { return _mm_xor_si128(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { return _mm_or_si128(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator*(const XV& a, const XV& b) { return _mm_mullo_epi32(a.m_v, b.m_v); }
     //friend FORCE_INLINE XV operator>(const XV& a, const XV& b) { return _mm_cmpgt_epi32(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return _mm_slli_epi32(a.m_v, n); }
     friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm_srli_epi32(a.m_v, n); }
@@ -622,16 +640,22 @@ struct SimdRegister<128, Isa, std::enable_if_t<Isa == ISA::SSE2 || Isa == ISA::S
     // Conditional masking: For each 32-bit lane i, result[i] = (this[i] & 1) ? cst32[i] : 0.
     FORCE_INLINE XV ifOddCst32ElseZero(const XV cst32) const
     {
-#if 0
-        const __m128 z = _mm_setzero_ps();
-        const __m128 lowestBit = _mm_castsi128_ps(_mm_slli_epi32(m_v, 31));
-        return _mm_castps_si128(_mm_blendv_ps(z, _mm_castsi128_ps(cst32.m_v), lowestBit));
-#else
-        const __m128i z = zero().m_v;
+        const __m128i z = _mm_setzero_si128();
         const __m128i lowestBit = _mm_slli_epi32(m_v, 31);
         const __m128i isOdd = _mm_cmpgt_epi32(z, lowestBit);
         return _mm_and_si128(isOdd, cst32.m_v);
-#endif
+    }
+
+    FORCE_INLINE XV ifOddCstThenZero(const XV cst) const { return ifOddCst32ElseZero(cst); }
+
+    // Conditional masking: For each 64-bit lane i, result[i] = (this[i] & 1) ? cst64[i] : 0.
+    FORCE_INLINE XV ifOddCst64ElseZero(const XV cst64) const
+    {
+        // sign-extend bit 0 of each 64-bit lane to a full-lane mask
+        __m128i lowestBit = _mm_slli_epi64(m_v, 63);
+        __m128i hi   = _mm_shuffle_epi32(lowestBit, 0xF5);  // broadcast high-32 of each 64-bit lane
+        __m128i mask = _mm_srai_epi32(hi, 31);
+        return _mm_and_si128(mask, cst64.m_v);
     }
 
     // Conditional XOR: For each 32-bit lane i, result[i] = m_v[i] ^ (cond[i] & 1 ? cst[i] : 0).
@@ -643,11 +667,7 @@ struct SimdRegister<128, Isa, std::enable_if_t<Isa == ISA::SSE2 || Isa == ISA::S
     // Conditional XOR: For each 64-bit lane i, result[i] = m_v[i] ^ (cond[i] & 1 ? cst[i] : 0).
     FORCE_INLINE XV xorIfOddCst64(const XV& cond, const XV& cst) const
     {
-        // sign-extend bit 0 of each 64-bit lane to a full-lane mask
-        __m128i lowestBit = _mm_slli_epi64(cond.m_v, 63);
-        __m128i hi   = _mm_shuffle_epi32(lowestBit, 0xF5);  // broadcast high-32 of each 64-bit lane
-        __m128i mask = _mm_srai_epi32(hi, 31);
-        return _mm_xor_si128(m_v, _mm_and_si128(mask, cst.m_v));
+        return *this ^ cond.ifOddCst64ElseZero(cst);
     }
 
     // Returns the parity (reduction XOR) of all bits in the register.
@@ -839,6 +859,8 @@ struct SimdRegister<256, ISA::SVE256, void> : VirtualRegBase<256, ISA::SVE256>
         return svand_u32_x(svptrue_b32(), svreinterpret_u32_s32(mask), cst32.m_v);
     }
 
+    FORCE_INLINE XV ifOddCstThenZero(const XV cst) const { return ifOddCst32ElseZero(cst); }
+
     // Conditional XOR: For each 32-bit lane i, result[i] = m_v[i] ^ (cond[i] & 1 ? cst[i] : 0).
     FORCE_INLINE XV xorIfOddCst32(const XV& cond, const XV& cst) const
     {
@@ -883,6 +905,7 @@ struct SimdRegister<256, ISA::AVX2, void> : VirtualRegBase<256, ISA::AVX2>
     friend FORCE_INLINE XV operator&(const XV& a, const XV& b) { return _mm256_and_si256(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { return _mm256_xor_si256(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { return _mm256_or_si256(a.m_v, b.m_v); }
+    friend FORCE_INLINE XV operator*(const XV& a, const XV& b) { return _mm256_mullo_epi32(a.m_v, b.m_v); }
     //friend FORCE_INLINE XV operator>(const XV& a, const XV& b) { return _mm256_cmpgt_epi32(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return _mm256_slli_epi32(a.m_v, n); }
     friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm256_srli_epi32(a.m_v, n); }
@@ -985,12 +1008,14 @@ struct SimdRegister<256, ISA::AVX2, void> : VirtualRegBase<256, ISA::AVX2>
         __mmask8 isOdd = _mm256_test_epi32_mask(m_v, _mm256_set1_epi32(1));
         return _mm256_maskz_mov_epi32(isOdd, cst32.m_v);
 #else
-        const __m256i z = zero().m_v;
+        const __m256i z = _mm256_setzero_si256();
         const __m256i lowestBit = _mm256_slli_epi32(m_v, 31); // move least significant bit to most significant bit
         const __m256 mask = _mm256_castsi256_ps(lowestBit);
         return _mm256_castps_si256(_mm256_blendv_ps(_mm256_castsi256_ps(z), _mm256_castsi256_ps(cst32.m_v), mask));
 #endif
     }
+
+    FORCE_INLINE XV ifOddCstThenZero(const XV cst) const { return ifOddCst32ElseZero(cst); }
 
     // Conditional XOR: For each 32-bit lane i, result[i] = m_v[i] ^ (cond[i] & 1 ? cst[i] : 0).
     FORCE_INLINE XV xorIfOddCst32(const XV& cond, const XV& cst) const
@@ -1080,6 +1105,8 @@ struct SimdRegister<512, ISA::AVX512, void> : VirtualRegBase<512, ISA::AVX512>
         const __mmask16 isOdd = _mm512_test_epi32_mask(m_v, _mm512_set1_epi32(1));
         return _mm512_maskz_mov_epi32(isOdd, cst32.m_v);
     }
+
+    FORCE_INLINE XV ifOddCstThenZero(const XV cst) const { return ifOddCst32ElseZero(cst); }
 
     // General ternary logic operation (AVX-512).
     static FORCE_INLINE XV ternary(const XV& a, const XV& b, const XV& c, int imm)

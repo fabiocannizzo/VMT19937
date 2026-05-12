@@ -400,24 +400,24 @@ private:
 
     static FORCE_INLINE void scalarRefill(typename Params::output_word_t* state, size_t nStates)
     {
-        static constexpr typename Params::output_word_t mag01[2] = {0, Params::s_matrixA};
+        using XVW = SimdRegister<Params::s_stateWordBits, Isa>;
         int i;
         for (i = 0; i < Params::s_N - Params::s_M; ++i)
             for (size_t s = 0; s < nStates; ++s) {
                 auto x = (state[i * nStates + s] & Params::s_upperMask)
                        | (state[(i + 1) * nStates + s] & Params::s_lowerMask);
-                state[i * nStates + s] = state[(i + Params::s_M) * nStates + s] ^ (x >> 1) ^ mag01[x & 1];
+                state[i * nStates + s] = state[(i + Params::s_M) * nStates + s] ^ (x >> 1) ^ XVW(x).ifOddCstThenZero(Params::s_matrixA).m_v;
             }
         for (; i < Params::s_N - 1; ++i)
             for (size_t s = 0; s < nStates; ++s) {
                 auto x = (state[i * nStates + s] & Params::s_upperMask)
                        | (state[(i + 1) * nStates + s] & Params::s_lowerMask);
-                state[i * nStates + s] = state[(i + Params::s_M - Params::s_N) * nStates + s] ^ (x >> 1) ^ mag01[x & 1];
+                state[i * nStates + s] = state[(i + Params::s_M - Params::s_N) * nStates + s] ^ (x >> 1) ^ XVW(x).ifOddCstThenZero(Params::s_matrixA).m_v;
             }
         for (size_t s = 0; s < nStates; ++s) {
             auto x = (state[(Params::s_N - 1) * nStates + s] & Params::s_upperMask)
                    | (state[s] & Params::s_lowerMask);
-            state[(Params::s_N - 1) * nStates + s] = state[(Params::s_M - 1) * nStates + s] ^ (x >> 1) ^ mag01[x & 1];
+            state[(Params::s_N - 1) * nStates + s] = state[(Params::s_M - 1) * nStates + s] ^ (x >> 1) ^ XVW(x).ifOddCstThenZero(Params::s_matrixA).m_v;
         }
     }
 
