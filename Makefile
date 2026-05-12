@@ -10,6 +10,15 @@ MAKEFLAGS += -rR
 #   make CXX=cl NBITS=128             # MSVC SSE4.2
 #   make TESTU01_DIR=/path/to/testu01/install
 #   make MKLROOT=/path/to/mkl
+#
+# Available targets:
+#   all (default)                     # Build all enabled executables
+#   perf                              # Build throughput benchmarks
+#   test                              # Build correctness tests
+#   demo                              # Build usage examples
+#   jump                              # Build jump-ahead matrix utilities
+#   encoder                           # Build matrix encoder utility
+#   clean                             # Remove all build artifacts
 
 ifeq ($(origin CC),default)
     CC := gcc
@@ -314,6 +323,10 @@ endif
 # --- Rules ---
 
 all: $(TARGETS)
+
+.PHONY: test perf
+test: $(BINDIR)/test$(EXE_EXT)
+perf: $(BINDIR)/perf$(EXE_EXT)
 
 $(BINDIR):
 	mkdir -p $(BINDIR)

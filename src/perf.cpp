@@ -114,7 +114,7 @@ string g_dir = "dat";
 
 BenchmarkParams g_benchParams;
 size_t g_nBlocks = 800;
-size_t g_blkSize = 16384;
+size_t g_blkSize = 640 * 16;
 
 constexpr uint32_t s_seedlength = 4;
 constexpr uint32_t s_seedinit[s_seedlength] = { 0x123, 0x234, 0x345, 0x456 };
@@ -883,19 +883,19 @@ int main(int argc, const char** argv)
 
         std::set<Results, TableCompare> sortedResults(results.begin(), results.end());
 
-        const size_t spacing[] = { 20, 8, 8, 8, 8, 10, 8, 8, 8, 11, 12, 12 };
+        const size_t spacing[] = { 18, 6, 8, 7, 8, 10, 16, 12, 12, 10, 12, 12 };
         size_t s = 0;
         std::cout << "\n"
             << std::setw(spacing[s++]) << std::right << "prng"
             << std::setw(spacing[s++]) << std::right << "VReg"
-            << std::setw(spacing[s++]) << std::right << "nStates"
+            << std::setw(spacing[s++]) << std::right << "states"
             << std::setw(spacing[s++]) << std::right << "HwReg"
             << std::setw(spacing[s++]) << std::right << "blksize"
             << std::setw(spacing[s++]) << std::right << "qrymode"
             << std::setw(spacing[s++]) << std::right << "samples"
             << std::setw(spacing[s++]) << std::right << "tavg_us"
             << std::setw(spacing[s++]) << std::right << "tdev_us"
-            << std::setw(1 + spacing[s++]) << std::right << "error"
+            << std::setw(spacing[s++]) << std::right << "error"
             << std::setw(spacing[s++]) << std::right << "nRandom"
             << std::setw(spacing[s++]) << std::right << "throughput"
             << "\n";
