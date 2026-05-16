@@ -130,7 +130,7 @@ enum GenMode {orig, sfmt, mkl_mt, mkl_sfmt, xmt32, vmt, vsfmt, xsfmt, stl_mt, xm
 
 const char* modename[] = {"ORIG-MT19937", "ORIG-SFMT19937", "MKL-MT19937", "MKL-SFMT19937", "X-MT19937", "V-MT19937", "V-SFMT19937", "X-SFMT19937", "STL-MT19937", "X-MT19937-64", "STL-MT19937-64", "ORIG-MT19937-64", "V-MT19937-64"};
 
-const size_t anySize[] = {/* 1, 4, 16, 64, 256, 624, 1024, 4096,*/ 16384 };
+const size_t anySize[] = {/* 1, 4, 16, 64, 256, 624, 1024, 4096,*/ 10240 };
 
 template <GenMode G>
 struct GenTraits;
@@ -601,7 +601,7 @@ void syntax()
         << "  -h, --help            Show this help message\n"
         << "  --dir=<datpath>       Folder where to find jump matrix files (default: dat)\n"
         << "  --n-blocks=<val>      Number of blocks per experiment (default 800)\n"
-        << "  --blk-size=<val>      Block size for vectorial tests (default 16384)\n"
+        << "  --blk-size=<val>      Block size for vectorial tests (default 10240)\n"
         << "Adaptive Benchmark Options:\n"
         << "  --alpha=<val>         Relative error margin (default 0.01 = 1%)\n"
         << "  --conf=<val>          Confidence level (default 0.95 = 95%)\n"
