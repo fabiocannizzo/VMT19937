@@ -1,0 +1,10 @@
+=== CPU Information ===
+Vendor : GenuineIntel
+Brand  : Intel(R) Celeron(R) J4125 CPU @ 2.00GHz
+Family : 6, Model: 10, Stepping: 8
+SIMD   : SSE4.2
+Clock  : 2595.84 MHz
+L1d Cache : Level L1d, size: 24 KB
+L1i Cache : Level L1i, size: 32 KB
+L2u Cache : Level L2u, size: 4096 KB
+=======================

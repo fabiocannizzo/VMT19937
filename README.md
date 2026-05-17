@@ -1,190 +1,209 @@
 # VMT19937
 
-# A SIMD friendly pseudo random number generator, combining multiple Mersenne twister 19937 generators
+A high-performance C++20 library for SIMD-vectorized Mersenne Twister 19937 PRNGs, supporting x86-64 (SSE4.2, AVX2, AVX-512) and ARM64 (NEON, SVE).
 
 ## Introduction
-This repository implements a new SIMD-friendly random number generator, which has the same statistical properties and period as the MT19937, the well known generator proposed by Nishimura and Matsumoto [^1].
-It combines the random streams of multiple MT19937 instances with state vectors de-phased via jump-ahead transformations, then polls each instance in a round-robin fashion.
-By evolving their vector states simultaneously, the new generator achieves perfect vectorization, fully leveraging on SIMD hardware capabilities.
-Comprehensive test results demonstrate that the throughput of the new generator scales approximately linearly with the width of the SIMD registers used.
 
-A paper describing in detail the implementation is available on [arXiv](https://arxiv.org/abs/2309.16682)
+VMT19937 provides two families of SIMD-optimized generators based on the Mersenne Twister 19937:
 
-## Description
-The VMT19937 generator is parametrized on 2 template parameters
-```c++
-template <size_t RegisterBitLen, VMT19937GenMode GenMode>
+1.  **X-Family (Intra-state Vectorization):** Vectorizes the state recurrence of a single MT instance. It maintains the exact bit-for-bit mathematical identity and sequential order of the original algorithms.
+    *   `XMT19937`: Vectorized 32-bit MT19937 [^1].
+    *   `XMT19937_64`: Vectorized 64-bit MT19937-64 [^2].
+    *   `XSFMT19937`: SIMD-oriented Fast Mersenne Twister [^3].
+2.  **V-Family (Inter-state Vectorization):** Combines multiple independent MT instances, de-phased via jump-ahead transformations, and polls them in round-robin fashion. This approach achieves perfect vectorization and scales linearly with SIMD register width.
+    *   `VMT19937`: Multi-state 32-bit MT19937.
+    *   `VMT19937_64`: Multi-state 64-bit MT19937-64.
+    *   `VSFMT19937`: Multi-state SIMD-oriented Fast Mersenne Twister.
+
+The library is header-only and leverages modern C++20 features and architecture-specific intrinsics (including AVX-512 ternary logic and SVE/NEON bridges) to outperform proprietary vendor libraries like Intel MKL.
+
+## Parametrization
+
+Generators are template-parameterized to allow fine-tuning of performance and ISA compatibility:
+
+### 1. V-Family (Inter-state Vectorization)
+The V-Family uses multiple parallel states to achieve full SIMD width utilization.
+
+```cpp
+template <
+    size_t VRegBitLen = SIMD_N_BITS,  // Logical SIMD width (128, 256, 512)
+    bool QryBlk16 = false,            // Toggle for optimized Block-16 query mode
+    ISA Isa = details::BestIsa<VRegBitLen>::isa // Target ISA (SSE42, AVX2, AVX512, NEON, SVE)
+>
 class VMT19937;
 ```
 
-`RegisterBitLen` is the length of the registers used in bits.
-It can be any of 32, 128, 256, 512. It reflects the capability of target architecture we target (e.g. if the target hardware only has support for SSE2 instructions, we can only use 32 and 128).
-Performance improves with the register length. The set of available generators is determined automatically from compilation settings. For example, if we compile with the GCC compilation option _-mavx2_, then only 32, 128 and 256 are available. The compilation settings detection code is in the file [include/simd_config.h](include/simd_config.h).
+*   **`VRegBitLen`**: The logical register width. This parameter determines the **mathematical sequence** (i.e., the number of parallel states).
+*   **`Isa`**: Determines the hardware **optimization level**.
+*   **Portability Remark:** By fixing `VRegBitLen`, you ensure that the generator produces the exact same sequence regardless of the underlying hardware ISA. For example, `VMT19937<512>` will produce the same stream on an AVX2 machine (where it is emulated) and an AVX-512 machine (where it is native). `VRegBitLen` can be larger than the hardware register size (`HwSize`), allowing for seamless portability across different architectures. In a nutshell, the sequence is decided by `VRegBitLen`, the optimization by the `Isa`.
+*   **`QryBlk16`**: When `true`, enables the optimized `genrand_uint32_blk16()` and `genrand_word_blk()` methods.
 
-`GenMode` determines the way in which the generator will be used. There are 3 modes to generate random numbers: one at a time, in blocks of 16 or in blocks with the same statesize as the generator. These modes correpond to the enum values below:
-```c++
-enum VMT19937GenMode { QM_Scalar, QM_Block16, QM_StateSize };
-```
-Performance improves with the length of the blocks. Usually `QM_Block16` is a good choice, as it represents a good compromize between performance and storage space.
-The associated query functions are:
-```c++
-    // generates 1 random number on [0,0xffffffff] interval
-    uint32_t FORCE_INLINE genrand_uint32();
+### 2. X-Family (Intra-state Vectorization)
+The X-Family vectorizes the internal recurrence of a single MT state. It maintains sequential consistency with the original MT19937 algorithm.
 
-    // generates 16 uniform discrete random numbers in [0,0xffffffff] interval
-    // note the vector dst mus be aligned on a 64 byte boundary
-    void genrand_uint32_blk16(uint32_t* dst);
-
-    // generates a block of the same size as the state vector of uniform discrete random numbers in [0,0xffffffff] interval
-    // note the vector dst mus be aligned on a 64 byte boundary
-    void genrand_uint32_stateBlk(uint32_t* dst);
+```cpp
+template <
+    ISA Isa = SIMD_ISA,               // Target ISA (SSE42, AVX2, AVX512, NEON, SVE)
+    bool QryBlk16 = false             // Toggle for optimized Block-16 query mode
+>
+class XMT19937;
 ```
 
-## Performance Stats
-The table below shows the time in seconds to generate 5 billions of uniform discrete 32-bit random numbers in the range $[0,2^{32}-1]$.
-`NBITS` and `GENMODE` are the template parameters of the generator. Peformance is compared against the original MT19937 generator and the vectorized SFMT19937 variation [^2].
-```
--------------------------------------------------------------------
-| GENERATOR | NBITS | GENMODE   | TARGET  | CPU-1 | CPU-2 | CPU-3 |
--------------------------------------------------------------------
-| MT19937   | n.a.  | n.a.      | SSE2    | 31.56 | 20.07 | 16.90 |
-| SFMT19937 | n.a.  | n.a.      | SSE2    | 21.67 | 6.99  | 9.97  |
-| VMT19937  | 32    | Scalar    | SSE2    | 20.83 | 11.10 | 13.54 |
-| VMT19937  | 128   | Scalar    | SSE2    | 13.28 | 6.19  | 7.14  |
-| VMT19937  | 128   | Block16   | SSE2    | 7.77  | 3.59  | 4.19  |
-| VMT19937  | 128   | StateSize | SSE2    | 7.42  | 3.37  | 4.59  |
-| VMT19937  | 256   | Scalar    | AVX     | n.a.  | 5.43  | 6.42  |
-| VMT19937  | 256   | Block16   | AVX     | n.a.  | 2.15  | 2.15  |
-| VMT19937  | 256   | StateSize | AVX     | n.a.  | 2.10  | 2.06  |
-| VMT19937  | 512   | Scalar    | AVX512  | n.a.  | n.a.  | 5.66  |
-| VMT19937  | 512   | Block16   | AVX512  | n.a.  | n.a.  | 1.45  |
-| VMT19937  | 512   | StateSize | AVX512  | n.a.  | n.a.  | 1.14  |
--------------------------------------------------------------------
-```
-Performance stats obtained with the following CPUs:
-- CPU-1: Intel(R) Celeron(R) J4125, cache 4Mb, frequency 2.0 GHz, burst frequency 2.7 GHz, SIMD support for SSE4.2 (a low end CPU).
-- CPU-2: Intel® Core™ i9-12900H, cache 24Mb cache, base frequency 3.8GHz, turbo frequency 5.0 GHz, SIMD support for AVX2 (a high performance laptop CPU).
-- CPU-3: Intel® Xeon® Gold 6234, cache 24.75Mb, base frequency 3.3GHz, turbo frequency 4.0 GHz, SIMD support for AVX512 (a high performance desktop CPU).
+*   **`Isa`**: Determines the hardware instruction set used to accelerate the single-state recurrence.
+*   **`QryBlk16`**: Same as in the V-Family, enables zero-overhead bulk generation.
+*   *Note: X-Family generators automatically use the full hardware register width for the target ISA.*
 
-## Empirical random tests
-The empirical quality of the pseudo random sequences generated via VMT19937 is tested with the _TestU01_ suite [^3]. The results are in the subfolder [logs/testu01](testu01-logs).
-Results are comparable with the original MT19937 generator.
+## Jump Matrices
+
+For the **V-Family** generators to produce independent streams, the internal parallel states must be initialized with a **jump matrix**. The choice of the matrix depends on the number of states $N$, which is determined by the logical register width (`VRegBitLen`).
+
+The number of states is calculated as $N = VRegBitLen / StateWordSize$, where **StateWordSize** is:
+*   **32** for `VMT19937`
+*   **64** for `VMT19937_64`
+*   **128** for `VSFMT19937`
+
+### Matrix Selection Formula
+The goal is to partition the period $P = 2^{19937}-1$ into $N$ equal segments of length $L = P/N \approx 2^{19937-k}$, where $k = \log_2(N)$. To ensure maximum separation between the parallel states, you should use the matrix $F_{19937-k}$ (found in the `dat/` folder).
+
+### Recommended Matrices
+
+| Generator | StateWordSize | Width (`VRegBitLen`) | States ($N$) | Recommended Matrix |
+| :--- | :---: | :---: | :---: | :--- |
+| **VMT19937** | 32 | 128 | 4 | `dat/mt32/F19935.bits` |
+| | 32 | 256 | 8 | `dat/mt32/F19934.bits` |
+| | 32 | 512 | 16 | `dat/mt32/F19933.bits` |
+| **VMT19937_64** | 64 | 128 | 2 | `dat/mt64/F19936.bits` |
+| | 64 | 256 | 4 | `dat/mt64/F19935.bits` |
+| | 64 | 512 | 8 | `dat/mt64/F19934.bits` |
+| **VSFMT19937** | 128 | 256 | 2 | `dat/sfmt/F19936.bits` |
+| | 128 | 512 | 4 | `dat/sfmt/F19935.bits` |
+
+*Note: The **X-Family** (single-state) does not require a jump matrix for internal initialization, as it vectorizes the recurrence of a single state.*
+
+## Performance Summary
+
+Throughput measured in **Million samples per second (M/s)**. Benchmarks performed on Intel Celeron (SSE4.2), Xeon Platinum 8375C (AVX-512), Xeon E5-2686 v4 (AVX2), Neoverse-N1 (NEON), and Neoverse-V1 (SVE256).
+
+### MT19937 Family (generates 32-bit random numbers)
+| Mode | Generator | SSE4.2 | AVX2 | AVX-512 | NEON | SVE256 |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
+| **Scalar** | ORIG-MT19937 | 161 | 259 | 418 | 227 | 362 |
+| | STL-MT19937 | 134 | 306 | 599 | 277 | 570 |
+| | MKL-MT* | 23 | 41 | 53 | n.a. | n.a. |
+| | **X-MT19937** | 317 | 417 | **1341** | 421 | **672** |
+| | **V-MT19937** | **341** | **448** | 729 | **431** | 652 |
+| **Vectorial** | ORIG-MT19937??? | 161 | 259 | 418 | 227 | 362 |
+| | STL-MT19937 | 135 | 303 | 565 | 279 | 548 |
+| | MKL-MT | 711 | 1668 | **6479** | n.a. | n.a. |
+| | **X-MT19937** | 711 | 1969 | 6418 | 583 | 1618 |
+| | **V-MT19937** | **858** | **2392** | 5742 | **634** | **1869** |
+
+### SFMT19937 Family (generates 32-bit random numbers)
+| Mode | Generator | SSE4.2 | AVX2 | AVX-512 | NEON | SVE256 |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
+| **Scalar** | ORIG-SFMT | 440 | 792 | 1180 | 524 | 752 |
+| | MKL-SFMT* | 21 | 38 | 61 | n.a. | n.a. |
+| | **X-SFMT19937** | **472** | 848 | 1193 | **555** | 672 |
+| | **V-SFMT19937** | n.a. | **944** | **1507** | n.a. | **898** |
+| **Vectorial** | ORIG-SFMT | 1444 | 2504 | 4424 | **1381** | 1692 |
+| | MKL-SFMT | 1654 | 3360 | 2761 | n.a. | n.a. |
+| | **X-SFMT19937** | **1700** | 2308 | 3584 | 1234 | 1327 |
+| | **V-SFMT19937** | n.a. | **4515** | **10961** | n.a. | **2960** |
+
+### MT19937-64 Family (generates 64-bit random numbers)
+| Mode | Generator | SSE4.2 | AVX2 | AVX-512 | NEON | SVE256 |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
+| **Scalar** | ORIG-MT-64 | 140 | 180 | 338 | 203 | 337 |
+| | STL-MT-64 | 165 | 317 | 590 | 285 | **573** |
+| | **X-MT19937-64** | 180 | 325 | 680 | 284 | 556 |
+| | **V-MT19937-64** | **208** | **372** | **851** | **334** | 513 |
+| **Vectorial** | ORIG-MT-64??? | 140 | 180 | 338 | 203 | 337 |
+| | STL-MT-64 | 165 | 314 | 565 | 281 | 542 |
+| | **X-MT19937-64** | 252 | 827 | 1547 | 255 | **927** |
+| | **V-MT19937-64** | **378** | **1161** | **2886** | **290** | 901 |
+
+<sup>*</sup>MKL tested in vectorial mode with block size 1.
+<sup>???</sup>No native vectorial support; values for ORIG-* copied from scalar mode; STL-* performance reflects compiler auto-vectorization.
+
+### STL Auto-Vectorization
+An interesting phenomenon was observed with the C++ Standard Template Library (STL) implementation of MT19937. While the STL API does not provide a vectorial interface, modern compilers like GCC are capable of auto-vectorizing the internal tempering logic when the generator is polled in a tight loop.
+
+As shown in the performance tables, the STL generators exhibit significantly higher throughput when the compiler is free to parallelize the operations, often matching or exceeding the performance of explicit SIMD implementations on certain architectures (e.g., AVX-512 and SVE256). To ensure a fair comparison in scalar mode, all benchmarks were updated to use a `volatile` variable trap, which prevents the compiler from using Dead-Code Elimination (DCE) or auto-vectorization, thus reflecting true sequential execution.
 
 ## Usage
-The library is header only. You only need to include the header file [include/VMT19937.h](include/VMT19937.h).
 
-Depending on your compilation settings, you have avaialble up to 12 generators, depending on the compination of the template parameters `RegisterBitLen` and `GenMode`.
+### 1. Basic Scalar Usage
+```cpp
+#include "RandGen.h"
 
-You will need also some of the _jump-ahead_ matrices. These are available in _7z_ format in the [dat](dat) subfolder.
-You can either uncompress the _7z_ files manually, or install _7za_ and then use the _make_ command.
-For example, to extract the matrix _F19935.bits_, on Linux or Cygwin you can type the command `make dat/F19935.bits`.
-Only one of the matrices is needed. Which one depends on the length of the SIMD registers available:
-- 128-bits: _F19935.bits_
-- 256-bits: _F19934.bits_
-- 512-bits: _F19933.bits_
-
-To initialize the generator, first we get the relevant matrix, then we initialize the generator.
-For example, to instantiate a genrator with 128 bits regsiters and
-```c++
-    // Get the relevant jump matrix. With 128 bits regsiter we pick F19935.bits
-    const MT19937Matrix *jumpMatrix = new MT19937Matrix(std::string("./dat/F19935.bits"));
-
-    // This is the initialization seed. Refer to the original MT19937 documentation.
-    const uint32_t seedlength = 4;
-    const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
-
-    // Create the generator setting QueryMode as Block16
-    VMT19937<128, QM_Block16> mt(seedinit, seedlength, 0, nullptr, jumpMatrix);
-
-    // The jump matrix is no longer needed and can be released here.
-    delete jumpMatrix;
+// XMT19937 is single-state and doesn't require jump matrices.
+xvmt::XMT19937<> gen(42); // Initialize with seed 42
+uint32_t val = gen.genrand_uint32();
 ```
 
-Then we can generater random numbers in blocks of 16
-```c++
-    // create storage vector aligned with cache lines, where we will store results
-    AlignedVector<uint32_t, 64> buffer(16);
+### 2. High-Performance Bulk Generation (V-Family)
+The V-Family requires a **jump matrix** to initialize de-phased states. Matrices are provided in the `dat/` folder.
 
-    // Query 10 times the generator in blocks of 16 numbers
-    // We could also use mt.genrand_uint32(), which queries one number at a time, but it is slower.
-    for (size_t i = 0; i < 10; ++i) {
-        mt.genrand_uint32_blk16(buffer.data());
-        for (size_t j = 0; j < 16; ++j)
-            std::cout << buffer[j] << ", ";
-    }
-    std::cout << "\n";
-```
-The full source code for this example is in the file [src/demo.cpp](src/demo.cpp) in the routine `demo128`.
+```cpp
+#include "RandGen.h"
+#include <memory>
 
-### Multiple independent generators
-If you want to define multiple independent generator, for example to work with parallel Monte Carlo, you can use the common jump parameters of the constructor.
-In that case you may need to extract further jump matrices, e.g. _F00100.bits_, which will generate independent streams with period of $2^{100}$.
-```c++
-    // Get the relevant jump matrix. With 128 bits registers we pick F19935.bits
-    const MT19937Matrix *jumpMatrix = new MT19937Matrix(std::string("./dat/F19935.bits"));
+using namespace xvmt;
 
-    // Get the chosen common jump matrix. The size of the junp matrix determines the period
-    // before the stream generated by multiple genarators become overlapping.
-    // We can think about this as the period of the parallel generator.
-    // In this example we use the F00100.bits matrix.
-    const MT19937Matrix *commonJumpMatrix = new MT19937Matrix(std::string("./dat/F00100.bits"));
+// 1. Load the appropriate jump matrix (e.g., for 256-bit AVX2)
+auto jumpMatrix = std::make_unique<MT19937Matrix<32>>("./dat/mt32/F19934.bits");
 
-    // This is the initialization seed. Refer to the original MT19937 documentation.
-    const uint32_t seedlength = 4;
-    const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
+// 2. Initialize the generator with Block-16 optimization
+VMT19937<256, true> gen(1234, 0, nullptr, jumpMatrix.get());
 
-    // an array of parallel independent generators, which are guaraneteed not to be overlapping
-    // up to a period of 2^100
-    std::array<std::unique_ptr<VMT19937<128, QM_Block16>>, 10> parallelGenerators;
-
-    // Create 10 multiple parallel generators with VecLen=128 and QueryMode=Block16
-    for (size_t i = 0; i < 10; ++i)
-        parallelGenerators[i].reset(new VMT19937<128, QM_Block16>(seedinit, seedlength, i, commonJumpMatrix, jumpMatrix));
-
-    // The jump matrices are no longer needed and can be released here.
-    delete jumpMatrix;
-    delete commonJumpMatrix;
+// 3. Generate into cache-aligned memory
+alignas(64) uint32_t buffer[16];
+gen.genrand_uint32_blk16(buffer);
 ```
 
-The full source code for this example is in the file [src/demo.cpp](src/demo.cpp) in the routine `demoParallel`.
+### 3. Multiple Independent Generators (Parallel Streams)
+For parallel Monte Carlo or multi-threaded applications, use a **common jump matrix** to ensure each generator instance produces a non-overlapping stream.
 
-## Requirements
-The library is written in C++17. It uses extenseively Intel SIMD instructions, available on modern X86-64 processors.
-It can be compiled for hardware with register length of 128, 256 or 512 bits.
+```cpp
+#include "RandGen.h"
+#include <array>
+#include <memory>
 
-## Build tests
-Test and demo files are located in the [src](src) folder.
-A [Makefile](Makefile) is provided for Linux or Cygwin. You need to define the `NBITS` environment variable. For example:
+using namespace xvmt;
+
+// Matrix to separate internal parallel states (SSE 128-bit)
+auto seqJump = std::make_unique<MT19937Matrix<32>>("./dat/mt32/F19935.bits");
+
+// Matrix to separate different generator instances (by 2^100 steps)
+auto commonJump = std::make_unique<MT19937Matrix<32>>("./dat/mt32/F00100.bits");
+
+// Create 10 independent generators
+std::array<std::unique_ptr<VMT19937<128, true>>, 10> gens;
+for (size_t i = 0; i < 10; ++i) {
+    // Each instance 'i' is jumped forward by i * 2^100 steps
+    gens[i] = std::make_unique<VMT19937<128, true>>(seed, 4, i, commonJump.get(), seqJump.get());
+}
 ```
-# compile with SSE2 code
-make NBITS=128
 
-# compile with AVX code
-make NBITS=256
+## Build Requirements
+*   **Compiler:** GCC 13+, Clang 16+, or MSVC 2022 (with `/std:c++20`).
+*   **Hardware:**
+    *   x86-64 with SSE4.2, AVX2, or AVX-512.
+    *   ARM64 with NEON or SVE/SVE2.
+*   **Build System:** CMake or the provided `Makefile`.
 
-# compile with AVX512 code
+```bash
+# Example: Build benchmarks for AVX-512
 make NBITS=512
-```
-
-## License
-This is available with MIT [license](LICENSE). Note that the library includes also the [MT19937](mt19937-original) and [SFMT19937](SFMT-src-1.5.1) original source code.
-These are distributed only for testing purpose and they have their own licenses.
-
-## TestU01
-To rerun the _TestU01_ tests, you need to download the _TestU01_ [package](http://simul.iro.umontreal.ca/testu01/tu01.html).
-To build it, create an installation directory, e.g. _/workspace/repos/testu01/install_, then run the following commands:
-```
-./configure --prefix=/workspace/repos/testu01/install/ --disable-shared
-make -j4
-make install -j4
-```
-Then you need to build the VMT19937 test for _TESTU01_ and run the tests.
-```
-make -j4 NBITS=512 TESTU01_DIR=/workspace/repos/testu01/install/
-PATH=/workspace/repos/testu01/install/bin:${PATH} make testu01logs
+./bin/perf --dir dat
 ```
 
 ## References
-[^1]: 1998, M. Matsumoto, T. Nishimura, _Mersenne Twister: A 623-dimensionally equidistributed uniform pseudorandom number generator_, ACM Trans. on Modeling and Computer Simulation, 8(1), 3-30. DOI: 10.1145/272991.272995.
-[^2]: 2008, M. Saito and M. Matsumoto, _SIMD-oriented Fast Mersenne Twister: a 128-bit Pseudorandom Number Generator_, Monte Carlo and Quasi-Monte Carlo Methods 2006, Springer, 2008, pp. 607-622. DOI: 10.1007/978-3-540-74496-2\_36
-[^3]: 2007, P. L'Ecuyer and R. Simard, _TestU01: A C Library for Empirical Testing of Random Number Generators_. ACM Transactions on Mathematical Software, Vol. 33, article 22.
+[^1]: 1998, M. Matsumoto, T. Nishimura, "Mersenne Twister: A 623-dimensionally equidistributed uniform pseudorandom number generator", ACM TOMACS.
+[^2]: 2000, T. Nishimura, "Tables of 64-Bit Mersenne Twisters", ACM TOMACS.
+[^3]: 2008, M. Saito and M. Matsumoto, "SIMD-oriented Fast Mersenne Twister: a 128-bit Pseudorandom Number Generator", Springer.
+[^4]: 2007, P. L'Ecuyer and R. Simard, "TestU01: A C Library for Empirical Testing of Random Number Generators", ACM TOMS.
+
+## License
+MIT License. Includes reference code for MT19937 and SFMT for benchmarking purposes.
+

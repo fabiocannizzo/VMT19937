@@ -1,0 +1,77 @@
+=== CPU Information ===
+Vendor : ARM
+Brand  :
+Family : 0, Model: 0, Stepping: 0
+SIMD   : NEON
+Clock  : 0 MHz
+=======================
+Set CPU affinity to CPU 1
+Set high process priority
+Target hardware SIMD register size (bits): 128
+Adaptive Benchmark Configuration:
+  alpha       = 0.01 (target error)
+  confidence  = 0.95
+  outlier     = 3 sigma
+  min_reps    = 30
+  max_reps    = 2000
+  warmup      = 10
+  n-blocks    = 800
+  blk-size    = 10240 (for vectorial tests)
+  n-random    = 8192000 per experiment
+skipping MKL tests
+including original implementation tests
+including STL tests
+including VMT tests
+including XMT tests
+including SFMT tests
+
+Running Experiments...
+      Generator     VReg nStates   HwReg BlkSize   QueryMode
+   ORIG-MT19937       32       1      32       1      Scalar ... done (30/30 runs, nRandom=8192000), error: 0.01%
+    STL-MT19937       32       1      32       1      Scalar ... done (30/30 runs, nRandom=8192000), error: 0.93%
+    STL-MT19937       32       1      32       1     AnySize ... done (30/30 runs, nRandom=8192000), error: 0.16%
+ ORIG-SFMT19937      128       1     128       1      Scalar ... done (28/30 runs, nRandom=8192000), error: 0.01%
+ ORIG-SFMT19937      128       1     128   10240     AnySize ... done (29/30 runs, nRandom=8192000), error: 0.01%
+      V-MT19937      128       4     128       1      Scalar ... done (72/72 runs, nRandom=8192000), error: 1.00%
+      V-MT19937      128       4     128      16     Block16 ... done (29/30 runs, nRandom=8192000), error: 0.01%
+      V-MT19937      128       4     128   10240     AnySize ... done (30/30 runs, nRandom=8192000), error: 0.19%
+      X-MT19937      128       1     128       1      Scalar ... done (30/30 runs, nRandom=8192000), error: 0.02%
+      X-MT19937      128       1     128      16     Block16 ... done (29/30 runs, nRandom=8192000), error: 0.14%
+      X-MT19937      128       1     128   10240     AnySize ... done (30/30 runs, nRandom=8192000), error: 0.05%
+    X-SFMT19937      128       1     128       1      Scalar ... done (29/30 runs, nRandom=8192000), error: 0.01%
+    X-SFMT19937      128       1     128      16     Block16 ... done (30/30 runs, nRandom=8192000), error: 0.04%
+    X-SFMT19937      128       1     128   10240     AnySize ... done (29/30 runs, nRandom=8192000), error: 0.03%
+ORIG-MT19937-64       64       1      64       1      Scalar ... done (30/30 runs, nRandom=8192000), error: 0.01%
+ STL-MT19937-64       64       1      64       1      Scalar ... done (29/30 runs, nRandom=8192000), error: 0.08%
+ STL-MT19937-64       64       1      64       1     AnySize ... done (30/30 runs, nRandom=8192000), error: 0.01%
+   X-MT19937-64      128       1     128       1      Scalar ... done (30/30 runs, nRandom=8192000), error: 0.33%
+   X-MT19937-64      128       1     128       8     Block16 ... done (29/30 runs, nRandom=8192000), error: 0.01%
+   X-MT19937-64      128       1     128   10240     AnySize ... done (30/30 runs, nRandom=8192000), error: 0.02%
+   V-MT19937-64      128       2     128       1      Scalar ... done (30/30 runs, nRandom=8192000), error: 0.03%
+   V-MT19937-64      128       2     128       8     Block16 ... done (30/30 runs, nRandom=8192000), error: 0.02%
+   V-MT19937-64      128       2     128   10240     AnySize ... done (30/30 runs, nRandom=8192000), error: 0.06%
+
+              prng  VReg  states  HwReg blksize   qrymode         samples     tavg_us     tdev_us     error     nRandom  throughput    
+       STL-MT19937    32       1     32       1   AnySize           30/30   29327.190     124.991     0.159%     8192000       279.3   
+       STL-MT19937    32       1     32       1    Scalar           30/30   29594.079     740.643     0.935%     8192000       276.8   
+      ORIG-MT19937    32       1     32       1    Scalar           30/30   36129.816      13.349     0.014%     8192000       226.7   
+    STL-MT19937-64    64       1     64       1    Scalar           29/30   28741.434      63.703     0.084%     8192000       285.0   
+    STL-MT19937-64    64       1     64       1   AnySize           30/30  29155.568       9.435     0.012%     8192000       281.0
+   ORIG-MT19937-64    64       1     64       1    Scalar           30/30   40437.077      14.586     0.013%     8192000       202.6   
+       X-SFMT19937   128       1    128       1    Scalar           29/30   14755.167       4.559     0.012%     8192000       555.2   
+    ORIG-SFMT19937   128       1    128       1    Scalar           28/30   15648.815       4.510     0.011%     8192000       523.5   
+         V-MT19937   128       4    128       1    Scalar           72/72   18990.455     805.566     0.997%     8192000       431.4   
+         X-MT19937   128       1    128       1    Scalar           30/30   19465.365      10.643     0.020%     8192000       420.9   
+      V-MT19937-64   128       2    128       1    Scalar           30/30   24543.361      17.886     0.027%     8192000       333.8   
+      X-MT19937-64   128       1    128       1    Scalar           30/30   28839.032     254.574     0.330%     8192000       284.1   
+      V-MT19937-64   128       2    128       8   Block16           30/30   29037.564      17.719     0.023%     8192000       282.1   
+      X-MT19937-64   128       1    128       8   Block16           29/30   33788.448       9.917     0.011%     8192000       242.4   
+       X-SFMT19937   128       1    128      16   Block16           30/30    8076.502       8.555     0.040%     8192000      1014.3   
+         V-MT19937   128       4    128      16   Block16           29/30   12958.658       3.280     0.010%     8192000       632.2   
+         X-MT19937   128       1    128      16   Block16           29/30   14741.467      53.427     0.138%     8192000       555.7   
+    ORIG-SFMT19937   128       1    128   10240   AnySize           29/30    5932.266       1.996     0.013%     8192000      1380.9   
+       X-SFMT19937   128       1    128   10240   AnySize           29/30    6636.166       4.368     0.025%     8192000      1234.4   
+         V-MT19937   128       4    128   10240   AnySize           30/30   12921.682      66.418     0.192%     8192000       634.0   
+         X-MT19937   128       1    128   10240   AnySize           30/30   14059.728      17.355     0.046%     8192000       582.7   
+      V-MT19937-64   128       2    128   10240   AnySize           30/30   28301.767      46.229     0.061%     8192000       289.5   
+      X-MT19937-64   128       1    128   10240   AnySize           30/30   32117.599      16.827     0.020%     8192000       255.1   

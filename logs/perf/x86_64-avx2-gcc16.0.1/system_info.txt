@@ -1,0 +1,11 @@
+=== CPU Information ===
+Vendor : GenuineIntel
+Brand  : Intel(R) Xeon(R) CPU E5-2686 v4 @ 2.30GHz
+Family : 6, Model: 15, Stepping: 1
+SIMD   : AVX2
+Clock  : 2300.15 MHz
+L1d Cache : Level L1d, size: 32 KB
+L1i Cache : Level L1i, size: 32 KB
+L2u Cache : Level L2u, size: 256 KB
+L3u Cache : Level L3u, size: 46080 KB
+=======================

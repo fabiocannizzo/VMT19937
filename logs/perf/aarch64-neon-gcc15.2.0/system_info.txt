@@ -1,0 +1,7 @@
+=== CPU Information ===
+Vendor : ARM
+Brand  :
+Family : 0, Model: 0, Stepping: 0
+SIMD   : NEON
+Clock  : 0 MHz
+=======================

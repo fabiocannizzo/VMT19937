@@ -1,0 +1,11 @@
+=== CPU Information ===
+Vendor : GenuineIntel
+Brand  : Intel(R) Xeon(R) Platinum 8375C CPU @ 2.90GHz
+Family : 6, Model: 10, Stepping: 6
+SIMD   : AVX-512
+Clock  : 2899.97 MHz
+L1d Cache : Level L1d, size: 48 KB
+L1i Cache : Level L1i, size: 32 KB
+L2u Cache : Level L2u, size: 1280 KB
+L3u Cache : Level L3u, size: 55296 KB
+=======================
