@@ -1,0 +1,651 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{bm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+	backgroundcolor=\color{backcolour},
+	commentstyle=\color{codegreen},
+	keywordstyle=\color{magenta},
+	numberstyle=\tiny\color{codegray},
+	stringstyle=\color{codepurple},
+	basicstyle=\ttfamily\footnotesize,
+	breakatwhitespace=false,
+	breaklines=true,
+	captionpos=b,
+	keepspaces=true,
+	numbers=left,
+	numbersep=5pt,
+	showspaces=false,
+	showstringspaces=false,
+	showtabs=false,
+	tabsize=2
+}
+\lstset{style=mystyle}
+
+\title{Implementation Reference: Jump-Ahead for $\mathbb{F}_2$-Linear Generators\\
+\large MT19937-32, MT19937-64 and SFMT19937}
+\author{Project: fabiocannizzo/VMT19937}
+\date{}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+% ============================================================
+\section{Overview and Purpose}
+
+This document is a self-contained implementation guide for \emph{jump-ahead} (also called
+\emph{fast-forward}) of three $\mathbb{F}_2$-linear pseudorandom number generators:
+MT19937-32, MT19937-64 and SFMT19937.  After reading this document an engineer should be
+able to independently implement:
+\begin{enumerate}
+  \item extraction of the characteristic polynomial of each generator,
+  \item precomputation and serialisation of jump polynomials ($J$ files) and jump matrices
+        ($F$ files) for power-of-two jump distances,
+  \item application of a precomputed jump to an arbitrary live generator state.
+\end{enumerate}
+
+\noindent The reference implementation lives in the \texttt{fabiocannizzo/VMT19937} repository.
+Key source files: \texttt{include/SIMD.h}, \texttt{include/jump\_matrix.h},
+\texttt{include/polynomial\_jump.h}, \texttt{src/jump\_poly\_generator.cpp},
+\texttt{src/compute\_jump\_matrix.cpp}, \texttt{src/characteristic\_poly\_finder.cpp}.
+
+% ============================================================
+\section{Mathematical Background}
+
+\subsection{$\mathbb{F}_2$-Linear Generators}
+
+All three generators maintain a state vector $\mathbf{S}_t \in \mathbb{F}_2^k$ and
+advance it by a linear recurrence:
+\begin{equation}
+  \mathbf{S}_{t+1} = \mathbf{A}\,\mathbf{S}_t, \qquad \mathbf{A} \in \mathbb{F}_2^{k\times k}
+\end{equation}
+where all arithmetic is modulo 2.  The transition matrix $\mathbf{A}$ is implicit in the
+recurrence; it is never stored explicitly during normal generation.  An $n$-step jump is
+\begin{equation}
+  \mathbf{S}_{t+n} = \mathbf{A}^n\,\mathbf{S}_t.
+\end{equation}
+
+\subsection{Characteristic Polynomial and Cayley--Hamilton}
+
+The \emph{characteristic polynomial} of $\mathbf{A}$ over $\mathbb{F}_2$ is
+\begin{equation}
+  P(x) = \det(x\mathbf{I} - \mathbf{A}) \in \mathbb{F}_2[x], \qquad \deg P = k.
+\end{equation}
+By the Cayley--Hamilton theorem $P(\mathbf{A}) = \mathbf{0}$, so $\mathbf{A}$ satisfies its
+own characteristic polynomial.  This means any power $\mathbf{A}^n$ can be expressed as a
+polynomial in $\mathbf{A}$ of degree less than $k$:
+\begin{equation}
+  \mathbf{A}^n \equiv g(x)\big|_{x=\mathbf{A}} = \sum_{i=0}^{k-1} c_i\,\mathbf{A}^i,
+  \qquad g(x) = x^n \bmod P(x) \in \mathbb{F}_2[x].
+  \label{eq:jump_poly}
+\end{equation}
+The polynomial $g(x)$ is called the \emph{jump polynomial} for distance $n$.  Applying it
+to a state $\mathbf{S}_t$ gives:
+\begin{equation}
+  \mathbf{S}_{t+n} = g(\mathbf{A})\,\mathbf{S}_t = \sum_{i=0}^{k-1} c_i\,\mathbf{S}_{t+i}.
+  \label{eq:apply}
+\end{equation}
+This is the key identity: the jumped state is an $\mathbb{F}_2$-linear combination of $k$
+consecutive states.
+
+% ============================================================
+\section{Generator Specifications}
+\label{sec:generators}
+
+\subsection{State Parameters}
+
+\begin{center}
+\begin{tabular}{lccccc}
+\toprule
+Generator & State bits $k$ & State words & Word type & Output/step & Output type \\
+\midrule
+MT19937-32 & 19937 & 624 & \texttt{uint32\_t} & 1 & \texttt{uint32\_t} \\
+MT19937-64 & 19937 & 312 & \texttt{uint64\_t} & 1 & \texttt{uint64\_t} \\
+SFMT19937  & 19968 & 156 & 128-bit block      & 4 & \texttt{uint32\_t} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{MT19937-32} (``MT32''): classic Matsumoto--Nishimura generator.  State is
+624 \texttt{uint32\_t} words; one transition produces one 32-bit output after a tempering
+step.  Characteristic polynomial has degree 19937.
+
+\noindent\textbf{MT19937-64} (``MT64''): 64-bit variant.  State is 312 \texttt{uint64\_t}
+words (same 19937-bit state space as MT32, different packing).  One transition produces
+one 64-bit output.  Same characteristic polynomial degree 19937.
+
+\noindent\textbf{SFMT19937} (``SFMT''): SIMD-oriented Fast Mersenne Twister.  State is 156
+aligned 128-bit blocks (totalling 19968 bits).  One recurrence step processes one 128-bit
+block and produces 4 \texttt{uint32\_t} output words.  Characteristic polynomial has degree
+19968.
+
+\subsection{Critical Distinction: Output Words per Recurrence Step}
+\label{sec:output_per_step}
+
+The variable $x$ in the characteristic polynomial $P(x)$ represents \emph{one recurrence
+step}, not one output word.  For MT32 and MT64 these coincide (one step = one output word),
+but for SFMT one step produces \emph{four} 32-bit output words.
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Generator & Output words per step & Jump of $2^N$ output words requires \\
+\midrule
+MT32  & 1 & $x^{2^N} \bmod P(x)$ \\
+MT64  & 1 & $x^{2^N} \bmod P(x)$ \\
+SFMT  & 4 & $x^{2^{N-2}} \bmod P(x)$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+For SFMT, a jump of $2^N$ 32-bit words ($N \geq 2$) corresponds to $2^{N-2}$ recurrence
+steps, so the required jump polynomial exponent is $2^{N-2}$, not $2^N$.
+
+% ============================================================
+\section{Characteristic Polynomial}
+\label{sec:charpoly}
+
+\subsection{Why a Scalar Projection Suffices}
+
+Although $\mathbf{A}$ is $k \times k$, its characteristic polynomial can be recovered from
+a single scalar output sequence.  Define a linear projection
+$f : \mathbb{F}_2^k \to \mathbb{F}_2$ by $f(\mathbf{S}) = (\text{LSB of state word 0})$.
+The scalar sequence $b_t = f(\mathbf{S}_t)$ satisfies the same minimal polynomial as
+$\mathbf{A}$ provided it is a generating sequence (true for MT19937 and SFMT19937 with
+their standard initial seeds).
+
+\subsection{Berlekamp--Massey Algorithm}
+
+Record $L_\text{BM} = 2k$ consecutive bits $b_0, b_1, \ldots, b_{2k-1}$.  Run the
+Berlekamp--Massey algorithm over $\mathbb{F}_2$:
+
+\begin{algorithm}
+\caption{Berlekamp--Massey over $\mathbb{F}_2$}
+\begin{algorithmic}[1]
+\State $C \leftarrow [1]$, $B \leftarrow [1]$, $L \leftarrow 0$, $m \leftarrow 1$,
+       $b \leftarrow 1$
+\For{$t = 0, 1, \ldots, 2k-1$}
+  \State $d \leftarrow b_t \oplus \bigoplus_{i=1}^{L} c_i \cdot b_{t-i}$
+  \If{$d = 0$}
+    \State $m \leftarrow m + 1$
+  \ElsIf{$2L \leq t$}
+    \State $T \leftarrow C$;\quad $C \leftarrow C \oplus x^m B$;\quad
+           $B \leftarrow T$;\quad $L \leftarrow t+1-L$;\quad $m \leftarrow 1$
+  \Else
+    \State $C \leftarrow C \oplus x^m B$;\quad $m \leftarrow m + 1$
+  \EndIf
+\EndFor
+\State \Return $C$ \Comment{Characteristic polynomial, degree $L = k$}
+\end{algorithmic}
+\end{algorithm}
+
+The result is $P(x)$ of degree exactly $k$ (19937 for MT, 19968 for SFMT).  The polynomial
+is verified by checking that the sequence satisfies $\bigoplus_{i=0}^{k} p_i b_{t-i} = 0$
+for all $t \geq k$.
+
+\subsection{Implementation Notes}
+
+In the reference implementation (\texttt{src/characteristic\_poly\_finder.cpp}),
+the generator is seeded with a known fixed seed, $2k$ output bits are collected, and
+Berlekamp--Massey is applied.  The result is serialised as a hex string in
+\texttt{dat/<gentype>/characteristic.<gentype>.hex}.
+
+The characteristic polynomial is a fixed constant for each generator (independent of seed
+or initial state), so this computation is performed once offline and the result stored.
+
+% ============================================================
+\section{Jump Polynomials}
+\label{sec:jumppoly}
+
+\subsection{Definition and File Naming}
+
+A \emph{jump-$N$ polynomial} $J_N$ is defined so that applying it to a live generator
+state advances it by exactly $2^N$ output words:
+\begin{equation}
+  J_N(x) = x^{e_N} \bmod P(x),
+\end{equation}
+where the exponent $e_N$ depends on the generator:
+\begin{equation}
+  e_N = \begin{cases} 2^N & \text{MT32, MT64} \\ 2^{N-2} & \text{SFMT ($N \geq 2$)} \end{cases}
+\end{equation}
+Files are named \texttt{J\{N:05d\}.\{gentype\}.bits}, e.g.\ \texttt{J19937.sfmt.bits}.
+
+\subsection{Generation by Repeated Squaring}
+
+Starting from the base polynomial $J_{\mathtt{power2}}(x) = x$ (degree~1):
+\begin{align}
+  J_{\mathtt{power2}}(x) &= x \\
+  J_{n+1}(x) &= \bigl(J_n(x)\bigr)^2 \bmod P(x), \quad n \geq \mathtt{power2}
+\end{align}
+where \texttt{power2} = 0 for MT32/MT64 and \texttt{power2} = 2 for SFMT.
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Generator & \texttt{power2} & Base $J_{\mathtt{power2}}$ \\
+\midrule
+MT32 & 0 & $x^{2^0} = x$  \\
+MT64 & 0 & $x^{2^0} = x$  \\
+SFMT & 2 & $x^{2^0} = x$ (but file is $J_{00002}$) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Thus $J_{00002}.\texttt{sfmt}$ is $x^1 \bmod P_\text{SFMT}$; $J_{00100}.\texttt{sfmt}$ is
+$x^{2^{98}} \bmod P_\text{SFMT}$; and applying $J_{00100}$ jumps the generator forward by
+$2^{100}$ SFMT output words (each a \texttt{uint32\_t}).
+
+\noindent\textit{Reference}: \texttt{src/jump\_poly\_generator.cpp}.
+
+\subsection{Polynomial Arithmetic in $\mathbb{F}_2[x]$}
+\label{sec:polyarith}
+
+Polynomials are stored as packed bit arrays of length $k$ (one bit per coefficient).
+
+\subsubsection{Squaring}
+
+Squaring in $\mathbb{F}_2[x]$ is the simplest case.  In characteristic 2, cross-terms
+vanish:
+\begin{equation}
+  \left(\sum_{i=0}^{k-1} a_i x^i\right)^2 = \sum_{i=0}^{k-1} a_i x^{2i}.
+\end{equation}
+Every coefficient moves from bit position $i$ to bit position $2i$ with no mixing.  The
+result has degree at most $2(k-1)$ and therefore fits in $2k$ bits.
+
+\subsubsection{Multiplication (for general jumps)}
+
+General polynomial multiplication in $\mathbb{F}_2[x]$ (carryless multiplication) is
+accelerated by the PCLMULQDQ instruction, available as
+\texttt{\_mm\_clmulepi64\_si128(a, b, imm8)} from \texttt{<wmmintrin.h>}.  It computes the
+product of two 64-bit integers interpreted as degree-63 polynomials over $\mathbb{F}_2$,
+yielding a 128-bit (degree-127) result.  This instruction is available on all x86 processors
+supporting SSE4.2 or later; it requires the \texttt{-mpclmul} compiler flag independently
+of the SIMD width (\texttt{-msse4.2}, \texttt{-mavx2}, or \texttt{-mavx512f}).
+
+A full-width polynomial multiply proceeds by splitting each operand into 64-bit limbs and
+accumulating $\lceil k/64\rceil^2$ PCLMULQDQ products.
+
+\subsubsection{Reduction modulo $P(x)$}
+
+After squaring or multiplication, the intermediate result has degree up to $2k-2$.
+To reduce modulo $P(x)$ (degree $k$): for each bit $i$ from degree $2k-2$ down to $k$,
+if bit $i$ is set, XOR in $P(x)$ shifted left by $i-k$.  In practice this is implemented
+word by word from the most significant end.  The result is a polynomial of degree $< k$.
+
+\noindent\textit{Reference}: \texttt{include/polynomial\_jump.h}, \texttt{PolyOps::square}
+and \texttt{PolyOps::reduce<k>}.
+
+\subsection{General Jump Distances}
+
+To compute $g(x) = x^J \bmod P(x)$ for an arbitrary $J$ (not a power of 2), use
+square-and-multiply on the binary representation $J = \sum_{i} b_i 2^i$:
+\begin{equation}
+  g(x) = \prod_{\{i : b_i = 1\}} J_i(x) \bmod P(x).
+\end{equation}
+If the precomputed $J_i$ files are available this reduces to at most $\lfloor\log_2 J\rfloor$
+polynomial multiplications.  Without precomputed files, maintain a running base and square
+it each iteration (standard binary exponentiation).
+
+% ============================================================
+\section{Jump Matrices}
+\label{sec:jumpmat}
+
+\subsection{Definition and File Naming}
+
+A \emph{jump-$N$ matrix} $F_N$ is the transition matrix raised to the same power as $J_N$:
+\begin{equation}
+  F_N = \mathbf{A}^{e_N} \in \mathbb{F}_2^{k \times k},
+\end{equation}
+using the same exponent $e_N$ as for $J_N$ (Section~\ref{sec:jumppoly}).  Applying $F_N$
+to the state vector directly produces the jumped state in one matrix--vector product.
+
+Files are named \texttt{F\{N:05d\}.\{gentype\}.bits} (or \texttt{.7z} when compressed),
+e.g.\ \texttt{F19937.sfmt.7z}.
+
+\subsection{Base Matrix (Default Constructor)}
+
+Each generator type has a ``base'' transition matrix corresponding to the smallest
+representable jump:
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Generator & Base matrix & Jump represented \\
+\midrule
+MT32 & $\mathbf{A}^1$ & 1 uint32 output word \\
+MT64 & $\mathbf{A}^1$ & 1 uint64 output word \\
+SFMT & $\mathbf{A}^4$ & 1 recurrence block = 4 uint32 words \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The base matrix is constructed by initialising the matrix from the identity and applying
+the recurrence four times (SFMT) or once (MT32/MT64).  This corresponds to constructing
+the matrix whose $i$-th column is the state obtained by starting from the unit vector
+$\mathbf{e}_i$ and advancing by one step (MT) or four steps (SFMT).  In the reference
+implementation the default constructor of \texttt{SFMT19937Matrix} (and
+\texttt{MT19937Matrix<32>}, \texttt{MT19937Matrix<64>}) builds this base matrix.
+
+\subsection{Generation by Repeated Squaring}
+
+Starting from the base matrix $F_{\mathtt{power2}}$:
+\begin{equation}
+  F_{n+1} = F_n^2 = F_n \cdot F_n \in \mathbb{F}_2^{k \times k}, \quad n \geq \mathtt{power2}.
+\end{equation}
+This is the same squaring chain as for the polynomials; both $J_N$ and $F_N$ represent
+identical jump distances at every level $N$.
+
+Because the matrix is $k \times k$ bits ($k \approx 19937$), each matrix file occupies
+approximately $k^2 / 8 \approx 49.7\,\text{MB}$.  Matrix multiplication is multithreaded.
+Intermediate matrices not in the target set are saved to disk at configurable intervals
+(the \texttt{-f} flag of \texttt{compute\_jump\_matrix}) and deleted once they are no
+longer needed to limit peak disk usage.
+
+\noindent\textit{Reference}: \texttt{src/compute\_jump\_matrix.cpp},
+\texttt{include/jump\_matrix.h}, class \texttt{BinarySquareMatrix}.
+
+\subsection{Matrix Multiplication Algorithm}
+
+The $k \times k$ binary matrix product $C = A \cdot B$ is computed column by column.
+Column $j$ of $C$ equals $A \cdot \mathbf{b}_j$ where $\mathbf{b}_j$ is column $j$ of $B$:
+\begin{equation}
+  c_{ij} = \bigoplus_{l=0}^{k-1} a_{il} \cdot b_{lj}.
+\end{equation}
+In practice, rows of $A$ are stored as packed bit vectors and the inner product with column
+$\mathbf{b}_j$ is computed as a bitwise AND followed by a popcount-parity (number of set
+bits modulo 2).  The PCLMULQDQ instruction is not used here; instead the parity of a 64-bit
+integer is computed by folding with XOR and using the \texttt{popcnt} instruction.
+
+Multithreading: the $k$ columns (or rows) of $C$ are distributed across worker threads,
+each operating on a disjoint subset.  The output buffer for $C$ is distinct from both input
+buffers (a third allocation), so reads and writes do not alias.
+
+\noindent\textit{Reference}: \texttt{include/bit\_matrix.h},
+\texttt{BinaryVectorMultiplier<ISA>::multiply8}.
+
+% ============================================================
+\section{Equivalence of Jump Polynomial and Jump Matrix}
+\label{sec:equivalence}
+
+By equation~\eqref{eq:jump_poly}, $\mathbf{A}^{e_N} = J_N(\mathbf{A})$.  Therefore
+applying the jump polynomial $J_N$ to a state is mathematically equivalent to multiplying
+the state by $F_N$:
+\begin{equation}
+  F_N \cdot \mathbf{S}_t = J_N(\mathbf{A})\,\mathbf{S}_t = \mathbf{S}_{t+2^N}.
+\end{equation}
+
+The chain-test program (\texttt{src/sfmt\_chain\_test.cpp}) exploits this to verify
+correctness: at each squaring step $N$, it applies both $J_N$ and $F_N$ independently to
+an identical generator state seeded with a known value, and checks that the output sequences
+match word for word for at least $k/32 + 1$ words.
+
+% ============================================================
+\section{Applying a Jump to a Generator State}
+\label{sec:apply}
+
+\subsection{Polynomial Method}
+
+Given the jump polynomial $g(x) = \sum_{i=0}^{k-1} c_i x^i$ and the current state
+$\mathbf{S}$, compute the jumped state $\mathbf{S}' = g(\mathbf{A})\,\mathbf{S}$ as
+follows:
+
+\begin{algorithm}
+\caption{Jump polynomial application}
+\begin{algorithmic}[1]
+\State Create a zero accumulator state $\mathbf{T} \in \mathbb{F}_2^k$
+\State Make a working copy $\mathbf{W} \leftarrow \mathbf{S}$
+\For{$i = 0, 1, \ldots, k-1$}
+  \If{$c_i = 1$} \Comment{$i$-th coefficient of $g(x)$}
+    \State $\mathbf{T} \leftarrow \mathbf{T} \oplus \mathbf{W}$ \Comment{XOR full state vector}
+  \EndIf
+  \State Advance $\mathbf{W}$ by one recurrence step \Comment{Apply $\mathbf{A}$ once}
+\EndFor
+\State $\mathbf{S} \leftarrow \mathbf{T}$ \Comment{Overwrite state with jumped result}
+\end{algorithmic}
+\end{algorithm}
+
+Complexity: $k$ recurrence steps and at most $k$ state XORs, each XOR operating on the full
+state ($k$ bits).  Total bit operations $\approx k^2$, but the constant is small because
+state XOR is highly SIMD-parallelisable.
+
+\textbf{Important}: the accumulator $\mathbf{T}$ and the working generator $\mathbf{W}$
+must be maintained separately; overwriting $\mathbf{S}$ before all $k$ steps are complete
+would corrupt the computation.
+
+\subsection{SIMD Optimisation of State XOR}
+
+For MT32/MT64, the state is 624 or 312 words; for SFMT it is 156 128-bit blocks.  The XOR
+in step~4 of the algorithm above is a loop over state words:
+\begin{lstlisting}[language=C++, caption=SIMD-vectorised state XOR (AVX2 example)]
+// Accumulate: T ^= W  (both are k/32 uint32_t words, i.e. 624 for MT32)
+// With AVX2, process 8 uint32_t (= one 256-bit register) per iteration
+const __m256i* src = reinterpret_cast<const __m256i*>(W.state_ptr());
+      __m256i* dst = reinterpret_cast<      __m256i*>(T.state_ptr());
+for (size_t w = 0; w < k / 256; ++w)
+    dst[w] = _mm256_xor_si256(dst[w], src[w]);
+\end{lstlisting}
+The same loop uses \texttt{\_mm512\_xor\_si512} for AVX-512, processing 16 uint32 per
+instruction.
+
+\subsection{Matrix Method}
+
+Compute $\mathbf{S}' = F_N \cdot \mathbf{S}$ directly: for each output bit $j$,
+$s'_j = \bigoplus_{i} f_{ji} s_i$, the inner product of row $j$ of $F_N$ with $\mathbf{S}$.
+This is a single matrix--vector product in $\mathbb{F}_2$ and requires no additional
+generator steps.  It is faster for a one-off jump, whereas the polynomial method requires
+no matrix storage.
+
+\subsection{Equivalence in Practice}
+
+Both methods produce identically the same state and therefore the same subsequent output
+sequence.  The test suite verifies this property for all three generators at all precomputed
+exponents $N$.
+
+% ============================================================
+\section{File Formats}
+\label{sec:fileformats}
+
+\subsection{Polynomial File (\texttt{.bits})}
+
+A polynomial of degree $< k$ is serialised as a packed bit array of exactly
+$\lceil k/32 \rceil$ \texttt{uint32\_t} words in little-endian byte order.  Bit $i$ of
+the polynomial (coefficient of $x^i$) is stored at bit position $i \bmod 32$ of word
+$\lfloor i/32 \rfloor$.  Unused bits in the last word (if $k$ is not a multiple of 32)
+are zero.
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Generator & $k$ & File size \\
+\midrule
+MT32 / MT64 & 19937 & $\lceil 19937/32 \rceil \times 4 = 2500\,\text{bytes}$ \\
+SFMT        & 19968 & $\lceil 19968/32 \rceil \times 4 = 2496\,\text{bytes}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Matrix File (\texttt{.bits} and \texttt{.7z})}
+
+A $k \times k$ binary matrix is serialised row-by-row.  Each row is a packed bit array of
+$k$ bits, stored as $\lceil k / 64 \rceil$ \texttt{uint64\_t} words in little-endian order,
+padded to the next 64-bit boundary.  Rows are written from row 0 to row $k-1$.
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+Generator & $k$ & Uncompressed size \\
+\midrule
+MT32 / MT64 & 19937 & $19937 \times \lceil 19937/64\rceil \times 8 \approx 49.6\,\text{MB}$ \\
+SFMT        & 19968 & $19968 \times \lceil 19968/64\rceil \times 8 \approx 49.9\,\text{MB}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Matrix files are stored in \texttt{.7z} format in the repository to save space.  The
+\texttt{.bits} file is extracted before use.
+
+\subsection{Characteristic Polynomial File (\texttt{.hex})}
+
+The characteristic polynomial is stored as a hexadecimal string (most-significant nibble
+first) in a plain text file.  Comments starting with \texttt{\#} are ignored.
+
+\subsection{Naming Conventions}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+File & Meaning & Example \\
+\midrule
+\texttt{J\{N:05d\}.\{gen\}.bits} & Jump polynomial for $2^N$ output words & \texttt{J19937.sfmt.bits} \\
+\texttt{F\{N:05d\}.\{gen\}.7z}   & Jump matrix for $2^N$ output words     & \texttt{F19937.sfmt.7z}  \\
+\texttt{characteristic.\{gen\}.hex} & Characteristic polynomial            & \texttt{characteristic.sfmt.hex} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Supported generator codes: \texttt{mt32}, \texttt{mt64}, \texttt{sfmt}.
+
+% ============================================================
+\section{Precomputation Workflow}
+\label{sec:workflow}
+
+\subsection{Step 1: Characteristic Polynomial}
+
+Run \texttt{characteristic\_poly\_finder -g=<gentype>}.  Seeds the generator with a fixed
+known seed, collects $2k$ output bits, runs Berlekamp--Massey, and writes the result to
+\texttt{dat/<gentype>/characteristic.<gentype>.hex}.  This is a one-time computation.
+
+\subsection{Step 2: Jump Polynomials}
+
+Run \texttt{jump\_poly\_generator -g=<gentype> [-t=<list>]}.  For each target $N$ in the
+list (default: $\{9, 100, 19933, \ldots, 19937\}$), computes $J_N$ by squaring $J_{N-1}$
+starting from $J_{\mathtt{power2}} = x$.  Writes \texttt{J\{N:05d\}.<gentype>.bits}.
+
+All squarings and reductions operate on polynomials stored in SIMD registers; each
+squaring step completes in milliseconds even for $k = 19968$.
+
+\subsection{Step 3: Jump Matrices}
+
+Run \texttt{compute\_jump\_matrix -g=<gentype> [-j=<threads>] [-f=<freq>] [-t=<list>]}.
+For each target $N$, squares the base matrix $F_{\mathtt{power2}}$ repeatedly.  The
+\texttt{-f} flag controls how often intermediate matrices are saved to disk (useful for
+checkpointing across long runs; default 100).  Non-target intermediates are deleted once
+superseded.
+
+Matrix squaring is the dominant cost: for $k = 19937$ and AVX2, each squaring takes on the
+order of seconds on modern hardware.  Reaching $F_{19937}$ requires $19937 -
+\mathtt{power2}$ squarings from the base.
+
+Compile with \texttt{NBITS=256} (AVX2) or \texttt{NBITS=512} (AVX-512) for best
+performance.  Always add \texttt{-mpclmul} to the compiler flags alongside any AVX flag,
+as PCLMULQDQ is not implied by \texttt{-mavx2} or \texttt{-mavx512f}.
+
+\subsection{Step 4: Verify}
+
+After precomputation, run \texttt{test.exe} to verify poly\,$=$\,matrix agreement for all
+generators and all precomputed exponents.  The chain-test program
+(\texttt{sfmt\_chain\_test}) provides a more exhaustive verification by checking every
+single squaring step from $N=100$ through $N=19937$ using five independent test modes
+(in-memory, Scalar ISA, cross-serialisation, and round-trip).
+
+\subsection{Canonical Target Set}
+
+The following exponents $N$ are precomputed by default and stored in the repository:
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+$N$ & Jump size \\
+\midrule
+9      & $2^9 = 512$ output words \\
+100    & $2^{100} \approx 1.27 \times 10^{30}$ output words \\
+19933  & $2^{19933}$ output words \\
+19934  & $2^{19934}$ output words \\
+19935  & $2^{19935}$ output words \\
+19936  & $2^{19936}$ output words \\
+19937  & $2^{19937}$ output words (full period jump) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The exponents 19933--19937 are chosen because their sum covers an independent
+decomposition of the full period: $2^{19937} = 2^{19933} + \cdots$ etc., enabling
+construction of non-overlapping parallel streams of arbitrary size up to $2^{19937}$.
+
+% ============================================================
+\section{Implementation Checklist}
+
+An independent implementation must correctly handle the following points, each of which
+has been a source of bugs in practice:
+
+\begin{enumerate}
+  \item \textbf{SFMT \texttt{power2}=2 offset.}  The SFMT base matrix represents a jump
+        of 4 output words (one 128-bit block), not 1.  The polynomial base is
+        $x^1 = J_{00002}$, not $J_{00000}$.  Confusing \texttt{power2}=0 with
+        \texttt{power2}=2 generates files with incorrect jump distances that pass
+        trivial sanity checks but fail poly\,$=$\,matrix cross-checks.
+
+  \item \textbf{Separate $P(x)$ for SFMT.}  SFMT has $k=19968$, not 19937.  Using the
+        MT characteristic polynomial for SFMT reduction produces silently wrong results.
+
+  \item \textbf{\texttt{-mpclmul} flag.}  The PCLMULQDQ instruction (used in polynomial
+        squaring) is not enabled by \texttt{-mavx2} alone.  Always compile with
+        \texttt{-mpclmul} in addition to any SIMD width flag.
+
+  \item \textbf{Matrix base constructor.}  The \texttt{SFMT19937Matrix()} default
+        constructor must initialise the matrix to $\mathbf{A}^4$ (four recurrence steps),
+        not $\mathbf{A}^1$.  Similarly \texttt{MT19937Matrix<32>()} and
+        \texttt{MT19937Matrix<64>()} must initialise to $\mathbf{A}^1$.
+
+  \item \textbf{Accumulator isolation during poly application.}  The accumulator $\mathbf{T}$
+        and working copy $\mathbf{W}$ must be completely separate objects.  Reading from
+        and writing to the same state buffer mid-loop corrupts all subsequent XOR steps.
+
+  \item \textbf{File format endianness.}  Both polynomial and matrix files are stored
+        little-endian.  On big-endian platforms a byte-swap must be applied on read and
+        write.
+
+  \item \textbf{Matrix squaring output buffer.}  The output matrix of a squaring step must
+        be a third buffer distinct from both inputs.  In-place squaring ($C = A \cdot A$
+        where $C$ aliases $A$) is incorrect because partial results overwrite inputs needed
+        by later column computations.
+\end{enumerate}
+
+% ============================================================
+\section{References}
+
+\begin{itemize}
+  \item Haramoto, H., Matsumoto, M., Nishimura, T., Panneton, F.\ and L'Ecuyer, P., 2008.
+        \textit{Efficient Jump Ahead for $\mathbb{F}_2$-Linear Random Number Generators}.
+        INFORMS Journal on Computing, 20(3), pp.\ 385--390.
+  \item Matsumoto, M.\ and Nishimura, T., 1998.
+        \textit{Mersenne Twister: A 623-Dimensionally Equidistributed Uniform
+        Pseudo-Random Number Generator}.
+        ACM Transactions on Modeling and Computer Simulation, 8(1), pp.\ 3--30.
+  \item Saito, M.\ and Matsumoto, M., 2008.
+        \textit{SIMD-Oriented Fast Mersenne Twister: a 128-bit Pseudorandom Number
+        Generator}.
+        Monte Carlo and Quasi-Monte Carlo Methods 2006, pp.\ 607--622.
+  \item Official SFMT Jump reference implementation:
+        \url{https://www.math.sci.hiroshima-u.ac.jp/m-mat/MT/SFMT/JUMP/SFMTJump-src-0.1.tar.gz}
+\end{itemize}
+
+\end{document}

@@ -48,14 +48,31 @@ private:
 
 protected:
     alignas(64) uint32_t m_state[s_n32InFullState];    // the array of state vectors
+    size_t m_step_idx;
 
 private:
     // This data members is necessary only if QueryMode!=QM_StateSize
     const uint32_t* const m_state_end;
     const uint32_t* m_prnd;
 
-    using MaskType = XV;
-    alignas(64) inline static const MaskType s_bMask{SFMT19937Params::s_SFMT_MSK1, SFMT19937Params::s_SFMT_MSK2, SFMT19937Params::s_SFMT_MSK3, SFMT19937Params::s_SFMT_MSK4};
+    public:
+    // Single 128-bit block step update.
+    void step()
+    {
+        uint32_t* st = m_state;
+        constexpr int N = s_N;
+        alignas(64) static const XV bMask{SFMT19937Params::s_SFMT_MSK1, SFMT19937Params::s_SFMT_MSK2, SFMT19937Params::s_SFMT_MSK3, SFMT19937Params::s_SFMT_MSK4};
+        XV xA = XV::template load<true>(st + m_step_idx * s_n32inReg);
+        XV xB = XV::template load<true>(st + ((m_step_idx + s_M) % N) * s_n32inReg);
+        XV xC = XV::template load<true>(st + ((m_step_idx + N - 2) % N) * s_n32inReg);
+        XV xD = XV::template load<true>(st + ((m_step_idx + N - 1) % N) * s_n32inReg);
+        XV res = advance1(xA, xB, xC, xD, bMask);
+        res.template store<true>(st + m_step_idx * s_n32inReg);
+        m_step_idx = (m_step_idx + 1) % N;
+        m_prnd = m_state_end; // Force refill cache on next query if needed
+    }
+
+    private:
 
     template <typename XVCst>
     static FORCE_INLINE XV advance1(const XV& xA, const XV& xB, const XV& xC, const XV& xD, const XVCst& bMask)
@@ -124,7 +141,7 @@ private:
     static NO_INLINE void refillImpl(const uint32_t* src, uint32_t* dst)
     {
         const int s_M = SFMT19937Params::s_M;
-        const auto bMask = s_bMask;
+        alignas(64) static const XV bMask{SFMT19937Params::s_SFMT_MSK1, SFMT19937Params::s_SFMT_MSK2, SFMT19937Params::s_SFMT_MSK3, SFMT19937Params::s_SFMT_MSK4};
 
         XV xC = XV::template load<A>(src + (s_N - 2) * s_n32inReg);
         XV xD = XV::template load<A>(src + (s_N - 1) * s_n32inReg);
@@ -141,10 +158,12 @@ private:
         advanceLoopD<A, nUnroll, s_M,       false, 0,   s_N - s_M>(srcCur, dstReadCur, xC, xD, bMask);
     }
 
+public:
     FORCE_INLINE void refill()
     {
         refillImpl<true>(m_state, m_state);
         m_prnd = begin();
+        m_step_idx = 0;
     }
 
     const uint32_t* begin() const
@@ -232,19 +251,26 @@ private:
         m_prnd += 16;
     }
 
-protected:
-
+public:
     // extract one of the interleaved state vectors and save it to dst
     void stateToVector(size_t stateIndex, uint32_t* pdst) const
     {
-        cubeToMatrix<s_nStates, s_n32InOneWord, uint32_t>(pdst, m_state, s_N, stateIndex);
+        // For SFMT, we need to extract from interleaved memory but starting at m_step_idx
+        for (size_t i = 0; i < (size_t)s_N; ++i) {
+            size_t absIdx = (m_step_idx + i) % s_N;
+            for (size_t j = 0; j < (size_t)s_n32InOneWord; ++j) {
+                pdst[i * s_n32InOneWord + j] = m_state[absIdx * s_n32inReg + stateIndex * s_n32InOneWord + j];
+            }
+        }
     }
 
-    // store vector into the interleaved elements of the state vector
     void vectorToState(size_t stateIndex, const uint32_t* psrc)
     {
+        m_step_idx = 0;
         matrixToCube<s_nStates, s_n32InOneWord, uint32_t>(m_state, psrc, s_N, stateIndex);
     }
+
+protected:
 
     // Initializes the internal state array with a 32-bit integer seed.
     void reinitMainState(uint32_t seed)
@@ -310,6 +336,7 @@ protected:
 
     void reinitPointers()
     {
+        m_step_idx = 0;
         m_prnd = end();
     }
 
@@ -383,8 +410,18 @@ public:
     // constructors
     SFMT19937Base()
         : m_state_end(m_state + s_n32InFullState)
+        , m_step_idx(0)
         , m_prnd(nullptr)
     {}
+
+    SFMT19937Base(const SFMT19937Base& other)
+        : m_step_idx(other.m_step_idx)
+        , m_state_end(m_state + s_n32InFullState)
+        , m_prnd(other.m_prnd == nullptr ? nullptr :
+                 m_state + (other.m_prnd - other.m_state))
+    {
+        std::copy(other.m_state, other.m_state + s_n32InFullState, m_state);
+    }
 
 }; // SFMT19937Base
 

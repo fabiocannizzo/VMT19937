@@ -152,6 +152,7 @@ private:
         const XV m_lowerMask;
         const XV m_matrixA;
     };
+public:
     alignas(64) inline static const RefillCst s_refillMasks{};
 
     static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, const RefillCst& masks)
@@ -389,6 +390,7 @@ private:
         const XV m_upperMask;
         const XV m_matrixA;
     };
+public:
     alignas(64) inline static const RefillCst s_refillMasks{};
 
     static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, const RefillCst& masks)
@@ -505,10 +507,15 @@ public:
     static constexpr size_t s_n32InFullState = s_n32InOneState * s_nStates;
     static constexpr size_t s_nMatrixBits   = Params::s_nMatrixBits;
 
+    using XV = SimdRegister<s_regLenBits, s_isa>;
+
     // Exposed for policies and RandGen; kept out of private so derived specialisations
     // can also use them in reinitMainState implementations.
     static constexpr size_t s_n32InBlock    = 64 / sizeof(uint32_t);           // 16
     static constexpr size_t s_nWordsInBlock = s_n32InBlock / Params::s_n32InOneWord;
+
+protected:
+    size_t m_step_idx;
 
 private:
     static_assert(64 * 8 >= VRegBitLen, "Assume that the register size is <= than the cache line");
@@ -521,10 +528,46 @@ private:
 protected:
     alignas(64) output_word_t m_state[s_N * s_nStates];
 
+public:
+    // Single word step update (used by PolynomialJumpApplier::apply only).
+    // Advances by exactly one MT recurrence step.
+    void step()
+    {
+        output_word_t* st = m_state;
+        constexpr int N = Params::s_N;
+        constexpr int M = Params::s_M;
+
+        size_t ja = m_step_idx;
+        size_t jb = (m_step_idx + M) % N;
+        size_t jc = (m_step_idx + 1) % N;
+
+        if constexpr (MonoState) {
+            // Scalar path: s_nStates==1 so SIMD loads at arbitrary offsets would be misaligned.
+            output_word_t y = (st[ja] & output_word_t(Params::s_upperMask))
+                            | (st[jc] & output_word_t(Params::s_lowerMask));
+            st[ja] = st[jb] ^ (y >> 1) ^ ((y & 1) ? output_word_t(Params::s_matrixA) : output_word_t(0));
+        } else {
+            output_word_t* s_a = st + ja * s_nStates;
+            output_word_t* s_b = st + jb * s_nStates;
+            output_word_t* s_c = st + jc * s_nStates;
+
+            XV xA = XV::template load<true>(s_a);
+            XV xB = XV::template load<true>(s_b);
+            XV xC = XV::template load<true>(s_c);
+
+            XV res = Refiller::advance1(xA, xC, xB, Refiller::s_refillMasks);
+            res.template store<true>(reinterpret_cast<uint32_t*>(s_a));
+        }
+
+        m_step_idx = (m_step_idx + 1) % N;
+        m_pst = m_pstEnd;
+    }
+
 private:
     void NO_INLINE refill()
     {
         Refiller::execute(*this);
+        m_step_idx = 0;
     }
 
     template <bool Aligned>
@@ -554,6 +597,7 @@ protected:
 
     void reinitPointers()
     {
+        m_step_idx = 0;
         m_pst = m_pstEnd;
         m_rndCache.setEnd();
     }
@@ -749,12 +793,15 @@ public:
     using output_word_t = typename Params::output_word_t;
 
 protected:
+public:
     void stateToVector(size_t stateIndex, uint32_t* pdst) const
     {
         const uint32_t* pstate = reinterpret_cast<const uint32_t*>(base_t::m_state);
-        pdst[0] = pstate[stateIndex] >> 31;
+        auto get_xk = [&](size_t k) { return pstate[((base_t::m_step_idx + k) % base_t::s_N) * base_t::s_nStates + stateIndex]; };
+
+        pdst[0] = get_xk(0) >> 31;
         for (size_t i = 1; i < (size_t)base_t::s_N; ++i) {
-            uint32_t word = pstate[i * base_t::s_nStates + stateIndex];
+            uint32_t word = get_xk(i);
             pdst[i - 1] |= word << 1;
             pdst[i] = word >> 31;
         }
@@ -763,6 +810,8 @@ protected:
     void vectorToState(size_t stateIndex, const uint32_t* psrc)
     {
         uint32_t* pstate = reinterpret_cast<uint32_t*>(base_t::m_state);
+        // Reset m_step_idx when loading from a vector, as vectors are canonical representation
+        base_t::m_step_idx = 0;
         pstate[stateIndex] = 0;
         size_t w;
         for (w = 0; w < (size_t)base_t::s_N - 1; ++w) {
@@ -840,23 +889,29 @@ protected:
     //   Group N-1: only bits 0..32 (UPPER_MASK of x[N-1]).
     //   Total: 64*(N-1)+33 = 19937 bits.
 
+public:
     void stateToVector(size_t stateIndex, uint32_t* pdst) const
     {
         const uint64_t* pstate = reinterpret_cast<const uint64_t*>(base_t::m_state);
+        auto get_xk = [&](size_t k) { return pstate[((base_t::m_step_idx + k) % base_t::s_N) * base_t::s_nStates + stateIndex]; };
+
         for (size_t k = 0; k < (size_t)base_t::s_N - 1; ++k) {
-            uint64_t xk  = pstate[k * base_t::s_nStates + stateIndex];
-            uint64_t xk1 = pstate[(k + 1) * base_t::s_nStates + stateIndex];
+            uint64_t xk  = get_xk(k);
+            uint64_t xk1 = get_xk(k + 1);
             pdst[2 * k]     = (uint32_t)(xk >> 31);
             pdst[2 * k + 1] = (uint32_t)((xk >> 63) | ((xk1 & 0x7FFFFFFFULL) << 1));
         }
-        uint64_t xLast = pstate[(base_t::s_N - 1) * base_t::s_nStates + stateIndex];
+        uint64_t xLast = get_xk(base_t::s_N - 1);
         pdst[2 * (base_t::s_N - 1)]     = (uint32_t)(xLast >> 31);
         pdst[2 * (base_t::s_N - 1) + 1] = (uint32_t)(xLast >> 63);
     }
 
+public:
     void vectorToState(size_t stateIndex, const uint32_t* psrc)
     {
         uint64_t* pstate = reinterpret_cast<uint64_t*>(base_t::m_state);
+        // Reset m_step_idx when loading from a vector, as vectors are canonical representation
+        base_t::m_step_idx = 0;
         // x[0]: LOWER bits (0..30) are not encoded in the state vector; set to zero
         pstate[0 * base_t::s_nStates + stateIndex] =
             ((uint64_t)psrc[0] << 31) | ((uint64_t)(psrc[1] & 1) << 63);

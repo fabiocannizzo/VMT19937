@@ -2,6 +2,7 @@
 
 #include "MT19937.h"
 #include "SFMT19937.h"
+#include "polynomial_jump.h"
 
 namespace xvmt {
 namespace details {
@@ -13,6 +14,7 @@ class RandGen : protected GenBase
 public:
     using matrix_t = typename base_t::matrix_t;
     using output_word_t = typename base_t::output_word_t;
+    using poly_t = Polynomial<32768, base_t::s_isa>;
 
     // re-export useful constants
     static constexpr size_t s_regLenBits = base_t::s_regLenBits;           // logical SIMD register width in bits
@@ -87,6 +89,47 @@ private:
         }
     }
 
+    void completeStateInitializationPoly(const poly_t* commonPoly, const poly_t* sequentialPoly)
+    {
+        // apply common jump to state-0
+        if (commonPoly) {
+            PolynomialJumpApplier<base_t>::apply(*this, *commonPoly, 0);
+        }
+
+        // if there are multiple states, distance them using the sequentialPoly mask
+        if constexpr (s_nStates > 1) {
+            if (sequentialPoly) {
+                for (size_t s = 1; s < base_t::s_nStates; ++s) {
+                    // State[s] = sequentialPoly(State[s-1])
+                    if constexpr (sizeof(output_word_t) == 4) {
+                        for (size_t w = 0; w < (size_t)base_t::s_N; ++w)
+                            for (size_t j = 0; j < base_t::s_n32InOneWord; ++j)
+                                base_t::m_state[w * base_t::s_n32inReg + s * base_t::s_n32InOneWord + j] = 
+                                    base_t::m_state[w * base_t::s_n32inReg + (s-1) * base_t::s_n32InOneWord + j];
+                    } else {
+                        for (size_t w = 0; w < (size_t)base_t::s_N; ++w)
+                            base_t::m_state[w * base_t::s_nStates + s] = base_t::m_state[w * base_t::s_nStates + (s-1)];
+                    }
+                    PolynomialJumpApplier<base_t>::apply(*this, *sequentialPoly, s);
+                }
+            } else {
+#if (RANDGEN_TESTING!=1)
+                THROW("Having multiple states and no sequential jump mask does not make sense");
+#endif
+                if constexpr (sizeof(output_word_t) == 4) {
+                    for (size_t w = 0; w < (size_t)base_t::s_N; ++w)
+                        for (size_t j = 0; j < base_t::s_n32InOneWord; ++j)
+                            for (size_t s = 1; s < base_t::s_nStates; ++s)
+                                base_t::m_state[w * base_t::s_n32inReg + s * base_t::s_n32InOneWord + j] = base_t::m_state[w * base_t::s_n32inReg + j];
+                } else {
+                    for (size_t w = 0; w < (size_t)base_t::s_N; ++w)
+                        for (size_t s = 1; s < base_t::s_nStates; ++s)
+                            base_t::m_state[w * base_t::s_nStates + s] = base_t::m_state[w * base_t::s_nStates];
+                }
+            }
+        }
+    }
+
 public:
     RandGen() {}
 
@@ -112,11 +155,20 @@ public:
         reinit(seeds, n_seeds, commonJumpRepeat, commonJump, sequentialJump);
     }
 
-    // Re-initialize as follows:
-    // 1) initialize state 0 with seed
-    // 2) apply commonJump matrix nCommonJumpRepeat times to state 0
-    // 3) if multiple states are present, apply sequentialJump matrix to initialize the other states
-    // Note that the sequentialJump must be provided only for generators of the V-family, which have multiple states
+    // Initialize using polynomials
+    RandGen(output_word_t seed, const poly_t* commonPoly, const poly_t* sequentialPoly)
+        : base_t()
+    {
+        reinit(seed, commonPoly, sequentialPoly);
+    }
+
+    RandGen(const uint32_t seeds[], uint32_t n_seeds, const poly_t* commonPoly, const poly_t* sequentialPoly)
+        : base_t()
+    {
+        reinit(seeds, n_seeds, commonPoly, sequentialPoly);
+    }
+
+    // Matrix-based re-initialization
     void reinit(output_word_t s, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
     {
         base_t::reinitMainState(s);
@@ -124,11 +176,6 @@ public:
         base_t::reinitPointers();
     }
 
-    // Re-initialize as follows:
-    // 1) initialize state 0 with seeds array
-    // 2) apply commonJump matrix nCommonJumpRepeat times to state 0
-    // 3) if multiple states are present, apply sequentialJump matrix to initialize the other states
-    // Note that the sequentialJump must be provided only for generators of the V-family, which have multiple states
     void reinit(const uint32_t* seeds, uint32_t nSeeds, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
     {
         base_t::reinitMainState(seeds, nSeeds);
@@ -136,15 +183,32 @@ public:
         base_t::reinitPointers();
     }
 
-    // Re-initialize as follows:
-    // 1) initialize state 0 with seeds array
-    // 2) apply commonJump matrix nCommonJumpRepeat times to state 0
-    // 3) if multiple states are present, apply sequentialJump matrix to initialize the other states
-    // Note that the sequentialJump must be provided only for generators of the V-family, which have multiple states
+    // Polynomial-based re-initialization
+    void reinit(output_word_t s, const poly_t* commonPoly, const poly_t* sequentialPoly)
+    {
+        base_t::reinitMainState(s);
+        completeStateInitializationPoly(commonPoly, sequentialPoly);
+        base_t::reinitPointers();
+    }
+
+    void reinit(const uint32_t* seeds, uint32_t nSeeds, const poly_t* commonPoly, const poly_t* sequentialPoly)
+    {
+        base_t::reinitMainState(seeds, nSeeds);
+        completeStateInitializationPoly(commonPoly, sequentialPoly);
+        base_t::reinitPointers();
+    }
+
     void reinit(const uint64_t* seeds, uint32_t nSeeds, size_t commonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
     {
         base_t::reinitMainState(seeds, nSeeds);
         completeStateInitialization(commonJumpRepeat, commonJump, sequentialJump);
+        base_t::reinitPointers();
+    }
+
+    void reinit(const uint64_t* seeds, uint32_t nSeeds, const poly_t* commonPoly, const poly_t* sequentialPoly)
+    {
+        base_t::reinitMainState(seeds, nSeeds);
+        completeStateInitializationPoly(commonPoly, sequentialPoly);
         base_t::reinitPointers();
     }
 

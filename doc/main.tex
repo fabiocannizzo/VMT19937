@@ -390,7 +390,17 @@ While the specific transition matrix structure $F$ in \eqref{eq:transmat} is rep
 The overhead associated with initializing the generator state vectors as in \eqref{eq:jumpahead}, which requires $M\!-\!1$ vector-matrix multiplications, is negligible in the context of generating a large stream of PRNs.
 
 \subsubsection{Alternative \textit{jump ahead} methods}
-It is worth noting that there exist more efficient \textit{jump-ahead} algorithms that do not require storing the jump matrix and are faster than performing a vector-matrix multiplication as in \eqref{eq:jumpahead}. Examples of such algorithms can be found in \cite{jump1} and \cite{jump2}. These algorithms have not been discussed here, as the one adopted in section \ref{sec:jumpahead} is simpler to implement and is already very fast.
+It is worth noting that there exist more efficient \textit{jump-ahead} algorithms that do not require storing the jump matrix and are faster than performing a vector-matrix multiplication as in \eqref{eq:jumpahead}. These algorithms, based on binary polynomial arithmetic over GF(2), have been implemented in the \textbf{V-family} library. 
+
+Linear Feedback Shift Registers (LFSRs) can be transitioned by $J$ steps by applying a jump-ahead matrix $F^J$ to the state vector $v$: $v_{t+J} = F^J v_t$. Alternatively, this can be viewed as multiplication by a polynomial $g(x) = x^J \pmod{P(x)}$ in the ring of polynomials GF(2)[x] modulo the characteristic polynomial $P(x)$ of the generator. The state transition is then computed as $v_{t+J} = \sum_{i=0}^{N-1} g_i \cdot T^i(v_t)$, where $T$ is the state transition operator (a single-step update) and $g_i$ are the coefficients of the jump polynomial.
+
+To support this method, the library includes utilities to:
+\begin{enumerate}
+    \item Derive the characteristic polynomial $P(x)$ using the Berlekamp-Massey algorithm \cite{jump1, jump2}.
+    \item Compute $x^J \pmod{P(x)}$ using binary exponentiation (squaring and reduction).
+\end{enumerate}
+
+This polynomial method reduces the memory footprint for jump data from $O(N^2)$ to $O(N)$, which for MT19937 means a reduction from approximately 50 MB per jump matrix to only 4 KB per jump polynomial.
 Furthermore, the main contribution of this paper is the vectorization of the algorithm to advance the state vector. If a more efficient \textit{jump-ahead} method were to be adopted, it would further improve initialization time, but it would not invalidate any of the arguments presented in this paper regarding the algorithm's throughput.
 
 \section{Test results}
