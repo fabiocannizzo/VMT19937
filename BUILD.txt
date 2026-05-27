@@ -29,8 +29,8 @@ VMT19937 supports two methods for state advancement:
 
 1. **Polynomial Jump (Default)**: Uses compact (~4 KB) `.bits` bitmasks. This is the 
    preferred method as it minimizes memory overhead and binary footprint.
-2. **Matrix Jump (Legacy)**: Uses large (~50 MB) `.bits` matrices (stored as `.7z` 
-   in the `jump-matrices` branch).
+2. **Matrix Jump (Legacy)**: Uses large (~50 MB) `.bits` matrices. These are stored 
+   in a separate branch (`jump-matrix`) to keep the main repository lean.
 
 Jump Data
 ---------
@@ -39,7 +39,9 @@ Polynomial bitmasks and characteristic polynomials are under `dat/poly/`:
 - `dat/poly/mt64/J*.<gen>.bits` - MT19937-64 polynomials
 - `dat/poly/sfmt/J*.<gen>.bits` - SFMT19937 polynomials
 
-Legacy jump matrices are stored in the `dat/matrix/` submodule.
+### Retrieving Legacy Matrices
+If you specifically need the transition matrices, see `dat/matrix/README.txt` 
+for instructions on how to fetch and extract them from the `jump-matrix` branch.
 
 ### Generating New Jump Polynomials
 If you need to calculate a new jump polynomial for step $J$, first ensure you have the
