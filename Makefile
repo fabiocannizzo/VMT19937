@@ -214,11 +214,11 @@ else
         endif
         # ISA - GCC flags (non-native)
         ifeq ($(ISA), avx512vl)
-            SIMD := -mavx512f -mavx512vl -mavx512bw -mavx512dq
+            SIMD := -mavx512f -mavx512vl -mavx512bw -mavx512dq -mpclmul
         else ifeq ($(ISA), avx2)
-            SIMD := -mavx2
+            SIMD := -mavx2 -mpclmul
         else ifeq ($(ISA), sse42)
-            SIMD := -msse4.2
+            SIMD := -msse4.2 -mpclmul
         else ifeq ($(ISA), neon)
             ifeq ($(ARCH), armv7l)
                 SIMD := -mfpu=neon -mfloat-abi=hard
@@ -304,7 +304,8 @@ MAKEFILE_DEPS := Makefile
 
 CPP_SRC := $(wildcard src/*.cpp)
 # Files with main() - cpuid_probe.c is C only, excluded from C++ targets
-CPP_WITH_MAIN    := src/perf.cpp src/test.cpp src/demo.cpp src/encoder.cpp src/jump.cpp src/testu01.cpp
+CPP_WITH_MAIN    := src/perf.cpp src/test.cpp src/demo.cpp src/encoder.cpp src/compute_jump_matrix.cpp src/testu01.cpp \
+                   src/jump_poly_generator.cpp src/characteristic_poly_finder.cpp src/chain_test.cpp
 CPP_WITHOUT_MAIN := src/cpu.cpp
 
 MT_OBJ   := $(BINDIR)/mt19937ar$(OBJ_EXT)
@@ -324,9 +325,11 @@ endif
 
 all: $(TARGETS)
 
-.PHONY: test perf
+.PHONY: test perf chain_test compute_jump_matrix
 test: $(BINDIR)/test$(EXE_EXT)
 perf: $(BINDIR)/perf$(EXE_EXT)
+chain_test: $(BINDIR)/chain_test$(EXE_EXT)
+compute_jump_matrix: $(BINDIR)/compute_jump_matrix$(EXE_EXT)
 
 $(BINDIR):
 	mkdir -p $(BINDIR)
@@ -345,10 +348,14 @@ $(BINDIR)/%$(OBJ_EXT): src/%.cpp $(MAKEFILE_DEPS) | $(BINDIR)
 
 # Specific flags for objects
 ifneq ($(IS_MSVC),1)
-$(BINDIR)/jump$(OBJ_EXT): CXXFLAGS += -pthread
-$(BINDIR)/jump$(EXE_EXT): LFLAGS   += -pthread
+$(BINDIR)/compute_jump_matrix$(OBJ_EXT): CXXFLAGS += -pthread
+$(BINDIR)/compute_jump_matrix$(EXE_EXT): LFLAGS   += -pthread
+$(BINDIR)/jump_poly_generator$(OBJ_EXT): CXXFLAGS += -pthread
+$(BINDIR)/jump_poly_generator$(EXE_EXT): LFLAGS   += -pthread
+$(BINDIR)/chain_test$(OBJ_EXT): CXXFLAGS += -pthread
+$(BINDIR)/chain_test$(EXE_EXT): LFLAGS   += -pthread
 endif
-$(BINDIR)/perf$(OBJ_EXT) $(BINDIR)/test$(OBJ_EXT): CPPFLAGS += $(SFMT_FLAGS)
+$(BINDIR)/perf$(OBJ_EXT) $(BINDIR)/test$(OBJ_EXT) $(BINDIR)/chain_test$(OBJ_EXT): CPPFLAGS += $(SFMT_FLAGS)
 ifeq ($(MKL_AVAIL),1)
     $(BINDIR)/perf$(OBJ_EXT): CPPFLAGS += $(MKL_INC)
 endif
@@ -365,6 +372,9 @@ $(BINDIR)/perf$(EXE_EXT): $(BINDIR)/perf$(OBJ_EXT) $(MT_OBJ) $(MT64_OBJ) $(SFMT_
 
 $(BINDIR)/testu01$(EXE_EXT): $(BINDIR)/testu01$(OBJ_EXT)
 	$(CXX) $(OUT_EXE)$@ $^ $(LFLAGS) $(TESTU01_LIB_DIR) $(TESTU01_LIBS)
+
+$(BINDIR)/chain_test$(EXE_EXT): $(BINDIR)/chain_test$(OBJ_EXT) $(MT_OBJ) $(MT64_OBJ) $(SFMT_OBJ)
+	$(CXX) $(OUT_EXE)$@ $^ $(LFLAGS)
 
 $(BINDIR)/%$(EXE_EXT): $(BINDIR)/%$(OBJ_EXT)
 	$(CXX) $(OUT_EXE)$@ $^ $(LFLAGS)

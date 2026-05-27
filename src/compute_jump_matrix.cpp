@@ -60,10 +60,10 @@ void square(const Matrix& src, Matrix& dst, std::vector<typename Matrix::buffer_
 
 const std::string extension = ".bits";
 
-std::string mkFileName(const std::string& path, size_t n)
+std::string mkFileName(const std::string& path, size_t n, const std::string& gentype)
 {
     std::ostringstream os;
-    os << path << "F" << std::setw(5) << std::setfill('0') << n << extension;
+    os << path << "F" << std::setw(5) << std::setfill('0') << n << "." << gentype << extension;
     return os.str();
 }
 
@@ -72,9 +72,9 @@ void usage()
     std::cerr
         << "Invalid command line arguments\n"
         << "Syntax:\n"
-        << "   jump -g=<generator> [-j=<nthreads>] [-p=<filepath>] [-f=<savefreq>] [-t=<target1,target2,...>] [-wait]\n"
+        << "   compute_jump_matrix -g=<generator> [-j=<nthreads>] [-p=<filepath>] [-f=<savefreq>] [-t=<target1,target2,...>] [-wait]\n"
         << "Example:\n"
-        << "   jump -g=mt32 -j=8 -p=./outdir/ -f=100 -t=3,9\n"
+        << "   compute_jump_matrix -g=mt32 -j=8 -p=./outdir/ -f=100 -t=3,9\n"
         << " -g: generator must be one of {";
     for (const auto& s : genTypeStr)
         std::cerr << s << " ";
@@ -87,7 +87,7 @@ void usage()
 }
 
 template <GenType gen>
-void run(const std::string& filepath, size_t nThreads, size_t saveFrequency, const std::set<size_t>& targets)
+void run(const std::string& gentype, const std::string& filepath, size_t nThreads, size_t saveFrequency, const std::set<size_t>& targets)
 {
     typedef typename GenTraits<gen>::matrix_t matrix_t;
     matrix_t f[2];
@@ -99,8 +99,9 @@ void run(const std::string& filepath, size_t nThreads, size_t saveFrequency, con
     for (const auto& entry : std::filesystem::directory_iterator(filepath)) {
         if (std::filesystem::is_regular_file(entry) && entry.path().has_extension() && entry.path().extension().string() == extension) {
             std::string s = entry.path().filename().string();
-            if (s.length() > extension.length() + 1 && s[0] == 'F') {
-                s = s.substr(1, s.length() - 1 - extension.length());
+            std::string expected_suffix = "." + gentype + extension;
+            if (s.length() > expected_suffix.length() + 1 && s[0] == 'F' && s.find(expected_suffix) != std::string::npos) {
+                s = s.substr(1, s.length() - 1 - expected_suffix.length());
                 size_t n = (size_t)atoi(s.c_str());
                 if (n >= GenTraits<gen>::power2)
                     onDisk.insert(n);
@@ -132,7 +133,7 @@ void run(const std::string& filepath, size_t nThreads, size_t saveFrequency, con
                 f[e % 2] = matrix_t{};
             }
             else {
-                std::string fn = mkFileName(filepath, e);
+                std::string fn = mkFileName(filepath, e, gentype);
                 std::cout << "Loading F^(2^" << e << ") from " << fn << "\n";
                 std::ifstream is(fn, std::ios::binary);
                 if (is) {
@@ -160,7 +161,7 @@ void run(const std::string& filepath, size_t nThreads, size_t saveFrequency, con
             currentIdxInMem = i;
 
             if ((i % saveFrequency) == 0 || i == t) {
-                std::string fn = mkFileName(filepath, i);
+                std::string fn = mkFileName(filepath, i, gentype);
                 std::cout << "  Saving: " << fn << " ... ";
                 std::ofstream of(fn, std::ios::binary);
                 f[out].toBin(of);
@@ -276,11 +277,11 @@ int main(int argc, const char** argv)
     }
 
     if (gentype == "mt32")
-        run<mt32>(filepath, nThreads, saveFrequency, targetsSet);
+        run<mt32>(gentype, filepath, nThreads, saveFrequency, targetsSet);
     else if (gentype == "mt64")
-        run<mt64>(filepath, nThreads, saveFrequency, targetsSet);
+        run<mt64>(gentype, filepath, nThreads, saveFrequency, targetsSet);
     else if (gentype == "sfmt")
-        run<sfmt>(filepath, nThreads, saveFrequency, targetsSet);
+        run<sfmt>(gentype, filepath, nThreads, saveFrequency, targetsSet);
     else {
         usage();
         return -1;

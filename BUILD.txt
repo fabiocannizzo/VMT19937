@@ -23,29 +23,42 @@ Building is only necessary if you want to run the bundled executables:
 These require a C++20 compiler and GNU make.
 Note: Windows' built-in nmake is NOT compatible - the Makefile uses GNU make syntax.
 
-Jump matrices
--------------
-The jump matrices are under the `dat/` folder. They are stored in compressed `.7z` format
-to save space and **must be decompressed** before use.
+Jump-Ahead
+------------
+VMT19937 supports two methods for state advancement:
 
-Commonly used matrices are located in:
+1. **Polynomial Jump (Default)**: Uses compact (~4 KB) `.bits` bitmasks. This is the 
+   preferred method as it minimizes memory overhead and binary footprint.
+2. **Matrix Jump (Legacy)**: Uses large (~50 MB) `.bits` matrices (stored as `.7z` 
+   in the `jump-matrices` branch).
 
-| Folder      | Generator    | Description                             |
-|-------------|--------------|-----------------------------------------|
-| `dat/mt32/` | MT19937-32   | Standard 32-bit Mersenne Twister        |
-| `dat/mt64/` | MT19937-64   | 64-bit Mersenne Twister                 |
-| `dat/sfmt/` | SFMT19937    | SIMD-oriented Fast Mersenne Twister     |
+Jump Data
+---------
+The polynomial bitmasks are under the `dat/` folder:
+- `dat/mt32/J*.<gen>.bits` - MT19937-32 polynomials
+- `dat/mt64/J*.<gen>.bits` - MT19937-64 polynomials
+- `dat/sfmt/J*.<gen>.bits` - SFMT19937 polynomials
 
-### Generating New Jump Matrices
-If you need to build new jump matrices for $2^n$ jumps, use the `jump.exe` utility:
+### Generating New Jump Polynomials
+If you need to calculate a new jump polynomial for step $J$, first ensure you have the 
+characteristic polynomial $P(x)$ for the generator. If it's missing, use `characteristic_poly_finder.exe`:
 
-    # Example: Generate MT19937-32 matrices for 2^20000 jumps
-    .\bin-128-cl\jump.exe -g=mt32 -t=20000
+    .\bin-128-cl\characteristic_poly_finder.exe -g=mt32 -o=dat/mt32/characteristic.mt32.hex
 
-To build an arbitrary jump matrix for $J$ jumps:
-1. Decompose $J$ into powers of 2 (binary representation).
-2. Compute the necessary $2^n$ jump matrices using `jump.exe`.
-3. Multiply the resulting matrices to get the final jump transformation.
+Then use `jump_poly_generator.exe` to calculate $x^J \pmod{P(x)}$:
+
+    # Example: Generate MT19937-32 polynomial for 2^20000 steps
+    .\bin-128-cl\jump_poly_generator.exe -g=mt32 -n=20000 -p=dat/mt32/characteristic.mt32.hex -o=dat/mt32/J20000.mt32.bits
+
+To build an arbitrary jump polynomial for $J$ steps, use the `-t` flag:
+
+    .\bin-128-cl\jump_poly_generator.exe -g=mt32 -t=1234567 -p=dat/mt32/characteristic.mt32.hex -o=dat/mt32/J_custom.mt32.bits
+
+### Generating Legacy Matrices
+If you specifically need to build old matrix files, use the `compute_jump_matrix.exe` utility:
+
+    # Example: Generate MT19937-32 matrix for 2^20000 jumps
+    .\bin-128-cl\compute_jump_matrix.exe -g=mt32 -t=20000
 
 Build System
 ------------
