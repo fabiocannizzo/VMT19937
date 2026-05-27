@@ -45,7 +45,7 @@ void print_usage() {
          << "  -t     Comma-separated target exponents N (output-word units); default 9,100,19933,19934,19935,19936\n"
          << "         Chains squarings optimally: J_{N+1} = square(J_N), one squaring per step.\n"
          << "         Scans -d directory for existing J-files to resume from.\n"
-         << "  -d     Output directory for multi-target mode (default: ./dat/<gentype>/)\n"
+         << "  -d     Output directory for multi-target mode (default: ./dat/poly/<gentype>/)\n"
          << "  -n     Single-target: J = 2^n output words\n"
          << "  -s     Single-target: J = decimal step (output words; must be divisible by 4 for sfmt)\n"
          << "  -chain Apply k additional squarings to the polynomial loaded from -i\n"
@@ -213,7 +213,7 @@ int main(int argc, const char** argv) {
     bool multi_mode = has_t || has_d || (!has_n && !has_s && !has_chain);
 
     if (multi_mode) {
-        string dir = has_d ? dir_arg : ("./dat/" + gentype + "/");
+        string dir = has_d ? dir_arg : ("./dat/poly/" + gentype + "/");
         if (!dir.empty() && dir.back() != '/') dir += '/';
         if (!filesystem::exists(dir)) {
             cerr << "Error: Output directory does not exist: " << dir << "\n"; return -1;

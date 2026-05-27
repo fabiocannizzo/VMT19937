@@ -80,7 +80,7 @@ void usage()
         std::cerr << s << " ";
     std::cerr << "}\n"
         << " -j: nthreads defaults to host concurrency\n"
-        << " -p: filepath defaults to ./dat/<genname>\n"
+        << " -p: filepath defaults to ./dat/poly/<genname>\n"
         << " -f: savefrequency defaults to 100 (useful to interrupt and resume)\n"
         << " -t: comma separated list of exponents n for jump matrices F^(2^n) (e.g. -t=12,52,78), defaults to 9,100,19933,19934,19935,19936,19937\n";
     std::exit(-1);
@@ -236,8 +236,8 @@ int main(int argc, const char** argv)
         }
         std::cout << "generator = " << gentype << "\n";
 
-        // output directory, defaults to ./dat/<genname>/
-        filepath = "./dat/" + gentype + "/";
+        // output directory, defaults to ./dat/poly/<genname>/
+        filepath = "./dat/poly/" + gentype + "/";
         if (consumeArg(args, "p", false, filepath)) {
             if (filepath.back() != '/') filepath.push_back('/');
         }

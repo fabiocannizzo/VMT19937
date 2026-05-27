@@ -19,9 +19,9 @@ using namespace xvmt;
 using namespace xvmt::details;
 //using namespace std::placeholders;
 
-MT19937Matrix<32> j19933(std::string("./dat/mt32/F19933.bits"));
-MT19937Matrix<32> j19934(std::string("./dat/mt32/F19934.bits"));
-MT19937Matrix<32> j19935(std::string("./dat/mt32/F19935.bits"));
+MT19937Matrix<32> j19933(std::string("./dat/matrix/mt32/F19933.mt32.bits"));
+MT19937Matrix<32> j19934(std::string("./dat/matrix/mt32/F19934.mt32.bits"));
+MT19937Matrix<32> j19935(std::string("./dat/matrix/mt32/F19935.mt32.bits"));
 
 MT19937Matrix<32>* pjump[4] = { nullptr, &j19935, &j19934, &j19933 };
 char genNames[4][64] = { "VMT19937 (M=1)", "VMT19937 (M=4)", "VMT19937 (M=8)", "VMT19937 (M=16)"};

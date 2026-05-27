@@ -34,25 +34,29 @@ VMT19937 supports two methods for state advancement:
 
 Jump Data
 ---------
-The polynomial bitmasks are under the `dat/` folder:
-- `dat/mt32/J*.<gen>.bits` - MT19937-32 polynomials
-- `dat/mt64/J*.<gen>.bits` - MT19937-64 polynomials
-- `dat/sfmt/J*.<gen>.bits` - SFMT19937 polynomials
+Polynomial bitmasks and characteristic polynomials are under `dat/poly/`:
+- `dat/poly/mt32/J*.<gen>.bits` - MT19937-32 polynomials
+- `dat/poly/mt64/J*.<gen>.bits` - MT19937-64 polynomials
+- `dat/poly/sfmt/J*.<gen>.bits` - SFMT19937 polynomials
+
+Legacy jump matrices are stored in the `dat/matrix/` submodule.
 
 ### Generating New Jump Polynomials
-If you need to calculate a new jump polynomial for step $J$, first ensure you have the 
-characteristic polynomial $P(x)$ for the generator. If it's missing, use `characteristic_poly_finder.exe`:
+If you need to calculate a new jump polynomial for step $J$, first ensure you have the
+characteristic polynomial $P(x)$ for the generator. If it's missing, use `characteristic_poly_find
+er.exe`:
 
-    .\bin-128-cl\characteristic_poly_finder.exe -g=mt32 -o=dat/mt32/characteristic.mt32.hex
+    .\bin-128-cl\characteristic_poly_finder.exe -g=mt32 -o=dat/poly/mt32/characteristic.mt32.hex       
 
 Then use `jump_poly_generator.exe` to calculate $x^J \pmod{P(x)}$:
 
     # Example: Generate MT19937-32 polynomial for 2^20000 steps
-    .\bin-128-cl\jump_poly_generator.exe -g=mt32 -n=20000 -p=dat/mt32/characteristic.mt32.hex -o=dat/mt32/J20000.mt32.bits
+    .\bin-128-cl\jump_poly_generator.exe -g=mt32 -n=20000 -p=dat/poly/mt32/characteristic.mt32.hex -o=dat/poly/mt32/J20000.mt32.bits
 
 To build an arbitrary jump polynomial for $J$ steps, use the `-t` flag:
 
-    .\bin-128-cl\jump_poly_generator.exe -g=mt32 -t=1234567 -p=dat/mt32/characteristic.mt32.hex -o=dat/mt32/J_custom.mt32.bits
+    .\bin-128-cl\jump_poly_generator.exe -g=mt32 -t=1234567 -p=dat/poly/mt32/characteristic.mt32.hex -o=dat/poly/mt32/J_custom.mt32.bits
+
 
 ### Generating Legacy Matrices
 If you specifically need to build old matrix files, use the `compute_jump_matrix.exe` utility:

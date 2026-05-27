@@ -280,9 +280,9 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
 
         if (nCommonJumpRepeat <= 1) {
             std::string poly_dir, gen_tag;
-            if (G == VSFMT) { poly_dir = "./dat/sfmt/"; gen_tag = "sfmt"; }
-            else if (G == VMT || G == XMT) { poly_dir = "./dat/mt32/"; gen_tag = "mt32"; }
-            else { poly_dir = "./dat/mt64/"; gen_tag = "mt64"; }
+            if (G == VSFMT) { poly_dir = "./dat/poly/sfmt/"; gen_tag = "sfmt"; }
+            else if (G == VMT || G == XMT) { poly_dir = "./dat/poly/mt32/"; gen_tag = "mt32"; }
+            else { poly_dir = "./dat/poly/mt64/"; gen_tag = "mt64"; }
 
             std::string cPolyFile, sPolyFile;
             if (commonJumpExp >= 0) { std::stringstream ss; ss << poly_dir << "J" << std::setw(5) << std::setfill('0') << commonJumpExp << "." << gen_tag << ".bits"; cPolyFile = ss.str(); }
@@ -381,9 +381,9 @@ void testPolyVsMatrix(int exp, const M* matPtr)
         constexpr size_t VecLen = Gen::s_regLenBits;
 
         std::string poly_dir, gen_tag;
-        if (G == VSFMT) { poly_dir = "./dat/sfmt/"; gen_tag = "sfmt"; }
-        else if (G == VMT || G == XMT) { poly_dir = "./dat/mt32/"; gen_tag = "mt32"; }
-        else { poly_dir = "./dat/mt64/"; gen_tag = "mt64"; }
+        if (G == VSFMT) { poly_dir = "./dat/poly/sfmt/"; gen_tag = "sfmt"; }
+        else if (G == VMT || G == XMT) { poly_dir = "./dat/poly/mt32/"; gen_tag = "mt32"; }
+        else { poly_dir = "./dat/poly/mt64/"; gen_tag = "mt64"; }
 
         std::stringstream ss;
         ss << poly_dir << "J" << std::setw(5) << std::setfill('0') << exp << "." << gen_tag << ".bits";
@@ -439,8 +439,8 @@ void test_XVMT19937()
     typedef JumpMatrix<matrix_t> pmatrix_t;
     pmatrix_t noJump;
     pmatrix_t jumpMatrix1(new matrix_t, 1, 0);
-    pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/mt32/F00009.mt32.bits")), 512, 9);
-    pmatrix_t jumpMatrixPeriod(new matrix_t(std::string("./dat/mt32/F19937.mt32.bits")), 1, 19937);
+    pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/matrix/mt32/F00009.mt32.bits")), 512, 9);
+    pmatrix_t jumpMatrixPeriod(new matrix_t(std::string("./dat/matrix/mt32/F19937.mt32.bits")), 1, 19937);
     startTest(genName[VMT]);
     equivalenceTests0<VMT, 32, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
     std::cout << "VMT19937: a jump of size 2^19937 is equivalent to a jump of size 1\n";
@@ -448,7 +448,7 @@ void test_XVMT19937()
     startTest(genName[XMT]);
     equivalenceTests0<XMT, 32, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
     for (int exp : {9, 100, 19933, 19934, 19935, 19936}) {
-        std::stringstream sf; sf << "./dat/mt32/F" << std::setw(5) << std::setfill('0') << exp << ".mt32.bits";
+        std::stringstream sf; sf << "./dat/matrix/mt32/F" << std::setw(5) << std::setfill('0') << exp << ".mt32.bits";
         matrix_t mat(sf.str());
         polyVsMatrixTests0<VMT, 32, 128, 256, 512>(exp, &mat);
         polyVsMatrixTests0<XMT, 32, 128, 256, 512>(exp, &mat);
@@ -463,10 +463,10 @@ void test_VSFMT19937()
     typedef JumpMatrix<matrix_t> pmatrix_t;
     pmatrix_t noJump;
     pmatrix_t jumpMatrix4(new matrix_t, 4, 0);
-    pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/sfmt/F00009.sfmt.bits")), 512, 7);
+    pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/matrix/sfmt/F00009.sfmt.bits")), 512, 7);
     equivalenceTests0<VSFMT, 128, 256, 512>(jumpMatrix4, jumpMatrix512);
     for (int exp : {9, 100, 19933, 19934, 19935, 19936}) {
-        std::stringstream sf; sf << "./dat/sfmt/F" << std::setw(5) << std::setfill('0') << exp << ".sfmt.bits";
+        std::stringstream sf; sf << "./dat/matrix/sfmt/F" << std::setw(5) << std::setfill('0') << exp << ".sfmt.bits";
         matrix_t mat(sf.str());
         polyVsMatrixTests0<VSFMT, 128, 256, 512>(exp, &mat);
     }
@@ -479,15 +479,15 @@ void test_VMT19937_64()
     typedef JumpMatrix<matrix_t> pmatrix_t;
     pmatrix_t noJump;
     pmatrix_t jumpMatrix1(new matrix_t, 1, 0);
-    pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/mt64/F00009.mt64.bits")), 512, 9);
-    pmatrix_t jumpMatrixPeriod(new matrix_t(std::string("./dat/mt64/F19937.mt64.bits")), 1, 19937);
+    pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/matrix/mt64/F00009.mt64.bits")), 512, 9);
+    pmatrix_t jumpMatrixPeriod(new matrix_t(std::string("./dat/matrix/mt64/F19937.mt64.bits")), 1, 19937);
     startTest(genName[VMT64]);
     equivalenceTests0<VMT64, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
     equivalenceTests1<VMT64, 64, 64>(jumpMatrix1, jumpMatrix512);
     startTest(genName[XMT64]);
     equivalenceTests0<XMT64, 64, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
     for (int exp : {9, 100, 19933, 19934, 19935, 19936}) {
-        std::stringstream sf; sf << "./dat/mt64/F" << std::setw(5) << std::setfill('0') << exp << ".mt64.bits";
+        std::stringstream sf; sf << "./dat/matrix/mt64/F" << std::setw(5) << std::setfill('0') << exp << ".mt64.bits";
         matrix_t mat(sf.str());
         polyVsMatrixTests0<VMT64, 128, 256, 512>(exp, &mat);
         polyVsMatrixTests0<XMT64, 64, 128, 256, 512>(exp, &mat);

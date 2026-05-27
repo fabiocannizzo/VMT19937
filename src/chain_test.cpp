@@ -30,7 +30,7 @@
 //
 // Chain starts from the mathematical root: companion matrix F_0 (MT) or F_2 (SFMT) via
 // default constructor, and trivial polynomial J_0=x (MT) or J_2=x (SFMT).
-// All canonical F/J files in dat/ are verified via ident as the chain reaches each step.
+// All canonical F/J files in dat/matrix/ and dat/poly/ are verified via ident as the chain reaches each step.
 // On success all remaining chain checkpoint files are deleted.
 // On failure the checkpoint files for the failing step are preserved.
 
@@ -157,16 +157,16 @@ struct MT32Traits {
     static constexpr int  startStep     = 0;
     static constexpr const char* gentype       = "mt32";
     static constexpr const char* chainPrefix   = "mt32_chain_";
-    static constexpr const char* charPolyFile  = "./dat/mt32/characteristic.mt32.hex";
-    static constexpr const char* defaultOutdir = "./dat/mt32/";
+    static constexpr const char* charPolyFile  = "./dat/poly/mt32/characteristic.mt32.hex";
+    static constexpr const char* defaultOutdir = "./dat/poly/mt32/";
 
     static constexpr uint32_t seed = 1234UL;
 
     static std::string canonPolyFile(int step) {
-        char buf[64]; snprintf(buf, sizeof(buf), "./dat/mt32/J%05d.mt32.bits", step); return buf;
+        char buf[64]; snprintf(buf, sizeof(buf), "./dat/poly/mt32/J%05d.mt32.bits", step); return buf;
     }
     static std::string canonMatFile(int step) {
-        char buf[64]; snprintf(buf, sizeof(buf), "./dat/mt32/F%05d.mt32.bits", step); return buf;
+        char buf[64]; snprintf(buf, sizeof(buf), "./dat/matrix/mt32/F%05d.mt32.bits", step); return buf;
     }
 
     static void initRootPoly(Poly& p) { p.resetZero(); p.setBit(1, true); }
@@ -213,16 +213,16 @@ struct MT64Traits {
     static constexpr int  startStep     = 0;
     static constexpr const char* gentype       = "mt64";
     static constexpr const char* chainPrefix   = "mt64_chain_";
-    static constexpr const char* charPolyFile  = "./dat/mt64/characteristic.mt64.hex";
-    static constexpr const char* defaultOutdir = "./dat/mt64/";
+    static constexpr const char* charPolyFile  = "./dat/poly/mt64/characteristic.mt64.hex";
+    static constexpr const char* defaultOutdir = "./dat/poly/mt64/";
 
     static constexpr uint64_t seed = 0x123456789ABCULL;
 
     static std::string canonPolyFile(int step) {
-        char buf[64]; snprintf(buf, sizeof(buf), "./dat/mt64/J%05d.mt64.bits", step); return buf;
+        char buf[64]; snprintf(buf, sizeof(buf), "./dat/poly/mt64/J%05d.mt64.bits", step); return buf;
     }
     static std::string canonMatFile(int step) {
-        char buf[64]; snprintf(buf, sizeof(buf), "./dat/mt64/F%05d.mt64.bits", step); return buf;
+        char buf[64]; snprintf(buf, sizeof(buf), "./dat/matrix/mt64/F%05d.mt64.bits", step); return buf;
     }
 
     static void initRootPoly(Poly& p) { p.resetZero(); p.setBit(1, true); }
@@ -269,17 +269,17 @@ struct SFMTTraits {
     static constexpr int  startStep     = 2;
     static constexpr const char* gentype       = "sfmt";
     static constexpr const char* chainPrefix   = "sfmt_chain_";
-    static constexpr const char* charPolyFile  = "./dat/sfmt/characteristic.sfmt.hex";
-    static constexpr const char* defaultOutdir = "./dat/sfmt/";
+    static constexpr const char* charPolyFile  = "./dat/poly/sfmt/characteristic.sfmt.hex";
+    static constexpr const char* defaultOutdir = "./dat/poly/sfmt/";
 
     static constexpr uint32_t seeds[]  = { 0x123, 0x234, 0x345, 0x456 };
     static constexpr uint32_t seedLen  = 4;
 
     static std::string canonPolyFile(int step) {
-        char buf[64]; snprintf(buf, sizeof(buf), "./dat/sfmt/J%05d.sfmt.bits", step); return buf;
+        char buf[64]; snprintf(buf, sizeof(buf), "./dat/poly/sfmt/J%05d.sfmt.bits", step); return buf;
     }
     static std::string canonMatFile(int step) {
-        char buf[64]; snprintf(buf, sizeof(buf), "./dat/sfmt/F%05d.sfmt.bits", step); return buf;
+        char buf[64]; snprintf(buf, sizeof(buf), "./dat/matrix/sfmt/F%05d.sfmt.bits", step); return buf;
     }
 
     // J_2 = x^1: one SFMT recurrence step = 4 uint32 outputs = 2^2 output words.
@@ -753,7 +753,7 @@ static void usage(const char* prog)
         "Usage: " << prog << " [outdir] -g=mt32|mt64|sfmt [-end=N] [-start=N] [-j=N] [-keep=N] [-serial] [-h|--help]\n"
         "\n"
         "  outdir          directory for checkpoint files\n"
-        "                    default: ./dat/mt32/ or ./dat/mt64/ or ./dat/sfmt/\n"
+        "                    default: ./dat/poly/mt32/ or ./dat/poly/mt64/ or ./dat/poly/sfmt/\n"
         "  -g=mt32         run MT19937-32 chain (starts from step 0)\n"
         "  -g=mt64         run MT19937-64 chain (starts from step 0)\n"
         "  -g=sfmt         run SFMT19937 chain (starts from step 2)\n"
@@ -765,7 +765,7 @@ static void usage(const char* prog)
         "  -h, --help      show this message\n"
         "\n"
         "Chain starts from root: F_0/J_0=x for MT, F_2/J_2=x for SFMT.\n"
-        "All canonical F/J files in dat/ are verified via ident as the chain passes them.\n"
+        "All canonical F/J files in dat/matrix/ and dat/poly/ are verified via ident as the chain passes them.\n"
         "Tests per step:\n"
         "  inmem      SIMD poly vs matrix, both in RAM\n"
         "  scalar     same with ISA::Scalar generator\n"
