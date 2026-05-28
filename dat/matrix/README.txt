@@ -9,7 +9,8 @@ To retrieve and extract the matrices, run the following commands:
    git fetch origin jump-matrix:jump-matrix
 
 2. Restore the matrix files into your working directory:
-   git restore jump-matrix -- dat/matrix
+   git restore --source=jump-matrix -- "dat/matrix/**/*.bits"
+   git restore --source=jump-matrix -- "dat/matrix/**/*.7z"
 
 3. Extract the .7z archives and delete them:
    # Using find (Linux/Cygwin/Git Bash):
