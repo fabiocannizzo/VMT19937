@@ -305,7 +305,7 @@ MAKEFILE_DEPS := Makefile
 CPP_SRC := $(wildcard src/*.cpp)
 # Files with main() - cpuid_probe.c is C only, excluded from C++ targets
 CPP_WITH_MAIN    := src/perf.cpp src/test.cpp src/demo.cpp src/encoder.cpp src/compute_jump_matrix.cpp src/testu01.cpp \
-                   src/jump_poly_generator.cpp src/characteristic_poly_finder.cpp src/chain_test.cpp src/bits_migrator.cpp
+                   src/jump_poly_generator.cpp src/characteristic_poly_finder.cpp src/chain_test.cpp
 CPP_WITHOUT_MAIN := src/cpu.cpp
 
 MT_OBJ   := $(BINDIR)/mt19937ar$(OBJ_EXT)
@@ -325,12 +325,11 @@ endif
 
 all: $(TARGETS)
 
-.PHONY: test perf chain_test compute_jump_matrix migrator
+.PHONY: test perf chain_test compute_jump_matrix
 test: $(BINDIR)/test$(EXE_EXT)
 perf: $(BINDIR)/perf$(EXE_EXT)
 chain_test: $(BINDIR)/chain_test$(EXE_EXT)
 compute_jump_matrix: $(BINDIR)/compute_jump_matrix$(EXE_EXT)
-migrator: $(BINDIR)/bits_migrator$(EXE_EXT)
 
 $(BINDIR):
 	mkdir -p $(BINDIR)
