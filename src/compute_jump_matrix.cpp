@@ -31,21 +31,21 @@ template <>
 struct GenTraits<mt32>
 {
     typedef MT19937Matrix<32> matrix_t;
-    static constexpr size_t power2 = 0;
+    static constexpr size_t power2 = MT19937Params<32>::s_stepOutputWordsLog2;
 };
 
 template <>
 struct GenTraits<mt64>
 {
     typedef MT19937Matrix<64> matrix_t;
-    static constexpr size_t power2 = 0;
+    static constexpr size_t power2 = MT19937Params<64>::s_stepOutputWordsLog2;
 };
 
 template <>
 struct GenTraits<sfmt>
 {
     typedef SFMT19937Matrix matrix_t;
-    static constexpr size_t power2 = 2;
+    static constexpr size_t power2 = SFMT19937Params::s_stepOutputWordsLog2;
 };
 
 template <typename Matrix>

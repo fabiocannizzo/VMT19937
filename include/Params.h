@@ -47,6 +47,8 @@ struct MT19937Params<32>
 
     static constexpr size_t s_n32InOneWord = s_stateWordBits / 32;       // uint32 elements per word (= 1)
     static constexpr size_t s_n32InOneState = s_N * s_n32InOneWord;     // uint32 elements in the full state (= 624)
+
+    static constexpr size_t s_stepOutputWordsLog2 = 0;                  // log2 of output words per generator step
 };
 
 template <>
@@ -83,6 +85,8 @@ struct MT19937Params<64>
 
     static constexpr size_t s_n32InOneWord  = s_stateWordBits / 32;   // 2
     static constexpr size_t s_n32InOneState = s_N * s_n32InOneWord;  // 624
+
+    static constexpr size_t s_stepOutputWordsLog2 = 0;               // log2 of output words per generator step
 };
 
 struct SFMT19937Params
@@ -102,6 +106,8 @@ struct SFMT19937Params
     static constexpr uint32_t s_SFMT_MSK2 = 0xddfecb7fU;
     static constexpr uint32_t s_SFMT_MSK3 = 0xbffaffffU;
     static constexpr uint32_t s_SFMT_MSK4 = 0xbffffff6U;
+
+    static constexpr size_t s_stepOutputWordsLog2 = 2;               // log2 of output words per generator step
 };
 
 } // namespace details

@@ -1,4 +1,5 @@
 #include "polynomial_jump.h"
+#include "Params.h"
 #include "cli_args.h"
 #include <iostream>
 #include <fstream>
@@ -186,8 +187,9 @@ int main(int argc, const char** argv) {
     string gentypeArg;
     if (consumeArg(args, "g", false, gentypeArg)) {
         gentype = gentypeArg;
-        if (gentype == "sfmt") power2 = 2;
-        else if (gentype == "mt32" || gentype == "mt64") power2 = 0;
+        if (gentype == "sfmt") power2 = SFMT19937Params::s_stepOutputWordsLog2;
+        else if (gentype == "mt32") power2 = MT19937Params<32>::s_stepOutputWordsLog2;
+        else if (gentype == "mt64") power2 = MT19937Params<64>::s_stepOutputWordsLog2;
         else { cerr << "Error: Unknown generator type '" << gentype << "'. Use mt32, mt64, or sfmt.\n"; return -1; }
     }
 
