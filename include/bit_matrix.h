@@ -267,7 +267,7 @@ public:
     }
 
     template <typename IS>
-    void fromBin(IS& is, BitsGenType* outGen = nullptr, uint32_t* outJump = nullptr)
+    void fromBinStream(IS& is, BitsGenType* outGen = nullptr, uint32_t* outJump = nullptr)
     {
         BitsHeader header;
         if (header.read(is)) {
@@ -280,6 +280,15 @@ public:
 
         for (size_t r = 0; r < s_nBitRows; ++r)
             is.read((char*)rowBegin(r), s_nBytesPerRow);
+    }
+
+    /**
+     * @brief Load from binary file.
+     */
+    void fromBinFile(const std::string& filename, BitsGenType* outGen = nullptr, uint32_t* outJump = nullptr) {
+        std::ifstream ifs(filename, std::ios::binary);
+        MYASSERT(ifs.is_open(), "Cannot open file: " << filename);
+        fromBinStream(ifs, outGen, outJump);
     }
 
     static BinaryMatrix loadWithCheck(const std::string& filename, BitsGenType expectedGen, uint32_t expectedJump = 0)
@@ -299,7 +308,7 @@ public:
         }
 
         BinaryMatrix m;
-        m.fromBin(ifs);
+        m.fromBinStream(ifs);
         return m;
     }
 

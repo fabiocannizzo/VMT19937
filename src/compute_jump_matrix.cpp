@@ -137,7 +137,7 @@ void run(const std::string& gentype, const std::string& filepath, size_t nThread
                 std::cout << "Loading F^(2^" << e << ") from " << fn << "\n";
                 std::ifstream is(fn, std::ios::binary);
                 if (is) {
-                    f[e % 2].fromBin(is);
+                    f[e % 2].fromBinStream(is);
                 }
                 else {
                     std::cerr << "Error loading " << fn << ", falling back to base matrix\n";

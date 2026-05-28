@@ -145,7 +145,7 @@ void run_multi_target(const string& gentype, size_t power2, const Poly19937& P, 
                 cout << "Loading J" << s << " from " << fn << "\n";
                 ifstream is(fn, ios::binary);
                 if (!is) { cerr << "Error: Cannot open " << fn << "\n"; continue; }
-                current.fromBin(is);
+                current.fromBinStream(is);
             }
             currentN = s;
         }
@@ -262,7 +262,7 @@ int main(int argc, const char** argv) {
         auto t0 = chrono::high_resolution_clock::now();
         ifstream ichain(chain_input, ios::binary);
         if (!ichain) { cerr << "Error: Cannot open " << chain_input << "\n"; return -1; }
-        result.fromBin(ichain);
+        result.fromBinStream(ichain);
         for (size_t i = 0; i < chain_peek; ++i)
             result = poly_sq_mod(result, P, deg);
         double elapsed = chrono::duration<double>(chrono::high_resolution_clock::now() - t0).count();

@@ -27,7 +27,7 @@ void migrate_poly(const fs::path& path, BitsGenType genType) {
     Polynomial<32768> p;
     {
         ifstream ifs(path, ios::binary);
-        p.fromBin(ifs);
+        p.fromBinStream(ifs);
     }
     
     // Infer jump from filename J<N>
@@ -61,7 +61,7 @@ void migrate_matrix(const fs::path& path, BitsGenType genType) {
     Matrix m;
     {
         ifstream ifs(path, ios::binary);
-        m.fromBin(ifs);
+        m.fromBinStream(ifs);
     }
     
     // Infer jump from filename F<N>

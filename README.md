@@ -121,8 +121,7 @@ using namespace xvmt;
 
 // 1. Load the appropriate polynomial jump mask (e.g., for 256-bit AVX2)
 details::Polynomial<> jumpMask;
-std::ifstream is("./dat/poly/mt32/J19934.mt32.bits", std::ios::binary);
-if (is) jumpMask.fromBin(is);
+jumpMask.fromBinFile("./dat/poly/mt32/J19934.mt32.bits");
 
 // 2. Initialize the generator with Block-16 optimization
 VMT19937<256, true> gen(1234, 0, nullptr, &jumpMask);
@@ -146,13 +145,11 @@ using namespace xvmt;
 
 // Mask to separate internal parallel states (SSE 128-bit)
 details::Polynomial<> seqJump;
-std::ifstream isSeq("./dat/poly/mt32/J19935.mt32.bits", std::ios::binary);
-if (isSeq) seqJump.fromBin(isSeq);
+seqJump.fromBinFile("./dat/poly/mt32/J19935.mt32.bits");
 
 // Mask to separate different generator instances (by 2^100 steps)
 details::Polynomial<> commonJump;
-std::ifstream isCom("./dat/poly/mt32/J00100.mt32.bits", std::ios::binary);
-if (isCom) commonJump.fromBin(isCom);
+commonJump.fromBinFile("./dat/poly/mt32/J00100.mt32.bits");
 
 // Create 10 independent generators
 std::array<std::unique_ptr<VMT19937<128, true>>, 10> gens;

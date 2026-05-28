@@ -115,7 +115,7 @@ int main(int argc, const char** argv)
         else if (imode == EncodeMode::Binary) {
             is.open(inputfile, std::ios::binary);
             MYASSERT(is.is_open(), "error opening input binary file: " << inputfile);
-            matrix.fromBin(is);
+            matrix.fromBinStream(is);
         }
         else {
             THROW("input file type not supported");

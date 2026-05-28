@@ -154,9 +154,10 @@ struct Polynomial {
     }
 
     /**
-     * @brief Load from binary file.
+     * @brief Load from binary stream.
      */
-    void fromBin(std::istream& is, BitsGenType* outGen = nullptr, uint32_t* outJump = nullptr) {
+    template <typename IS>
+    void fromBinStream(IS& is, BitsGenType* outGen = nullptr, uint32_t* outJump = nullptr) {
         BitsHeader header;
         if (header.read(is)) {
             MYASSERT(header.fileType == (uint8_t)BitsFileType::Polynomial, "Not a polynomial file");
@@ -167,6 +168,15 @@ struct Polynomial {
         alignas(64) uint32_t words[s_n32] = {0};
         is.read(reinterpret_cast<char*>(words), sizeof(words));
         m_data = Reg(words);
+    }
+
+    /**
+     * @brief Load from binary file.
+     */
+    void fromBinFile(const std::string& filename, BitsGenType* outGen = nullptr, uint32_t* outJump = nullptr) {
+        std::ifstream ifs(filename, std::ios::binary);
+        MYASSERT(ifs.is_open(), "Cannot open file: " << filename);
+        fromBinStream(ifs, outGen, outJump);
     }
 
     static Polynomial loadWithCheck(const std::string& filename, BitsGenType expectedGen, uint32_t expectedJump = 0) {
@@ -185,7 +195,7 @@ struct Polynomial {
         }
         
         Polynomial p;
-        p.fromBin(ifs);
+        p.fromBinStream(ifs);
         return p;
     }
 

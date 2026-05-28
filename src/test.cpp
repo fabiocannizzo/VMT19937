@@ -289,8 +289,8 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
             if (sequenceJumpExp >= 0) { std::stringstream ss; ss << poly_dir << "J" << std::setw(5) << std::setfill('0') << sequenceJumpExp << "." << gen_tag << ".bits"; sPolyFile = ss.str(); }
 
             bool cpExists = false, spExists = false;
-            if (!cPolyFile.empty()) { std::ifstream is(cPolyFile, std::ios::binary); if (is) { cp.fromBin(is); cpExists = true; } }
-            if (!sPolyFile.empty()) { std::ifstream is(sPolyFile, std::ios::binary); if (is) { sp.fromBin(is); spExists = true; } }
+            if (!cPolyFile.empty()) { std::ifstream is(cPolyFile, std::ios::binary); if (is) { cp.fromBinStream(is); cpExists = true; } }
+            if (!sPolyFile.empty()) { std::ifstream is(sPolyFile, std::ios::binary); if (is) { sp.fromBinStream(is); spExists = true; } }
 
             if ((commonJumpExp < 0 || cpExists) && (sequenceJumpExp < 0 || spExists)) {
                 if constexpr (sizeof(output_word_t) == 4) mtPoly.reinit(g_seedinit, g_seedlength, cpExists ? &cp : nullptr, spExists ? &sp : nullptr);
@@ -396,7 +396,7 @@ void testPolyVsMatrix(int exp, const M* matPtr)
         {
             std::ifstream is(polyFile, std::ios::binary);
             if (!is) { std::cout << "SKIPPED (no J" << exp << " file)\n"; return; }
-            poly.fromBin(is);
+            poly.fromBinStream(is);
         }
 
         const size_t nTest = sizeof(output_word_t) == 4 ? g_nRandomTest : g_nRandomTest64;

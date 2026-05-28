@@ -420,7 +420,7 @@ static typename T::Poly loadPoly(const std::string& path)
 {
     std::ifstream ifs(path, std::ios::binary);
     if (!ifs) throw std::runtime_error("Cannot read " + path);
-    typename T::Poly p; p.fromBin(ifs);
+    typename T::Poly p; p.fromBinStream(ifs);
     return p;
 }
 
@@ -437,7 +437,7 @@ static void loadMat(typename T::Matrix& mat, const std::string& path)
 {
     std::ifstream ifs(path, std::ios::binary);
     if (!ifs) throw std::runtime_error("Cannot read " + path);
-    mat.fromBin(ifs);
+    mat.fromBinStream(ifs);
 }
 
 // ── runChainTest ──────────────────────────────────────────────────────────────

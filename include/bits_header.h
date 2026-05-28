@@ -35,6 +35,20 @@ inline BitsGenType stringToGenType(const std::string& s) {
     return BitsGenType::Unknown;
 }
 
+/*
+ * Binary header format for .bits files (64 bytes total):
+ * 
+ * Offset | Size | Name         | Description
+ * -------|------|--------------|---------------------------------------------
+ * 0      | 8    | magic        | "VMTBITS\0" (Null-terminated magic string)
+ * 8      | 1    | version      | File format version (currently 1)
+ * 9      | 1    | fileType     | 0 = Polynomial, 1 = Matrix
+ * 10     | 1    | genType      | 0 = MT32, 1 = MT64, 2 = SFMT, 255 = Unknown
+ * 11     | 4    | jumpPower2   | N where the jump step is 2^N
+ * 15     | 8    | rows         | Number of bit rows (64-bit unsigned)
+ * 23     | 8    | cols         | Number of bit columns (64-bit unsigned)
+ * 31     | 33   | reserved     | Zero-padding to align to 64 bytes
+ */
 #pragma pack(push, 1)
 struct BitsHeader {
     static constexpr char MAGIC_STR[] = "VMTBITS";

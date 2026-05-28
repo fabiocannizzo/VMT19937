@@ -172,7 +172,7 @@ struct MT19937Matrix<32> : details::BinarySquareMatrix<details::MT19937Params<32
 
     MT19937Matrix(const std::string& binaryfilename)
     {
-        fromBinaryFile(binaryfilename);
+        fromBinFile(binaryfilename);
     }
 
     MT19937Matrix(const uint8_t* pchar, size_t len)
@@ -209,13 +209,13 @@ struct MT19937Matrix<32> : details::BinarySquareMatrix<details::MT19937Params<32
     }
 
     // initialize from a binary file saved with the toBin method
-    void fromBinaryFile(const std::string& filename, int expectedJumpPower2 = -1)
+    void fromBinFile(const std::string& filename, int expectedJumpPower2 = -1)
     {
         std::ifstream is(filename, std::ios::binary);
         MYASSERT(is.is_open(), "error opening binary file: " << filename);
         BitsGenType gen;
         uint32_t jump;
-        fromBin(is, &gen, &jump);
+        fromBinStream(is, &gen, &jump);
         if (gen != BitsGenType::Unknown) {
             MYASSERT(gen == details::MT19937Params<32>::s_bitsGenType, "Generator type mismatch for " << filename << ": expected " << toString(details::MT19937Params<32>::s_bitsGenType) << ", got " << toString(gen));
         }
@@ -247,7 +247,7 @@ struct MT19937Matrix<64> : details::BinarySquareMatrix<details::MT19937Params<64
 
     MT19937Matrix(const std::string& binaryfilename)
     {
-        fromBinaryFile(binaryfilename);
+        fromBinFile(binaryfilename);
     }
 
     // Initialize the one-step transition matrix for MT19937-64.
@@ -298,13 +298,13 @@ struct MT19937Matrix<64> : details::BinarySquareMatrix<details::MT19937Params<64
                 setBit(B + j, 33);
     }
 
-    void fromBinaryFile(const std::string& filename, int expectedJumpPower2 = -1)
+    void fromBinFile(const std::string& filename, int expectedJumpPower2 = -1)
     {
         std::ifstream is(filename, std::ios::binary);
         MYASSERT(is.is_open(), "error opening binary file: " << filename);
         BitsGenType gen;
         uint32_t jump;
-        fromBin(is, &gen, &jump);
+        fromBinStream(is, &gen, &jump);
         if (gen != BitsGenType::Unknown) {
             MYASSERT(gen == details::MT19937Params<64>::s_bitsGenType, "Generator type mismatch for " << filename << ": expected " << toString(details::MT19937Params<64>::s_bitsGenType) << ", got " << toString(gen));
         }
@@ -327,7 +327,7 @@ struct SFMT19937Matrix : details::BinarySquareMatrix<details::SFMT19937Params::s
 
     SFMT19937Matrix(const std::string& binaryfilename)
     {
-        fromBinaryFile(binaryfilename);
+        fromBinFile(binaryfilename);
     }
 
     void init4()
@@ -384,13 +384,13 @@ struct SFMT19937Matrix : details::BinarySquareMatrix<details::SFMT19937Params::s
     }
 
     // initialize from a binary file saved with the toBin method
-    void fromBinaryFile(const std::string& filename, int expectedJumpPower2 = -1)
+    void fromBinFile(const std::string& filename, int expectedJumpPower2 = -1)
     {
         std::ifstream is(filename, std::ios::binary);
         MYASSERT(is.is_open(), "error opening binary file: " << filename);
         BitsGenType gen;
         uint32_t jump;
-        fromBin(is, &gen, &jump);
+        fromBinStream(is, &gen, &jump);
         if (gen != BitsGenType::Unknown) {
             MYASSERT(gen == details::SFMT19937Params::s_bitsGenType, "Generator type mismatch for " << filename << ": expected " << toString(details::SFMT19937Params::s_bitsGenType) << ", got " << toString(gen));
         }
