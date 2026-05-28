@@ -76,9 +76,10 @@ using namespace std::chrono;
 
 static constexpr int s_colW = 5;
 
-static std::string serialize(const auto& obj) {
+template <typename T>
+static std::string serialize(const auto& obj, int step) {
     std::ostringstream ss;
-    obj.toBin(ss);
+    obj.toBin(ss, T::Gen::s_bitsGenType, (uint32_t)step);
     return ss.str();
 }
 
@@ -97,11 +98,11 @@ static std::string runIdentCheck(int step, const typename T::Poly& poly, const t
     std::string poly_bytes, mat_bytes;
     bool poly_computed = false, mat_computed = false;
     auto getPolyBytes = [&]() -> const std::string& {
-        if (!poly_computed) { poly_bytes = serialize(poly); poly_computed = true; }
+        if (!poly_computed) { poly_bytes = serialize<T>(poly, step); poly_computed = true; }
         return poly_bytes;
     };
     auto getMatBytes = [&]() -> const std::string& {
-        if (!mat_computed) { mat_bytes = serialize(mat); mat_computed = true; }
+        if (!mat_computed) { mat_bytes = serialize<T>(mat, step); mat_computed = true; }
         return mat_bytes;
     };
 
@@ -407,11 +408,11 @@ static std::string runTestScalar(const typename T::Poly& poly, const typename T:
 }
 
 template <typename T>
-static void savePoly(const typename T::Poly& poly, const std::string& path)
+static void savePoly(const typename T::Poly& poly, const std::string& path, int step)
 {
     std::ofstream ofs(path, std::ios::binary);
     if (!ofs) throw std::runtime_error("Cannot write " + path);
-    poly.toBin(ofs);
+    poly.toBin(ofs, T::Gen::s_bitsGenType, (uint32_t)step);
 }
 
 template <typename T>
@@ -424,11 +425,11 @@ static typename T::Poly loadPoly(const std::string& path)
 }
 
 template <typename T>
-static void saveMat(const typename T::Matrix& mat, const std::string& path)
+static void saveMat(const typename T::Matrix& mat, const std::string& path, int step)
 {
     std::ofstream ofs(path, std::ios::binary);
     if (!ofs) throw std::runtime_error("Cannot write " + path);
-    mat.toBin(ofs);
+    mat.toBin(ofs, T::Gen::s_bitsGenType, (uint32_t)step);
 }
 
 template <typename T>
@@ -642,8 +643,8 @@ static int runChainTest(std::string outdir, int endStep, int nThreads, int force
             std::string r_ident = runIdentCheck<T>(w.step, w.polyCopy, *w.mat, polyFile, matFile);
 
             if (!fs::exists(outdir)) fs::create_directories(outdir, ec);
-            saveMat<T>(*w.mat,      matFile(w.step));
-            savePoly<T>(w.polyCopy, polyFile(w.step));
+            saveMat<T>(*w.mat,      matFile(w.step), w.step);
+            savePoly<T>(w.polyCopy, polyFile(w.step), w.step);
 
             auto r_inmem      = runTest<T>(w.polyCopy, *w.mat);
             auto r_scalar     = runTestScalar<T>(w.polyCopy, *w.mat);

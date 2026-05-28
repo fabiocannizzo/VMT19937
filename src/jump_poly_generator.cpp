@@ -168,7 +168,7 @@ void run_multi_target(const string& gentype, size_t power2, const Poly19937& P, 
         string fn = mkJFileName(dir, t, gentype);
         ofstream os(fn, ios::binary);
         if (!os) { cerr << "Error: Cannot write " << fn << "\n"; continue; }
-        current.toBin(os);
+        current.toBin(os, stringToGenType(gentype), (uint32_t)t);
         onDisk.insert(t);
         cout << "Saved: " << fn << "\n";
     }
@@ -341,7 +341,8 @@ int main(int argc, const char** argv) {
     if (!outfile.empty()) {
         ofstream ofs(outfile, ios::binary);
         if (!ofs) { cerr << "Error: Cannot write " << outfile << "\n"; return -1; }
-        result.toBin(ofs);
+        uint32_t jp = has_n ? (uint32_t)exponent_peek : 0;
+        result.toBin(ofs, stringToGenType(gentype), jp);
         cout << "Saved to " << outfile << "\n";
     } else {
         cout << "Jump polynomial (hex):\n" << result.toString() << "\n";

@@ -38,6 +38,7 @@ public:
     static constexpr size_t s_n32inReg = VRegBitLen / 32;                          // uint32 lanes per logical SIMD register
 
     static constexpr size_t s_n32InFullState = s_n32InOneState * s_nStates;            // 624 * nStates - total uint32 elements in the interleaved state array
+    static constexpr BitsGenType s_bitsGenType = SFMT19937Params::s_bitsGenType;
 
     using matrix_t = SFMT19937Matrix;
 

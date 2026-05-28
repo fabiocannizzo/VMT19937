@@ -506,6 +506,7 @@ public:
     static constexpr size_t s_n32InOneState = Params::s_n32InOneState;
     static constexpr size_t s_n32InFullState = s_n32InOneState * s_nStates;
     static constexpr size_t s_nMatrixBits   = Params::s_nMatrixBits;
+    static constexpr BitsGenType s_bitsGenType = Params::s_bitsGenType;
 
     using XV = SimdRegister<s_regLenBits, s_isa>;
 

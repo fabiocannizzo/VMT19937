@@ -209,18 +209,19 @@ struct MT19937Matrix<32> : details::BinarySquareMatrix<details::MT19937Params<32
     }
 
     // initialize from a binary file saved with the toBin method
-    void fromBinaryFile(const std::string& filename)
+    void fromBinaryFile(const std::string& filename, int expectedJumpPower2 = -1)
     {
-        std::ifstream is(filename, std::ios::binary | std::ios::ate);
+        std::ifstream is(filename, std::ios::binary);
         MYASSERT(is.is_open(), "error opening binary file: " << filename);
-
-        // mild sanity check: verify that the file size matches the expected matrix dimensions
-        std::streamsize size = is.tellg();
-        is.seekg(0, std::ios::beg);
-        size_t expectedSize = base_t::s_binStreamSize;
-        MYASSERT(size == expectedSize, "File size mismatch for " << filename << ". Expected " << expectedSize << " bytes, but got " << size << " bytes.");
-
-        base_t::fromBin(is);
+        BitsGenType gen;
+        uint32_t jump;
+        fromBin(is, &gen, &jump);
+        if (gen != BitsGenType::Unknown) {
+            MYASSERT(gen == details::MT19937Params<32>::s_bitsGenType, "Generator type mismatch for " << filename << ": expected " << toString(details::MT19937Params<32>::s_bitsGenType) << ", got " << toString(gen));
+        }
+        if (expectedJumpPower2 >= 0) {
+            MYASSERT(jump == (uint32_t)expectedJumpPower2, "Jump power mismatch for " << filename << ": expected 2^" << expectedJumpPower2 << ", got 2^" << jump);
+        }
 #if (RANDGEN_TESTING==1)
         std::cout << "loaded matrix from file: " << filename << "\n";
         printSparsity();
@@ -297,15 +298,19 @@ struct MT19937Matrix<64> : details::BinarySquareMatrix<details::MT19937Params<64
                 setBit(B + j, 33);
     }
 
-    void fromBinaryFile(const std::string& filename)
+    void fromBinaryFile(const std::string& filename, int expectedJumpPower2 = -1)
     {
-        std::ifstream is(filename, std::ios::binary | std::ios::ate);
+        std::ifstream is(filename, std::ios::binary);
         MYASSERT(is.is_open(), "error opening binary file: " << filename);
-        std::streamsize size = is.tellg();
-        is.seekg(0, std::ios::beg);
-        size_t expectedSize = base_t::s_binStreamSize;
-        MYASSERT(size == expectedSize, "File size mismatch for " << filename << ". Expected " << expectedSize << " bytes, but got " << size << " bytes.");
-        base_t::fromBin(is);
+        BitsGenType gen;
+        uint32_t jump;
+        fromBin(is, &gen, &jump);
+        if (gen != BitsGenType::Unknown) {
+            MYASSERT(gen == details::MT19937Params<64>::s_bitsGenType, "Generator type mismatch for " << filename << ": expected " << toString(details::MT19937Params<64>::s_bitsGenType) << ", got " << toString(gen));
+        }
+        if (expectedJumpPower2 >= 0) {
+            MYASSERT(jump == (uint32_t)expectedJumpPower2, "Jump power mismatch for " << filename << ": expected 2^" << expectedJumpPower2 << ", got 2^" << jump);
+        }
     }
 };  // MT19937Matrix<64>
 
@@ -379,18 +384,19 @@ struct SFMT19937Matrix : details::BinarySquareMatrix<details::SFMT19937Params::s
     }
 
     // initialize from a binary file saved with the toBin method
-    void fromBinaryFile(const std::string& filename)
+    void fromBinaryFile(const std::string& filename, int expectedJumpPower2 = -1)
     {
-        std::ifstream is(filename, std::ios::binary | std::ios::ate);
+        std::ifstream is(filename, std::ios::binary);
         MYASSERT(is.is_open(), "error opening binary file: " << filename);
-
-        // mild sanity check: verify that the file size matches the expected matrix dimensions
-        std::streamsize size = is.tellg();
-        is.seekg(0, std::ios::beg);
-        size_t expectedSize = base_t::s_binStreamSize;
-        MYASSERT(size == expectedSize, "File size mismatch for " << filename << ". Expected " << expectedSize << " bytes, but got " << size << " bytes.");
-
-        base_t::fromBin(is);
+        BitsGenType gen;
+        uint32_t jump;
+        fromBin(is, &gen, &jump);
+        if (gen != BitsGenType::Unknown) {
+            MYASSERT(gen == details::SFMT19937Params::s_bitsGenType, "Generator type mismatch for " << filename << ": expected " << toString(details::SFMT19937Params::s_bitsGenType) << ", got " << toString(gen));
+        }
+        if (expectedJumpPower2 >= 0) {
+            MYASSERT(jump == (uint32_t)expectedJumpPower2, "Jump power mismatch for " << filename << ": expected 2^" << expectedJumpPower2 << ", got 2^" << jump);
+        }
 #if (RANDGEN_TESTING==1)
         std::cout << "loaded matrix from file: " << filename << "\n";
         printSparsity();

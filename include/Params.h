@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <cstddef>
 
+#include "bits_header.h"
+
 namespace xvmt {
 namespace details {
 
@@ -13,6 +15,8 @@ template <>
 struct MT19937Params<32>
 {
     using output_word_t = uint32_t;
+
+    static constexpr BitsGenType s_bitsGenType = BitsGenType::MT32;
 
     static constexpr size_t s_nBits = 19937;                                                 // Mersenne exponent; period is 2^19937 - 1
     static constexpr size_t s_stateWordBits = 32;                                             // word size w in bits (MT paper notation)
@@ -56,6 +60,8 @@ struct MT19937Params<64>
 {
     using output_word_t = uint64_t;
 
+    static constexpr BitsGenType s_bitsGenType = BitsGenType::MT64;
+
     static constexpr size_t s_nBits = 19937;
     static constexpr size_t s_stateWordBits = 64;
     static constexpr int s_N = 312;
@@ -91,6 +97,8 @@ struct MT19937Params<64>
 
 struct SFMT19937Params
 {
+    static constexpr BitsGenType s_bitsGenType = BitsGenType::SFMT;
+
     static constexpr size_t s_nBits = 19937;                                                  // Mersenne exponent; period is 2^19937 - 1
 
     static constexpr size_t s_stateWordBits = 128;                                             // SFMT word size: one 128-bit integer element

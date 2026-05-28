@@ -164,7 +164,7 @@ void run(const std::string& gentype, const std::string& filepath, size_t nThread
                 std::string fn = mkFileName(filepath, i, gentype);
                 std::cout << "  Saving: " << fn << " ... ";
                 std::ofstream of(fn, std::ios::binary);
-                f[out].toBin(of);
+                f[out].toBin(of, stringToGenType(gentype), (uint32_t)i);
                 of.close();
                 std::cout << "saved\n";
                 onDisk.insert(i);

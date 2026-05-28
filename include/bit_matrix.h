@@ -3,6 +3,8 @@
 #include "SIMD.h"
 #include "codecs.h"
 #include "utils.h"
+#include "bits_header.h"
+#include "macros.h"
 
 #include <vector>
 #include <iostream>
@@ -250,17 +252,55 @@ public:
     }
 
     template <typename OS>
-    void toBin(OS& os) const
+    void toBin(OS& os, BitsGenType genType = BitsGenType::Unknown, uint32_t jumpPower2 = 0) const
     {
+        BitsHeader header;
+        header.fileType = (uint8_t)BitsFileType::Matrix;
+        header.genType = (uint8_t)genType;
+        header.jumpPower2 = jumpPower2;
+        header.rows = s_nBitRows;
+        header.cols = s_nBitCols;
+        header.write(os);
+
         for (size_t r = 0; r < s_nBitRows; ++r)
             os.write((const char*)rowBegin(r), s_nBytesPerRow);
     }
 
     template <typename IS>
-    void fromBin(IS& is)
+    void fromBin(IS& is, BitsGenType* outGen = nullptr, uint32_t* outJump = nullptr)
     {
+        BitsHeader header;
+        if (header.read(is)) {
+            MYASSERT(header.fileType == (uint8_t)BitsFileType::Matrix, "Not a matrix file");
+            MYASSERT(header.rows == s_nBitRows, "Matrix rows mismatch: file has " << header.rows << " but buffer has " << s_nBitRows);
+            MYASSERT(header.cols == s_nBitCols, "Matrix cols mismatch: file has " << header.cols << " but buffer has " << s_nBitCols);
+            if (outGen) *outGen = (BitsGenType)header.genType;
+            if (outJump) *outJump = header.jumpPower2;
+        }
+
         for (size_t r = 0; r < s_nBitRows; ++r)
             is.read((char*)rowBegin(r), s_nBytesPerRow);
+    }
+
+    static BinaryMatrix loadWithCheck(const std::string& filename, BitsGenType expectedGen, uint32_t expectedJump = 0)
+    {
+        std::ifstream ifs(filename, std::ios::binary);
+        MYASSERT(ifs.is_open(), "Cannot open file: " << filename);
+
+        BitsHeader header;
+        if (header.read(ifs)) {
+            MYASSERT(header.fileType == (uint8_t)BitsFileType::Matrix, "File " << filename << " is not a matrix file");
+            if (expectedGen != BitsGenType::Unknown) {
+                MYASSERT(header.genType == (uint8_t)expectedGen, "Generator type mismatch for " << filename << ": expected " << toString(expectedGen) << ", got " << toString((BitsGenType)header.genType));
+            }
+            if (expectedJump != 0) {
+                MYASSERT(header.jumpPower2 == expectedJump, "Jump power mismatch for " << filename << ": expected 2^" << expectedJump << ", got 2^" << header.jumpPower2);
+            }
+        }
+
+        BinaryMatrix m;
+        m.fromBin(ifs);
+        return m;
     }
 
 

@@ -1,6 +1,8 @@
 #pragma once
 
 #include "SIMD.h"
+#include "bits_header.h"
+#include "macros.h"
 #include <vector>
 #include <string>
 #include <iostream>
@@ -137,7 +139,15 @@ struct Polynomial {
     /**
      * @brief Save to binary file (~4 KB for 32768 bits).
      */
-    void toBin(std::ostream& os) const {
+    void toBin(std::ostream& os, BitsGenType genType = BitsGenType::Unknown, uint32_t jumpPower2 = 0) const {
+        BitsHeader header;
+        header.fileType = (uint8_t)BitsFileType::Polynomial;
+        header.genType = (uint8_t)genType;
+        header.jumpPower2 = jumpPower2;
+        header.rows = 1;
+        header.cols = MaxBits;
+        header.write(os);
+
         alignas(64) uint32_t words[s_n32];
         m_data.store(words);
         os.write(reinterpret_cast<const char*>(words), sizeof(words));
@@ -146,10 +156,37 @@ struct Polynomial {
     /**
      * @brief Load from binary file.
      */
-    void fromBin(std::istream& is) {
-        alignas(64) uint32_t words[s_n32];
+    void fromBin(std::istream& is, BitsGenType* outGen = nullptr, uint32_t* outJump = nullptr) {
+        BitsHeader header;
+        if (header.read(is)) {
+            MYASSERT(header.fileType == (uint8_t)BitsFileType::Polynomial, "Not a polynomial file");
+            MYASSERT(header.cols <= MaxBits, "Polynomial dimension mismatch: file has " << header.cols << " but buffer has " << MaxBits);
+            if (outGen) *outGen = (BitsGenType)header.genType;
+            if (outJump) *outJump = header.jumpPower2;
+        }
+        alignas(64) uint32_t words[s_n32] = {0};
         is.read(reinterpret_cast<char*>(words), sizeof(words));
         m_data = Reg(words);
+    }
+
+    static Polynomial loadWithCheck(const std::string& filename, BitsGenType expectedGen, uint32_t expectedJump = 0) {
+        std::ifstream ifs(filename, std::ios::binary);
+        MYASSERT(ifs.is_open(), "Cannot open file: " << filename);
+        
+        BitsHeader header;
+        if (header.read(ifs)) {
+            MYASSERT(header.fileType == (uint8_t)BitsFileType::Polynomial, "File " << filename << " is not a polynomial file");
+            if (expectedGen != BitsGenType::Unknown) {
+                MYASSERT(header.genType == (uint8_t)expectedGen, "Generator type mismatch for " << filename << ": expected " << toString(expectedGen) << ", got " << toString((BitsGenType)header.genType));
+            }
+            if (expectedJump != 0) {
+                MYASSERT(header.jumpPower2 == expectedJump, "Jump power mismatch for " << filename << ": expected 2^" << expectedJump << ", got 2^" << header.jumpPower2);
+            }
+        }
+        
+        Polynomial p;
+        p.fromBin(ifs);
+        return p;
     }
 
     /**

@@ -22,6 +22,7 @@ public:
     static constexpr size_t s_n32InOneWord = base_t::s_n32InOneWord;       // uint32 elements per MT/SFMT word
     static constexpr size_t s_n32InFullState = base_t::s_n32InFullState;   // total uint32 elements in the interleaved state array
     static constexpr size_t s_nStates = base_t::s_nStates;                 // number of parallel generator states
+    static constexpr BitsGenType s_bitsGenType = base_t::s_bitsGenType;
 
 private:
     void completeStateInitialization(size_t nCommonJumpRepeat, const matrix_t* commonJump, const matrix_t* sequentialJump)
