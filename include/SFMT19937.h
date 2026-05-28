@@ -176,16 +176,6 @@ public:
         return m_state + s_n32InFullState;
     }
 
-    //uint32_t& scalarState(uint32_t stateIndex, uint32_t scalarIndex)
-    //{
-    //    return ((uint32_t*)m_state)[scalarIndex * s_regLenWords];
-    //}
-
-    //uint32_t& scalarState(uint32_t stateIndex, uint32_t scalarIndex)
-    //{
-    //    return ((uint32_t*)m_state)[scalarIndex * s_regLenWords];
-    //}
-
     // return the absolute index in the state vector
     // of the 32-bit word `w32RelIndex` belonging to state `stateIndex`
     static size_t w32AbsIndex(size_t w32RelIndex, size_t stateIndex = 0)

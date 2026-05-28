@@ -60,12 +60,10 @@ namespace Encoder {
     typedef unsigned char uint8_t;
 
     inline bool isBase64(uint8_t c) {
-        //return (isalnum(c) || (c == '+') || (c == '/'));
         return g_b64CharToDec[c] != -1;
     }
 
     inline bool isHex(uint8_t c) {
-        //return (isdigit(c) || ((c >= 'a') && (c <= 'f')) || ((c >= 'A') && (c <= 'F')));
         return g_hexCharToDec[c] != -1;
     }
 
@@ -75,14 +73,6 @@ namespace Encoder {
         int8_t h = g_hexCharToDec[(int)hex];
         MYASSERT(h != -1, "not a valid hex character: " << ((int)hex));
         return h;
-        //if (hex >= '0' && hex <= '9')
-        //    return hex - '0';
-        //if (hex >= 'a' && hex <= 'f')
-        //    return hex - 'a' + 10;
-        //if (hex >= 'A' && hex <= 'F')
-        //    return hex - 'A' + 10;
-        //char t[2] = { hex, 0 };
-        //THROW("not a hex character " << t);
     }
 
     inline uint8_t b64ToDec(char b64)
@@ -90,21 +80,6 @@ namespace Encoder {
         int8_t h = g_b64CharToDec[(int)b64];
         MYASSERT(h != -1, "not a valid base64 character: " << ((int)b64));
         return h;
-        //const size_t nAlpha = 'Z' - 'A' + 1;
-        //if (b64 >= 'A') {
-        //    if (b64 <= 'Z')
-        //        return b64 - 'A';
-        //    if (b64 >= 'a' && b64 <= 'z')
-        //        return b64 - 'a' + nAlpha;
-        //}
-        //if (b64 >= '0' && b64 <= '9')
-        //    return b64 - '0' + 2 * nAlpha;
-        //if (b64 == '+')
-        //    return 62;
-        //if (b64 == '/')
-        //    return 63;
-        //char t[2] = { b64, 0 };
-        //THROW("not a base 64 character: " << t);
     }
 
     inline uint8_t hexPairToDec(const char hi, const char lo)

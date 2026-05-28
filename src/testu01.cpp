@@ -17,7 +17,6 @@ extern "C" {
 using namespace std;
 using namespace xvmt;
 using namespace xvmt::details;
-//using namespace std::placeholders;
 
 MT19937Matrix<32> g_j19933(std::string("./dat/matrix/mt32/F19933.mt32.bits"));
 MT19937Matrix<32> g_j19934(std::string("./dat/matrix/mt32/F19934.mt32.bits"));

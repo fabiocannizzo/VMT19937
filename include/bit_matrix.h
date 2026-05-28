@@ -280,7 +280,6 @@ public:
     template <typename IS>
     void fromBase64(IS& is)
     {
-        //txtRowDecoder(os, &Encoder::base64ToText);
         txtRowDecoderStream(is, &Encoder::base64ToTextStream);
     }
 
@@ -294,7 +293,6 @@ public:
     template <typename IS>
     void fromHex(IS& is)
     {
-        //txtRowDecoder(is, &Encoder::hexToText);
         txtRowDecoderStream(is, &Encoder::hexToTextStream);
     }
 
@@ -384,7 +382,6 @@ public:
     void initRand()
     {
         for (size_t r = 0; r < s_nBitRows; ++r) {
-            //uint8_t* pr = rowBegin(r);
             size_t c = 0;
             {
                 typedef uint16_t word_t;

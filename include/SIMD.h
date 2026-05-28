@@ -584,7 +584,6 @@ struct SimdRegister<128, Isa, std::enable_if_t<Isa == ISA::SSE2 || Isa == ISA::S
     friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { return _mm_xor_si128(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { return _mm_or_si128(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator*(const XV& a, const XV& b) { return _mm_mullo_epi32(a.m_v, b.m_v); }
-    //friend FORCE_INLINE XV operator>(const XV& a, const XV& b) { return _mm_cmpgt_epi32(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return _mm_slli_epi32(a.m_v, n); }
     friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm_srli_epi32(a.m_v, n); }
     friend FORCE_INLINE XV shl64(const XV& a, int n) { return _mm_slli_epi64(a.m_v, n); }
@@ -915,7 +914,6 @@ struct SimdRegister<256, ISA::AVX2, void> : VirtualRegBase<256, ISA::AVX2>
     friend FORCE_INLINE XV operator^(const XV& a, const XV& b) { return _mm256_xor_si256(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator|(const XV& a, const XV& b) { return _mm256_or_si256(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator*(const XV& a, const XV& b) { return _mm256_mullo_epi32(a.m_v, b.m_v); }
-    //friend FORCE_INLINE XV operator>(const XV& a, const XV& b) { return _mm256_cmpgt_epi32(a.m_v, b.m_v); }
     friend FORCE_INLINE XV operator<<(const XV& a, const int n) { return _mm256_slli_epi32(a.m_v, n); }
     friend FORCE_INLINE XV operator>>(const XV& a, const int n) { return _mm256_srli_epi32(a.m_v, n); }
     friend FORCE_INLINE XV shl64(const XV& a, int n) { return _mm256_slli_epi64(a.m_v, n); }
