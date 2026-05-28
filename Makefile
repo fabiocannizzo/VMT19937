@@ -304,8 +304,8 @@ MAKEFILE_DEPS := Makefile
 
 CPP_SRC := $(wildcard src/*.cpp)
 # Files with main() - cpuid_probe.c is C only, excluded from C++ targets
-CPP_WITH_MAIN    := src/perf.cpp src/test.cpp src/demo.cpp src/encoder.cpp src/compute_jump_matrix.cpp src/testu01.cpp \
-                   src/jump_poly_generator.cpp src/characteristic_poly_finder.cpp src/chain_test.cpp
+CPP_WITH_MAIN    := src/perf.cpp src/test.cpp src/demo.cpp src/encoder.cpp src/jump_generator.cpp src/testu01.cpp \
+                   src/characteristic_poly_finder.cpp src/chain_test.cpp
 CPP_WITHOUT_MAIN := src/cpu.cpp
 
 MT_OBJ   := $(BINDIR)/mt19937ar$(OBJ_EXT)
@@ -325,11 +325,11 @@ endif
 
 all: $(TARGETS)
 
-.PHONY: test perf chain_test compute_jump_matrix
+.PHONY: test perf chain_test jump_generator
 test: $(BINDIR)/test$(EXE_EXT)
 perf: $(BINDIR)/perf$(EXE_EXT)
 chain_test: $(BINDIR)/chain_test$(EXE_EXT)
-compute_jump_matrix: $(BINDIR)/compute_jump_matrix$(EXE_EXT)
+jump_generator: $(BINDIR)/jump_generator$(EXE_EXT)
 
 $(BINDIR):
 	mkdir -p $(BINDIR)
@@ -348,10 +348,8 @@ $(BINDIR)/%$(OBJ_EXT): src/%.cpp $(MAKEFILE_DEPS) | $(BINDIR)
 
 # Specific flags for objects
 ifneq ($(IS_MSVC),1)
-$(BINDIR)/compute_jump_matrix$(OBJ_EXT): CXXFLAGS += -pthread
-$(BINDIR)/compute_jump_matrix$(EXE_EXT): LFLAGS   += -pthread
-$(BINDIR)/jump_poly_generator$(OBJ_EXT): CXXFLAGS += -pthread
-$(BINDIR)/jump_poly_generator$(EXE_EXT): LFLAGS   += -pthread
+$(BINDIR)/jump_generator$(OBJ_EXT): CXXFLAGS += -pthread
+$(BINDIR)/jump_generator$(EXE_EXT): LFLAGS   += -pthread
 $(BINDIR)/chain_test$(OBJ_EXT): CXXFLAGS += -pthread
 $(BINDIR)/chain_test$(EXE_EXT): LFLAGS   += -pthread
 endif

@@ -17,9 +17,8 @@ Building is only necessary if you want to run the bundled executables:
   - test.exe    correctness tests
   - perf.exe    throughput benchmarks
   - demo.exe    usage examples
-  - jump.exe    jump-ahead matrix utilities
-  - encoder.exe matrix encoder utility
-
+  - jump_generator.exe  Unified jump-ahead generation utility (poly & matrix)
+  - encoder.exe         Matrix encoder utility
 These require a C++20 compiler and GNU make.
 Note: Windows' built-in nmake is NOT compatible - the Makefile uses GNU make syntax.
 
@@ -43,28 +42,18 @@ Polynomial bitmasks and characteristic polynomials are under `dat/poly/`:
 If you specifically need the transition matrices, see `dat/matrix/README.txt` 
 for instructions on how to fetch and extract them from the `jump-matrix` branch.
 
-### Generating New Jump Polynomials
-If you need to calculate a new jump polynomial for step $J$, first ensure you have the
-characteristic polynomial $P(x)$ for the generator. If it's missing, use `characteristic_poly_find
-er.exe`:
-
-    .\bin-128-cl\characteristic_poly_finder.exe -g=mt32 -o=dat/poly/mt32/characteristic.mt32.hex       
-
-Then use `jump_poly_generator.exe` to calculate $x^J \pmod{P(x)}$:
+### Generating New Jump Files
+If you need to calculate a new jump polynomial or matrix for step $J$, use the `jump_generator.exe` utility:
 
     # Example: Generate MT19937-32 polynomial for 2^20000 steps
-    .\bin-128-cl\jump_poly_generator.exe -g=mt32 -n=20000 -p=dat/poly/mt32/characteristic.mt32.hex -o=dat/poly/mt32/J20000.mt32.bits
-
-To build an arbitrary jump polynomial for $J$ steps, use the `-t` flag:
-
-    .\bin-128-cl\jump_poly_generator.exe -g=mt32 -t=1234567 -p=dat/poly/mt32/characteristic.mt32.hex -o=dat/poly/mt32/J_custom.mt32.bits
-
-
-### Generating Legacy Matrices
-If you specifically need to build old matrix files, use the `compute_jump_matrix.exe` utility:
+    .\bin-128-cl\jump_generator.exe -g=mt32 -t=20000 -mode=poly -outdir=dat/poly/mt32/
 
     # Example: Generate MT19937-32 matrix for 2^20000 jumps
-    .\bin-128-cl\compute_jump_matrix.exe -g=mt32 -t=20000
+    .\bin-128-cl\jump_generator.exe -g=mt32 -t=20000 -mode=matrix -outdir=dat/poly/mt32/
+
+Note: Generating a polynomial requires the characteristic polynomial $P(x)$ to be present in the output directory (e.g., `dat/poly/mt32/characteristic.mt32.hex`). If it's missing, use `characteristic_poly_finder.exe`:
+
+    .\bin-128-cl\characteristic_poly_finder.exe -g=mt32 -o=dat/poly/mt32/characteristic.mt32.hex
 
 Build System
 ------------
