@@ -13,7 +13,7 @@ using namespace xvmt;
 const uint32_t g_seedlength = 4;
 const uint32_t g_seedinit[g_seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 
-// show how to construct and use a geneartor with VecLen=128 and GenMode=QM_Block16
+// show how to construct and use a generator with VecLen=128
 void demo128()
 {
     std::cout << "example of how to use the generator with M=4 and SSE2 instructions\n";
@@ -29,23 +29,19 @@ void demo128()
         With VecLen=128 bits we have M=128/32=4 state vectors.
         With M=4 we have X=5, i.e. we use the mask for jump ahead of 2^19935 values
     */
-    typedef VMT19937<128, true>::poly_t poly_t;
+    typedef VMT19937<128>::poly_t poly_t;
     poly_t jumpPoly;
     jumpPoly.fromBinFile("./dat/poly/mt32/J19935.mt32.bits");
 
     /*
         Create the generator
     */
-    VMT19937<128, true> mt(g_seedinit, g_seedlength, (const poly_t*)nullptr, &jumpPoly);
-
-    // Create storage vector aligned with cache lines, where we will store results
-    AlignedVector<uint32_t, 64> buffer(16);
+    VMT19937<128> mt(g_seedinit, g_seedlength, (const poly_t*)nullptr, &jumpPoly);
 
     // Query 10 times the generator in blocks of 16 numbers
     for (size_t i = 0; i < 10; ++i) {
-        mt.genrand_uint32_blk16(buffer.data());
         for (size_t j = 0; j < 16; ++j)
-            std::cout << buffer[j] << ", ";
+            std::cout << mt.genrand_uint32() << ", ";
     }
     std::cout << "\n";
 }
@@ -55,7 +51,7 @@ void demoParallel()
 {
     std::cout << "example of how to use multiple independent generators\n";
 
-    typedef VMT19937<128, true>::poly_t poly_t;
+    typedef VMT19937<128>::poly_t poly_t;
 
     // Get the relevant jump mask. With 128 bits registers we pick J19935.mt32.bits
     poly_t jumpPoly;
@@ -69,24 +65,19 @@ void demoParallel()
 
     // an array of parallel independent generators, which are guaranteed not to be overlapping
     // up to a period of 2^100
-    std::array<std::unique_ptr<VMT19937<128, true>>, 10> parallelGenerators;
+    std::array<std::unique_ptr<VMT19937<128>>, 10> parallelGenerators;
 
-    // Create 10 multiple parallel generators with VecLen=128 and QueryMode=Block16
+    // Create 10 multiple parallel generators with VecLen=128
     for (size_t i = 0; i < 10; ++i) {
         // We use commonPoly as the sequential jump mask for the 10 streams
-        parallelGenerators[i].reset(new VMT19937<128, true>(g_seedinit, g_seedlength, &commonPoly, &jumpPoly));
+        parallelGenerators[i].reset(new VMT19937<128>(g_seedinit, g_seedlength, &commonPoly, &jumpPoly));
     }
 
-    // Create storage vector aligned with cache lines, where we will store results
-    AlignedVector<uint32_t, 64> buffer(16);
-
     // Query 10 times each of the generators in blocks of 16
-    // We could also use mt.genrand_uint32(), which queries one number at a time, but it is slower.
     for (auto& g : parallelGenerators) {
         for (size_t i = 0; i < 10; ++i) {
-            g->genrand_uint32_blk16(buffer.data());
             for (size_t j = 0; j < 16; ++j)
-                std::cout << buffer[j] << ", ";
+                std::cout << g->genrand_uint32() << ", ";
         }
         std::cout << "\n";
     }
@@ -106,22 +97,18 @@ void demoVMT64()
             256 => 4 states, use ./dat/poly/mt64/J19935.mt64.bits
             512 => 8 states, use ./dat/poly/mt64/J19934.mt64.bits
     */
-    typedef VMT19937_64<128, true>::poly_t poly_t;
+    typedef VMT19937_64<128>::poly_t poly_t;
     poly_t jumpPoly;
     jumpPoly.fromBinFile("./dat/poly/mt64/J19936.mt64.bits");
 
-    // Create the generator with VecLen=128 and block-query mode
-    VMT19937_64<128, true> gen(uint64_t(5489), (const poly_t*)nullptr, &jumpPoly);
+    // Create the generator with VecLen=128
+    VMT19937_64<128> gen(uint64_t(5489), (const poly_t*)nullptr, &jumpPoly);
 
-    // Create aligned storage for one cache line of uint64_t values (8 x 8 bytes)
-    AlignedVector<uint64_t, 64> buffer(8);
-
-    // Query 5 times in blocks of 8 numbers
-    for (size_t i = 0; i < 5; ++i) {
-        gen.genrand_word_blk(buffer.data());
-        for (size_t j = 0; j < 8; ++j)
-            std::cout << buffer[j] << ", ";
-        std::cout << "\n";
+    // Query 40 numbers
+    for (size_t i = 0; i < 40; ++i) {
+        std::cout << gen.genrand_uint64() << ", ";
+        if ((i + 1) % 8 == 0)
+            std::cout << "\n";
     }
 }
 
@@ -134,14 +121,11 @@ void demo128_64()
         This generator uses SIMD registers but runs only ONE MT19937-64 state.
         This is useful for legacy code that expects a single stream but wants SIMD speed.
     */
-    XMT19937_64<SIMD_ISA, true> gen;
+    XMT19937_64<> gen;
     gen.reinit(uint64_t(5489), (const XMT19937_64<>::poly_t*)nullptr, nullptr);
 
-    AlignedVector<uint64_t, 64> buffer(8);
-    gen.genrand_word_blk(buffer.data());
-
     for (size_t j = 0; j < 8; ++j)
-        std::cout << buffer[j] << ", ";
+        std::cout << gen.genrand_uint64() << ", ";
     std::cout << "\n";
 }
 

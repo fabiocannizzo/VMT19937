@@ -123,12 +123,11 @@ using namespace xvmt;
 details::Polynomial<> jumpMask;
 jumpMask.fromBinFile("./dat/poly/mt32/J19934.mt32.bits");
 
-// 2. Initialize the generator with Block-16 optimization
-VMT19937<256, true> gen(1234, 0, nullptr, &jumpMask);
+// 2. Initialize the generator
+VMT19937<256> gen(1234, nullptr, &jumpMask);
 
-// 3. Generate into cache-aligned memory
-alignas(64) uint32_t buffer[16];
-gen.genrand_uint32_blk16(buffer);
+// 3. Generate numbers
+uint32_t val = gen.genrand_uint32();
 ```
 
 ### 3. Multiple Independent Generators (Parallel Streams)
@@ -152,10 +151,12 @@ details::Polynomial<> commonJump;
 commonJump.fromBinFile("./dat/poly/mt32/J00100.mt32.bits");
 
 // Create 10 independent generators
-std::array<std::unique_ptr<VMT19937<128, true>>, 10> gens;
+std::array<std::unique_ptr<VMT19937<128>>, 10> gens;
 for (size_t i = 0; i < 10; ++i) {
-    // Each instance 'i' is jumped forward by i * 2^100 steps
-    gens[i] = std::make_unique<VMT19937<128, true>>(42, i, &commonJump, &seqJump);
+    // Each instance 'i' is initialized with a different common jump
+    // Note: To jump different amounts using polynomials, one would typically
+    // pre-calculate commonJump^i. In this simple example, they all jump by 2^100.
+    gens[i] = std::make_unique<VMT19937<128>>(42, &commonJump, &seqJump);
 }
 ```
 
