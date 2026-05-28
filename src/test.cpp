@@ -16,11 +16,11 @@
 using namespace xvmt;
 using namespace xvmt::details;
 
-const uint32_t seedlength = 4;
-const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
+const uint32_t g_seedlength = 4;
+const uint32_t g_seedinit[g_seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 
-const uint64_t nRandomTest = 100;
-const uint64_t nRandomTest64 = 50;
+const uint64_t g_nRandomTest = 100;
+const uint64_t g_nRandomTest64 = 50;
 
 extern "C" void init_genrand(unsigned long s);
 extern "C" unsigned long genrand_int32();
@@ -30,7 +30,7 @@ extern "C" void init_genrand64(unsigned long long seed);
 extern "C" unsigned long long genrand64_int64();
 
 enum GenType { VSFMT, VMT, XMT, VMT64, XMT64 };
-const char* genName[] = { "VSFMT", "VMT", "XMT", "VMT64", "XMT64" };
+const char* g_genName[] = { "VSFMT", "VMT", "XMT", "VMT64", "XMT64" };
 
 template <GenType G, size_t L, size_t I, QryMode QM>
 struct GenTraits;
@@ -38,37 +38,37 @@ struct GenTraits;
 template <size_t L, size_t I, QryMode QM>
 struct GenTraits<VMT, L, I, QM>
 {
-    typedef VMT19937<L, QM == QM_Block16, BitLenToIsa<I>::isa> gen_t;
+    typedef VMT19937<L, QM == QM_Block16, BitLenToIsa<I>::s_isa> gen_t;
 };
 
 template <size_t L, size_t I, QryMode QM>
 struct GenTraits<XMT, L, I, QM>
 {
     static_assert(L == I);
-    typedef XMT19937<BitLenToIsa<I>::isa, QM == QM_Block16> gen_t;
+    typedef XMT19937<BitLenToIsa<I>::s_isa, QM == QM_Block16> gen_t;
 };
 
 template <size_t L, size_t I, QryMode QM>
 struct GenTraits<VSFMT, L, I, QM>
 {
-    typedef VSFMT19937<L, QM == QM_Block16, BitLenToIsa<I>::isa> gen_t;
+    typedef VSFMT19937<L, QM == QM_Block16, BitLenToIsa<I>::s_isa> gen_t;
 };
 
 template <size_t L, size_t I, QryMode QM>
 struct GenTraits<VMT64, L, I, QM>
 {
-    typedef VMT19937_64<L, QM == QM_Block16, BitLenToIsa<I>::isa> gen_t;
+    typedef VMT19937_64<L, QM == QM_Block16, BitLenToIsa<I>::s_isa> gen_t;
 };
 
 template <size_t L, size_t I, QryMode QM>
 struct GenTraits<XMT64, L, I, QM>
 {
     static_assert(L == I);
-    typedef XMT19937_64<BitLenToIsa<I>::isa, QM == QM_Block16> gen_t;
+    typedef XMT19937_64<BitLenToIsa<I>::s_isa, QM == QM_Block16> gen_t;
 };
 
-std::vector<uint32_t> benchmark(nRandomTest + 10000);
-std::vector<uint64_t> benchmark64(nRandomTest64 + 10000);
+std::vector<uint32_t> g_benchmark(g_nRandomTest + 10000);
+std::vector<uint64_t> g_benchmark64(g_nRandomTest64 + 10000);
 
 void printSome(const std::vector<uint32_t>& v)
 {
@@ -151,30 +151,30 @@ void squareTests(std::index_sequence<NBits...>&&) { (squareTest<NBits>(), ...); 
 
 void generateBenchmark_MT19937()
 {
-    unsigned long init[seedlength];
-    for (size_t i = 0; i < seedlength; ++i) init[i] = seedinit[i];
+    unsigned long init[g_seedlength];
+    for (size_t i = 0; i < g_seedlength; ++i) init[i] = g_seedinit[i];
     std::cout << "Generate MT19937 random numbers with the original C source code ... ";
-    init_by_array(init, seedlength);
-    for (size_t i = 0, n  = benchmark.size(); i < n; ++i) benchmark[i] = (uint32_t)genrand_int32();
+    init_by_array(init, g_seedlength);
+    for (size_t i = 0, n  = g_benchmark.size(); i < n; ++i) g_benchmark[i] = (uint32_t)genrand_int32();
     std::cout << "done!\n";
-    printSome(benchmark);
+    printSome(g_benchmark);
 }
 
 void generateBenchmark_SFMT19937()
 {
     std::cout << "Generate SFMT19937 random numbers with the original C source code ... ";
     sfmt_t sfmtgen;
-    sfmt_init_by_array(&sfmtgen, const_cast<uint32_t *>(seedinit), seedlength);
-    for (size_t i = 0, n = benchmark.size(); i < n; ++i) benchmark[i] = sfmt_genrand_uint32(&sfmtgen);
+    sfmt_init_by_array(&sfmtgen, const_cast<uint32_t *>(g_seedinit), g_seedlength);
+    for (size_t i = 0, n = g_benchmark.size(); i < n; ++i) g_benchmark[i] = sfmt_genrand_uint32(&sfmtgen);
     std::cout << "done!\n";
-    printSome(benchmark);
+    printSome(g_benchmark);
 }
 
 void generateBenchmark_MT19937_64()
 {
     std::cout << "Generate MT19937-64 random numbers with the original C source code ... ";
     init_genrand64(5489ULL);
-    for (size_t i = 0, n = benchmark64.size(); i < n; ++i) benchmark64[i] = genrand64_int64();
+    for (size_t i = 0, n = g_benchmark64.size(); i < n; ++i) g_benchmark64[i] = genrand64_int64();
     std::cout << "done!\n";
 }
 
@@ -266,11 +266,11 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
             default: THROW("how did we get here?");
         }
 
-        std::cout << genName[G] << "< " << std::setw(3) << VecLen << ", " << std::setw(7) << queryModeName(QryMode) << ", " << std::setw(3) << Gen::s_regLenBitsHw << ">"
+        std::cout << g_genName[G] << "< " << std::setw(3) << VecLen << ", " << std::setw(7) << queryModeName(QryMode) << ", " << std::setw(3) << Gen::s_regLenBitsHw << ">"
             << ", common jump of " << std::setw(4) << commonJumpSteps << " repeated " << nCommonJumpRepeat << " times, sequence jump of " << std::setw(4) << sequenceJumpSteps
             << ", block size " << std::setw(4) << (blkSize > 0 ? std::to_string(blkSize) : "rand") << " ... " << std::flush;
 
-        const size_t nTest = sizeof(output_word_t) == 4 ? nRandomTest : nRandomTest64;
+        const size_t nTest = sizeof(output_word_t) == 4 ? g_nRandomTest : g_nRandomTest64;
         std::vector<output_word_t> aligneddst(nTest);
         const M* jumpMat = (s_nStates > 1) ? seqJump.p.get() : nullptr;
         Gen mtPoly;
@@ -293,14 +293,14 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
             if (!sPolyFile.empty()) { std::ifstream is(sPolyFile, std::ios::binary); if (is) { sp.fromBin(is); spExists = true; } }
 
             if ((commonJumpExp < 0 || cpExists) && (sequenceJumpExp < 0 || spExists)) {
-                if constexpr (sizeof(output_word_t) == 4) mtPoly.reinit(seedinit, seedlength, cpExists ? &cp : nullptr, spExists ? &sp : nullptr);
+                if constexpr (sizeof(output_word_t) == 4) mtPoly.reinit(g_seedinit, g_seedlength, cpExists ? &cp : nullptr, spExists ? &sp : nullptr);
                 else mtPoly.reinit((output_word_t)5489ULL, cpExists ? &cp : nullptr, spExists ? &sp : nullptr);
                 polyOk = true;
             }
         }
 
         // Always initialize Matrix version
-        if constexpr (sizeof(output_word_t) == 4) mtMatrix.reinit(seedinit, seedlength, nCommonJumpRepeat, commonJump.p.get(), jumpMat);
+        if constexpr (sizeof(output_word_t) == 4) mtMatrix.reinit(g_seedinit, g_seedlength, nCommonJumpRepeat, commonJump.p.get(), jumpMat);
         else mtMatrix.reinit((output_word_t)5489ULL, nCommonJumpRepeat, commonJump.p.get(), jumpMat);
 
         auto runCheck = [&](Gen& mt, const char* label) {
@@ -328,16 +328,16 @@ void testEquivalence(size_t nCommonJumpRepeat, const JumpMatrix<M>& commonJump, 
                 size_t seqIndex = (i % s_nWordInOneWord) + (i / (s_nWordInOneWord * s_nStates)) * s_nWordInOneWord;
                 size_t benchmarkindex = seqIndex + commonJumpSteps * nCommonJumpRepeat + sequenceJumpSteps * genIndex;
                 if constexpr (sizeof(output_word_t) == 4) {
-                    if (benchmark[benchmarkindex] != r2) {
+                    if (g_benchmark[benchmarkindex] != r2) {
                         std::cout << "Mismatch at i=" << i << ", genIndex=" << genIndex << ", seqIndex=" << seqIndex << "\n";
-                        std::cout << "  benchmarkindex=" << benchmarkindex << ", expected=" << std::hex << benchmark[benchmarkindex] << ", got=" << r2 << std::dec << "\n";
-                        std::cout << "  Context (benchmark): ";
-                        for (int k = -2; k <= 2; ++k) if ((int)benchmarkindex + k >= 0) std::cout << std::hex << benchmark[benchmarkindex + k] << " ";
+                        std::cout << "  benchmarkindex=" << benchmarkindex << ", expected=" << std::hex << g_benchmark[benchmarkindex] << ", got=" << r2 << std::dec << "\n";
+                        std::cout << "  Context (g_benchmark): ";
+                        for (int k = -2; k <= 2; ++k) if ((int)benchmarkindex + k >= 0) std::cout << std::hex << g_benchmark[benchmarkindex + k] << " ";
                         std::cout << std::dec << std::endl;
                     }
-                    MYASSERT(benchmark[benchmarkindex] == r2, label << " FAILED!");
+                    MYASSERT(g_benchmark[benchmarkindex] == r2, label << " FAILED!");
                 } else {
-                    MYASSERT(benchmark64[benchmarkindex] == r2, label << " FAILED!");
+                    MYASSERT(g_benchmark64[benchmarkindex] == r2, label << " FAILED!");
                 }
             }
         };
@@ -368,9 +368,9 @@ template <GenType G, size_t...Ls, typename M> void equivalenceTests0(const JumpM
 }
 
 // Direct polynomial-vs-matrix comparison for a single generator instantiation.
-// No benchmark is needed: the two jump methods are compared against each other.
+// No g_benchmark is needed: the two jump methods are compared against each other.
 // Useful for large exponents (e.g. 2^100, 2^19933) where the absolute stream
-// position cannot be stored in a pre-computed benchmark array.
+// position cannot be stored in a pre-computed g_benchmark array.
 template <GenType G, size_t L, size_t I, typename M>
 void testPolyVsMatrix(int exp, const M* matPtr)
 {
@@ -389,7 +389,7 @@ void testPolyVsMatrix(int exp, const M* matPtr)
         ss << poly_dir << "J" << std::setw(5) << std::setfill('0') << exp << "." << gen_tag << ".bits";
         std::string polyFile = ss.str();
 
-        std::cout << genName[G] << "< " << std::setw(3) << VecLen << ", " << std::setw(7) << "Scalar" << ", " << std::setw(3) << Gen::s_regLenBitsHw << ">"
+        std::cout << g_genName[G] << "< " << std::setw(3) << VecLen << ", " << std::setw(7) << "Scalar" << ", " << std::setw(3) << Gen::s_regLenBitsHw << ">"
             << ", poly==matrix 2^" << exp << " ... " << std::flush;
 
         poly_t poly;
@@ -399,11 +399,11 @@ void testPolyVsMatrix(int exp, const M* matPtr)
             poly.fromBin(is);
         }
 
-        const size_t nTest = sizeof(output_word_t) == 4 ? nRandomTest : nRandomTest64;
+        const size_t nTest = sizeof(output_word_t) == 4 ? g_nRandomTest : g_nRandomTest64;
         Gen genPoly, genMatrix;
         if constexpr (sizeof(output_word_t) == 4) {
-            genPoly.reinit(seedinit, seedlength, &poly, nullptr);
-            genMatrix.reinit(seedinit, seedlength, 1, matPtr, nullptr);
+            genPoly.reinit(g_seedinit, g_seedlength, &poly, nullptr);
+            genMatrix.reinit(g_seedinit, g_seedlength, 1, matPtr, nullptr);
         } else {
             genPoly.reinit((output_word_t)5489ULL, &poly, nullptr);
             genMatrix.reinit((output_word_t)5489ULL, 1, matPtr, nullptr);
@@ -441,11 +441,11 @@ void test_XVMT19937()
     pmatrix_t jumpMatrix1(new matrix_t, 1, 0);
     pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/matrix/mt32/F00009.mt32.bits")), 512, 9);
     pmatrix_t jumpMatrixPeriod(new matrix_t(std::string("./dat/matrix/mt32/F19937.mt32.bits")), 1, 19937);
-    startTest(genName[VMT]);
+    startTest(g_genName[VMT]);
     equivalenceTests0<VMT, 32, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
     std::cout << "VMT19937: a jump of size 2^19937 is equivalent to a jump of size 1\n";
     testEquivalence<VMT, 128, 128, QM_Scalar>(1, jumpMatrixPeriod, noJump);
-    startTest(genName[XMT]);
+    startTest(g_genName[XMT]);
     equivalenceTests0<XMT, 32, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
     for (int exp : {9, 100, 19933, 19934, 19935, 19936}) {
         std::stringstream sf; sf << "./dat/matrix/mt32/F" << std::setw(5) << std::setfill('0') << exp << ".mt32.bits";
@@ -457,7 +457,7 @@ void test_XVMT19937()
 
 void test_VSFMT19937()
 {
-    startTest(genName[VSFMT]);
+    startTest(g_genName[VSFMT]);
     generateBenchmark_SFMT19937();
     typedef SFMT19937Matrix matrix_t;
     typedef JumpMatrix<matrix_t> pmatrix_t;
@@ -481,10 +481,10 @@ void test_VMT19937_64()
     pmatrix_t jumpMatrix1(new matrix_t, 1, 0);
     pmatrix_t jumpMatrix512(new matrix_t(std::string("./dat/matrix/mt64/F00009.mt64.bits")), 512, 9);
     pmatrix_t jumpMatrixPeriod(new matrix_t(std::string("./dat/matrix/mt64/F19937.mt64.bits")), 1, 19937);
-    startTest(genName[VMT64]);
+    startTest(g_genName[VMT64]);
     equivalenceTests0<VMT64, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
     equivalenceTests1<VMT64, 64, 64>(jumpMatrix1, jumpMatrix512);
-    startTest(genName[XMT64]);
+    startTest(g_genName[XMT64]);
     equivalenceTests0<XMT64, 64, 128, 256, 512>(jumpMatrix1, jumpMatrix512);
     for (int exp : {9, 100, 19933, 19934, 19935, 19936}) {
         std::stringstream sf; sf << "./dat/matrix/mt64/F" << std::setw(5) << std::setfill('0') << exp << ".mt64.bits";
@@ -506,13 +506,13 @@ template <size_t n32, typename T> void testAlignR32(const unsigned char *data, T
 
 template <size_t...n32s> void testSimdAlignR32(std::index_sequence<n32s...>&&) {
     constexpr size_t n32 = (sizeof...(n32s) - 1); constexpr size_t nBits = n32 * 32;
-    using T = xvmt::details::SimdRegister<nBits, BitLenToIsa<nBits>::isa>;
+    using T = xvmt::details::SimdRegister<nBits, BitLenToIsa<nBits>::s_isa>;
     alignas(64) unsigned char data[128]; std::iota(data, data + 128, 0);
     T v0((const T*)data); T v1(((const T*)data)+1); (testAlignR32<n32s>(data, v0, v1), ...);
 }
 
 void test_SIMD_special_methods() {
-    using XV = xvmt::details::SimdRegister<128, BitLenToIsa<128>::isa>;
+    using XV = xvmt::details::SimdRegister<128, BitLenToIsa<128>::s_isa>;
     XV a(1, 2, 3, 4); XV b(5, 6, 7, 8);
     MYASSERT(XV::alignr32<1>(a, b).eq(XV(2, 3, 4, 5)), "alignr32 failed");
     std::cout << "SIMD special methods tests passed!\n";

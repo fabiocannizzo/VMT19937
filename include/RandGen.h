@@ -266,7 +266,7 @@ public:
 // falling back to emulation if VRegBitLen > hardware register size.
 template < size_t VRegBitLen = SIMD_N_BITS
          , bool QryBlk16 = false
-         , ISA Isa = details::BestIsa<VRegBitLen>::isa
+         , ISA Isa = details::BestIsa<VRegBitLen>::s_isa
          >
 struct VMT19937 : details::RandGen<details::MT19937Base<VRegBitLen, Isa, false, QryBlk16, details::MT19937Params<32>>, QryBlk16>
 {
@@ -277,16 +277,16 @@ struct VMT19937 : details::RandGen<details::MT19937Base<VRegBitLen, Isa, false, 
 template < ISA Isa = SIMD_ISA
          , bool QryBlk16 = false
          >
-struct XMT19937 : details::RandGen<details::MT19937Base<IsaTraits<Isa>::HwBitLen, Isa, true, QryBlk16, details::MT19937Params<32>>, QryBlk16>
+struct XMT19937 : details::RandGen<details::MT19937Base<IsaTraits<Isa>::s_hwBitLen, Isa, true, QryBlk16, details::MT19937Params<32>>, QryBlk16>
 {
-    using base_t = details::RandGen<details::MT19937Base<IsaTraits<Isa>::HwBitLen, Isa, true, QryBlk16, details::MT19937Params<32>>, QryBlk16>;
+    using base_t = details::RandGen<details::MT19937Base<IsaTraits<Isa>::s_hwBitLen, Isa, true, QryBlk16, details::MT19937Params<32>>, QryBlk16>;
     using base_t::RandGen; // reuse constructors
 };
 
 // V-Family: Inter-state vectorized 64-bit MT.
 template < size_t VRegBitLen = SIMD_N_BITS
          , bool QryBlk16 = false
-         , ISA Isa = details::BestIsa<VRegBitLen>::isa
+         , ISA Isa = details::BestIsa<VRegBitLen>::s_isa
          >
 struct VMT19937_64 : details::RandGen<details::MT19937Base<VRegBitLen, Isa, false, QryBlk16, details::MT19937Params<64>>, QryBlk16>
 {
@@ -298,16 +298,16 @@ struct VMT19937_64 : details::RandGen<details::MT19937Base<VRegBitLen, Isa, fals
 template < ISA Isa = SIMD_ISA
          , bool QryBlk16 = false
          >
-struct XMT19937_64 : details::RandGen<details::MT19937Base<(IsaTraits<Isa>::HwBitLen >= 64 ? IsaTraits<Isa>::HwBitLen : 64), Isa, true, QryBlk16, details::MT19937Params<64>>, QryBlk16>
+struct XMT19937_64 : details::RandGen<details::MT19937Base<(IsaTraits<Isa>::s_hwBitLen >= 64 ? IsaTraits<Isa>::s_hwBitLen : 64), Isa, true, QryBlk16, details::MT19937Params<64>>, QryBlk16>
 {
-    using base_t = details::RandGen<details::MT19937Base<(IsaTraits<Isa>::HwBitLen >= 64 ? IsaTraits<Isa>::HwBitLen : 64), Isa, true, QryBlk16, details::MT19937Params<64>>, QryBlk16>;
+    using base_t = details::RandGen<details::MT19937Base<(IsaTraits<Isa>::s_hwBitLen >= 64 ? IsaTraits<Isa>::s_hwBitLen : 64), Isa, true, QryBlk16, details::MT19937Params<64>>, QryBlk16>;
     using base_t::RandGen; // reuse constructors
 };
 
 // V-Family: Inter-state vectorized SFMT.
 template < size_t VRegBitLen = SIMD_N_BITS
          , bool QryBlk16 = false
-         , ISA Isa = details::BestIsa<VRegBitLen>::isa
+         , ISA Isa = details::BestIsa<VRegBitLen>::s_isa
          >
 struct VSFMT19937 : details::RandGen<details::SFMT19937Base<VRegBitLen, Isa>, QryBlk16>
 {

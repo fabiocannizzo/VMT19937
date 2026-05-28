@@ -22,7 +22,7 @@ void wait()
 
 enum GenType { undef, mt32, mt64, sfmt };
 
-std::set<std::string> genTypeStr = { "mt32", "mt64", "sfmt" };
+std::set<std::string> g_genTypeStr = { "mt32", "mt64", "sfmt" };
 
 template <GenType>
 struct GenTraits;
@@ -31,21 +31,21 @@ template <>
 struct GenTraits<mt32>
 {
     typedef MT19937Matrix<32> matrix_t;
-    static constexpr size_t power2 = MT19937Params<32>::s_stepOutputWordsLog2;
+    static constexpr size_t s_power2 = MT19937Params<32>::s_stepOutputWordsLog2;
 };
 
 template <>
 struct GenTraits<mt64>
 {
     typedef MT19937Matrix<64> matrix_t;
-    static constexpr size_t power2 = MT19937Params<64>::s_stepOutputWordsLog2;
+    static constexpr size_t s_power2 = MT19937Params<64>::s_stepOutputWordsLog2;
 };
 
 template <>
 struct GenTraits<sfmt>
 {
     typedef SFMT19937Matrix matrix_t;
-    static constexpr size_t power2 = SFMT19937Params::s_stepOutputWordsLog2;
+    static constexpr size_t s_power2 = SFMT19937Params::s_stepOutputWordsLog2;
 };
 
 template <typename Matrix>
@@ -58,12 +58,12 @@ void square(const Matrix& src, Matrix& dst, std::vector<typename Matrix::buffer_
     std::cout << "done in: " << std::fixed << std::setprecision(2) << elapsed_seconds.count() << "s" << std::endl;
 }
 
-const std::string extension = ".bits";
+const std::string g_extension = ".bits";
 
 std::string mkFileName(const std::string& path, size_t n, const std::string& gentype)
 {
     std::ostringstream os;
-    os << path << "F" << std::setw(5) << std::setfill('0') << n << "." << gentype << extension;
+    os << path << "F" << std::setw(5) << std::setfill('0') << n << "." << gentype << g_extension;
     return os.str();
 }
 
@@ -76,7 +76,7 @@ void usage()
         << "Example:\n"
         << "   compute_jump_matrix -g=mt32 -j=8 -p=./outdir/ -f=100 -t=3,9\n"
         << " -g: generator must be one of {";
-    for (const auto& s : genTypeStr)
+    for (const auto& s : g_genTypeStr)
         std::cerr << s << " ";
     std::cerr << "}\n"
         << " -j: nthreads defaults to host concurrency\n"
@@ -94,16 +94,16 @@ void run(const std::string& gentype, const std::string& filepath, size_t nThread
     std::vector<typename matrix_t::buffer_t> buffers(nThreads);
 
     std::set<size_t> onDisk;
-    onDisk.insert(GenTraits<gen>::power2);
+    onDisk.insert(GenTraits<gen>::s_power2);
 
     for (const auto& entry : std::filesystem::directory_iterator(filepath)) {
-        if (std::filesystem::is_regular_file(entry) && entry.path().has_extension() && entry.path().extension().string() == extension) {
+        if (std::filesystem::is_regular_file(entry) && entry.path().has_extension() && entry.path().extension().string() == g_extension) {
             std::string s = entry.path().filename().string();
-            std::string expected_suffix = "." + gentype + extension;
+            std::string expected_suffix = "." + gentype + g_extension;
             if (s.length() > expected_suffix.length() + 1 && s[0] == 'F' && s.find(expected_suffix) != std::string::npos) {
                 s = s.substr(1, s.length() - 1 - expected_suffix.length());
                 size_t n = (size_t)atoi(s.c_str());
-                if (n >= GenTraits<gen>::power2)
+                if (n >= GenTraits<gen>::s_power2)
                     onDisk.insert(n);
             }
         }
@@ -128,7 +128,7 @@ void run(const std::string& gentype, const std::string& filepath, size_t nThread
         }
 
         if (currentIdxInMem == size_t(-1) || currentIdxInMem != e) {
-            if (e == GenTraits<gen>::power2) {
+            if (e == GenTraits<gen>::s_power2) {
                 std::cout << "Initializing from base matrix: F^(2^" << e << ")\n";
                 f[e % 2] = matrix_t{};
             }
@@ -142,7 +142,7 @@ void run(const std::string& gentype, const std::string& filepath, size_t nThread
                 else {
                     std::cerr << "Error loading " << fn << ", falling back to base matrix\n";
                     f[e % 2] = matrix_t{};
-                    e = GenTraits<gen>::power2;
+                    e = GenTraits<gen>::s_power2;
                 }
             }
             f[e % 2].printSparsity();
@@ -193,10 +193,10 @@ void run(const std::string& gentype, const std::string& filepath, size_t nThread
     std::cout << "Final cleanup: removing non-target files...\n";
     if (std::filesystem::exists(filepath)) {
         for (const auto& entry : std::filesystem::directory_iterator(filepath)) {
-            if (std::filesystem::is_regular_file(entry) && entry.path().has_extension() && entry.path().extension().string() == extension) {
+            if (std::filesystem::is_regular_file(entry) && entry.path().has_extension() && entry.path().extension().string() == g_extension) {
                 std::string s = entry.path().filename().string();
-                if (s.length() > extension.length() + 1 && s[0] == 'F') {
-                    std::string numPart = s.substr(1, s.length() - 1 - extension.length());
+                if (s.length() > g_extension.length() + 1 && s[0] == 'F') {
+                    std::string numPart = s.substr(1, s.length() - 1 - g_extension.length());
                     size_t n = (size_t)atoi(numPart.c_str());
                     if (targets.find(n) == targets.end()) {
                         std::filesystem::remove(entry.path());
@@ -229,7 +229,7 @@ int main(int argc, const char** argv)
 
         // generator type (mt32 or sfmt) is required
         consumeArg(args, "g", true, gentype);
-        if (genTypeStr.find(gentype) == genTypeStr.end()) {
+        if (g_genTypeStr.find(gentype) == g_genTypeStr.end()) {
             std::cerr << "Error: invalid generator type: " << gentype << "\n";
             usage();
             return -1;

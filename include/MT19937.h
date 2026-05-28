@@ -56,15 +56,15 @@ struct RndCache<WordT, 0>
 };
 
 // VRegBitLen  - virtual (logical) SIMD register width in bits. Three constraints apply:
-//   (1) Must be a multiple of IsaTraits<Isa>::HwBitLen (enforced by SimdRegister asserts).
+//   (1) Must be a multiple of IsaTraits<Isa>::s_hwBitLen (enforced by SimdRegister asserts).
 //   (2) Must be a multiple of s_stateWordBits (= 32 for MT).
-//   (3) Must correspond to the HwBitLen of a real ISA: one of 32, 128, 256, or 512.
+//   (3) Must correspond to the s_hwBitLen of a real ISA: one of 32, 128, 256, or 512.
 //       This parameter exists for portability: VMT19937<256, ISA::SSE42> and
 //       VMT19937<256, ISA::AVX2> produce identical sequences. On SSE42 hardware,
 //       each logical 256-bit operation is emulated by two 128-bit hardware instructions.
-//       VRegBitLen > HwBitLen is valid; VRegBitLen < HwBitLen is not.
-//   For MonoState=true: VRegBitLen must equal HwBitLen (enforced by static_assert below).
-// Isa         - target ISA; selects hardware intrinsics and determines HwBitLen.
+//       VRegBitLen > s_hwBitLen is valid; VRegBitLen < s_hwBitLen is not.
+//   For MonoState=true: VRegBitLen must equal s_hwBitLen (enforced by static_assert below).
+// Isa         - target ISA; selects hardware intrinsics and determines s_hwBitLen.
 // MonoState   - false: multi-state vectorized generator (VMT family, nStates > 1);
 //               true:  single-state generator using SIMD for intra-state speed (XMT).
 // QryBlk16    - false: scalar and any-size query interface enabled;
@@ -239,7 +239,7 @@ public:
         XV x0(stCur);
 
         if constexpr (!MonoState) {
-            constexpr size_t nUnroll = (VRegBitLen <= IsaTraits<Isa>::HwBitLen) ? 8 : 4;
+            constexpr size_t nUnroll = (VRegBitLen <= IsaTraits<Isa>::s_hwBitLen) ? 8 : 4;
 
             constexpr size_t n1 = (N - M) / nUnroll;
             constexpr size_t r1 = (N - M) % nUnroll;
@@ -483,20 +483,20 @@ class MT19937BaseImpl
     friend Refiller;
     friend Temper;
 
-    static constexpr size_t HwBitLen = SimdRegister<VRegBitLen, Isa>::s_hwBitLen;
+    static constexpr size_t s_hwBitLen = SimdRegister<VRegBitLen, Isa>::s_hwBitLen;
     static_assert(VRegBitLen == 32 || VRegBitLen == 64 || VRegBitLen == 128 || VRegBitLen == 256 || VRegBitLen == 512,
         "VRegBitLen must be a valid SIMD hardware register width (32, 64, 128, 256, or 512)");
     static_assert(VRegBitLen % Params::s_stateWordBits == 0,
         "VRegBitLen must be a multiple of the MT word size");
-    static_assert(!MonoState || VRegBitLen == HwBitLen,
-        "MonoState=true requires VRegBitLen == HwBitLen");
+    static_assert(!MonoState || VRegBitLen == s_hwBitLen,
+        "MonoState=true requires VRegBitLen == s_hwBitLen");
 
 public:
     using output_word_t = typename Params::output_word_t;
     using matrix_t = MT19937Matrix<Params::s_stateWordBits>;
 
     static constexpr size_t s_regLenBits    = VRegBitLen;
-    static constexpr size_t s_regLenBitsHw  = HwBitLen;
+    static constexpr size_t s_regLenBitsHw  = s_hwBitLen;
     static constexpr ISA    s_isa           = Isa;
     static constexpr int    s_N             = Params::s_N;
     static constexpr int    s_M             = Params::s_M;

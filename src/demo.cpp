@@ -10,8 +10,8 @@ using namespace xvmt;
 #include <iomanip>
 
 // This is the initialization seed. Refer to the original MT19937 documentation.
-const uint32_t seedlength = 4;
-const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
+const uint32_t g_seedlength = 4;
+const uint32_t g_seedinit[g_seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 
 // show how to construct and use a geneartor with VecLen=128 and GenMode=QM_Block16
 void demo128()
@@ -37,7 +37,7 @@ void demo128()
     /*
         Create the generator
     */
-    VMT19937<128, true> mt(seedinit, seedlength, (const poly_t*)nullptr, &jumpPoly);
+    VMT19937<128, true> mt(g_seedinit, g_seedlength, (const poly_t*)nullptr, &jumpPoly);
 
     // Create storage vector aligned with cache lines, where we will store results
     AlignedVector<uint32_t, 64> buffer(16);
@@ -77,7 +77,7 @@ void demoParallel()
     // Create 10 multiple parallel generators with VecLen=128 and QueryMode=Block16
     for (size_t i = 0; i < 10; ++i) {
         // We use commonPoly as the sequential jump mask for the 10 streams
-        parallelGenerators[i].reset(new VMT19937<128, true>(seedinit, seedlength, &commonPoly, &jumpPoly));
+        parallelGenerators[i].reset(new VMT19937<128, true>(g_seedinit, g_seedlength, &commonPoly, &jumpPoly));
     }
 
     // Create storage vector aligned with cache lines, where we will store results

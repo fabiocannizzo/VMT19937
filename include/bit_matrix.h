@@ -22,13 +22,13 @@ inline constexpr uint8_t bitmask(size_t b)
 template <ISA SimdIsa>
 struct BinaryVectorMultiplier
 {
-    static constexpr size_t SimdBits = IsaTraits<SimdIsa>::HwBitLen;
+    static constexpr size_t s_simdBits = IsaTraits<SimdIsa>::s_hwBitLen;
     // multiply the row pointed by pr by all the nRows pointed by pc
     // all rows must have size nBitCols and be padded to the next multiple of the simd vector length
     template <size_t nRows, size_t nBitCols, size_t nBitColsPadded>
     static uint8_t multiply8(const uint8_t* _pr, const uint8_t** _pc)
     {
-        typedef xvmt::details::SimdRegister<SimdBits, SimdIsa> simd_t;
+        typedef xvmt::details::SimdRegister<s_simdBits, SimdIsa> simd_t;
 
         const size_t nSimdBytes = sizeof(simd_t);
         const size_t nSimdBits = 8 * nSimdBytes;

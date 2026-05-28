@@ -65,7 +65,7 @@ extern "C" {
 }
 
 // 2 full sweeps of the largest generator state (624 output words for MT32/SFMT) + 1
-static const size_t nRand = 1249;
+static const size_t g_nRand = 1249;
 
 using namespace xvmt;
 using namespace xvmt::details;
@@ -74,7 +74,7 @@ using namespace std::chrono;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-static constexpr int COL_W = 5;
+static constexpr int s_colW = 5;
 
 static std::string serialize(const auto& obj) {
     std::ostringstream ss;
@@ -138,7 +138,7 @@ static std::string runIdentCheck(int step, const typename T::Poly& poly, const t
 }
 
 static void printResult(const std::string& label, const std::string& res) {
-    std::cout << " " << label << "=" << std::left << std::setw(COL_W) << res;
+    std::cout << " " << label << "=" << std::left << std::setw(s_colW) << res;
 }
 
 // ── Generator traits ──────────────────────────────────────────────────────────
@@ -153,14 +153,14 @@ struct MT32Traits {
     using PolyScalar = GenScalar::poly_t;
     using Word       = uint32_t;
 
-    static constexpr int  reduceDegree  = 19937;
-    static constexpr int  startStep     = 0;
-    static constexpr const char* gentype       = "mt32";
-    static constexpr const char* chainPrefix   = "mt32_chain_";
-    static constexpr const char* charPolyFile  = "./dat/poly/mt32/characteristic.mt32.hex";
-    static constexpr const char* defaultOutdir = "./dat/poly/mt32/";
+    static constexpr int  s_reduceDegree  = 19937;
+    static constexpr int  s_startStep     = 0;
+    static constexpr const char* s_gentype       = "mt32";
+    static constexpr const char* s_chainPrefix   = "mt32_chain_";
+    static constexpr const char* s_charPolyFile  = "./dat/poly/mt32/characteristic.mt32.hex";
+    static constexpr const char* s_defaultOutdir = "./dat/poly/mt32/";
 
-    static constexpr uint32_t seed = 1234UL;
+    static constexpr uint32_t s_seed = 1234UL;
 
     static std::string canonPolyFile(int step) {
         char buf[64]; snprintf(buf, sizeof(buf), "./dat/poly/mt32/J%05d.mt32.bits", step); return buf;
@@ -172,14 +172,14 @@ struct MT32Traits {
     static void initRootPoly(Poly& p) { p.resetZero(); p.setBit(1, true); }
 
     static std::string runTestOrig(const PolyScalar& ps, int step) {
-        init_genrand(seed);
+        init_genrand(s_seed);
         uint64_t count = uint64_t(1) << step;
         for (uint64_t k = 0; k < count; ++k) genrand_int32();
-        Word ref[nRand];
-        for (size_t k = 0; k < nRand; ++k) ref[k] = (uint32_t)genrand_int32();
+        Word ref[g_nRand];
+        for (size_t k = 0; k < g_nRand; ++k) ref[k] = (uint32_t)genrand_int32();
         GenScalar gen;
         initGenPolyS(gen, ps);
-        for (size_t k = 0; k < nRand; ++k) {
+        for (size_t k = 0; k < g_nRand; ++k) {
             auto a = nextWordS(gen);
             if (a != ref[k]) {
                 std::ostringstream ss;
@@ -191,10 +191,10 @@ struct MT32Traits {
         return "";
     }
 
-    static void initGenPoly(Gen& g, const Poly& p)              { g.reinit(seed, &p, nullptr); }
-    static void initGenMat(Gen& g, const Matrix& m)             { g.reinit(seed, 1, &m, nullptr); }
-    static void initGenPolyS(GenScalar& g, const PolyScalar& p) { g.reinit(seed, &p, nullptr); }
-    static void initGenMatS(GenScalar& g, const Matrix& m)      { g.reinit(seed, 1, &m, nullptr); }
+    static void initGenPoly(Gen& g, const Poly& p)              { g.reinit(s_seed, &p, nullptr); }
+    static void initGenMat(Gen& g, const Matrix& m)             { g.reinit(s_seed, 1, &m, nullptr); }
+    static void initGenPolyS(GenScalar& g, const PolyScalar& p) { g.reinit(s_seed, &p, nullptr); }
+    static void initGenMatS(GenScalar& g, const Matrix& m)      { g.reinit(s_seed, 1, &m, nullptr); }
     static Word nextWord(Gen& g)        { return g.genrand_uint32(); }
     static Word nextWordS(GenScalar& g) { return g.genrand_uint32(); }
 };
@@ -209,14 +209,14 @@ struct MT64Traits {
     using PolyScalar = GenScalar::poly_t;
     using Word       = uint64_t;
 
-    static constexpr int  reduceDegree  = 19937;
-    static constexpr int  startStep     = 0;
-    static constexpr const char* gentype       = "mt64";
-    static constexpr const char* chainPrefix   = "mt64_chain_";
-    static constexpr const char* charPolyFile  = "./dat/poly/mt64/characteristic.mt64.hex";
-    static constexpr const char* defaultOutdir = "./dat/poly/mt64/";
+    static constexpr int  s_reduceDegree  = 19937;
+    static constexpr int  s_startStep     = 0;
+    static constexpr const char* s_gentype       = "mt64";
+    static constexpr const char* s_chainPrefix   = "mt64_chain_";
+    static constexpr const char* s_charPolyFile  = "./dat/poly/mt64/characteristic.mt64.hex";
+    static constexpr const char* s_defaultOutdir = "./dat/poly/mt64/";
 
-    static constexpr uint64_t seed = 0x123456789ABCULL;
+    static constexpr uint64_t s_seed = 0x123456789ABCULL;
 
     static std::string canonPolyFile(int step) {
         char buf[64]; snprintf(buf, sizeof(buf), "./dat/poly/mt64/J%05d.mt64.bits", step); return buf;
@@ -228,14 +228,14 @@ struct MT64Traits {
     static void initRootPoly(Poly& p) { p.resetZero(); p.setBit(1, true); }
 
     static std::string runTestOrig(const PolyScalar& ps, int step) {
-        init_genrand64(seed);
+        init_genrand64(s_seed);
         uint64_t count = uint64_t(1) << step;
         for (uint64_t k = 0; k < count; ++k) genrand64_int64();
-        Word ref[nRand];
-        for (size_t k = 0; k < nRand; ++k) ref[k] = genrand64_int64();
+        Word ref[g_nRand];
+        for (size_t k = 0; k < g_nRand; ++k) ref[k] = genrand64_int64();
         GenScalar gen;
         initGenPolyS(gen, ps);
-        for (size_t k = 0; k < nRand; ++k) {
+        for (size_t k = 0; k < g_nRand; ++k) {
             auto a = nextWordS(gen);
             if (a != ref[k]) {
                 std::ostringstream ss;
@@ -247,10 +247,10 @@ struct MT64Traits {
         return "";
     }
 
-    static void initGenPoly(Gen& g, const Poly& p)              { g.reinit(seed, &p, nullptr); }
-    static void initGenMat(Gen& g, const Matrix& m)             { g.reinit(seed, 1, &m, nullptr); }
-    static void initGenPolyS(GenScalar& g, const PolyScalar& p) { g.reinit(seed, &p, nullptr); }
-    static void initGenMatS(GenScalar& g, const Matrix& m)      { g.reinit(seed, 1, &m, nullptr); }
+    static void initGenPoly(Gen& g, const Poly& p)              { g.reinit(s_seed, &p, nullptr); }
+    static void initGenMat(Gen& g, const Matrix& m)             { g.reinit(s_seed, 1, &m, nullptr); }
+    static void initGenPolyS(GenScalar& g, const PolyScalar& p) { g.reinit(s_seed, &p, nullptr); }
+    static void initGenMatS(GenScalar& g, const Matrix& m)      { g.reinit(s_seed, 1, &m, nullptr); }
     static Word nextWord(Gen& g)        { return g.genrand_uint64(); }
     static Word nextWordS(GenScalar& g) { return g.genrand_uint64(); }
 };
@@ -265,15 +265,15 @@ struct SFMTTraits {
     using PolyScalar = GenScalar::poly_t;
     using Word       = uint32_t;
 
-    static constexpr int  reduceDegree  = 19968;
-    static constexpr int  startStep     = 2;
-    static constexpr const char* gentype       = "sfmt";
-    static constexpr const char* chainPrefix   = "sfmt_chain_";
-    static constexpr const char* charPolyFile  = "./dat/poly/sfmt/characteristic.sfmt.hex";
-    static constexpr const char* defaultOutdir = "./dat/poly/sfmt/";
+    static constexpr int  s_reduceDegree  = 19968;
+    static constexpr int  s_startStep     = 2;
+    static constexpr const char* s_gentype       = "sfmt";
+    static constexpr const char* s_chainPrefix   = "sfmt_chain_";
+    static constexpr const char* s_charPolyFile  = "./dat/poly/sfmt/characteristic.sfmt.hex";
+    static constexpr const char* s_defaultOutdir = "./dat/poly/sfmt/";
 
-    static constexpr uint32_t seeds[]  = { 0x123, 0x234, 0x345, 0x456 };
-    static constexpr uint32_t seedLen  = 4;
+    static constexpr uint32_t s_seeds[]  = { 0x123, 0x234, 0x345, 0x456 };
+    static constexpr uint32_t s_seedLen  = 4;
 
     static std::string canonPolyFile(int step) {
         char buf[64]; snprintf(buf, sizeof(buf), "./dat/poly/sfmt/J%05d.sfmt.bits", step); return buf;
@@ -287,14 +287,14 @@ struct SFMTTraits {
 
     static std::string runTestOrig(const PolyScalar& ps, int step) {
         sfmt_t sfmt;
-        sfmt_init_by_array(&sfmt, const_cast<uint32_t*>(seeds), (int)seedLen);
+        sfmt_init_by_array(&sfmt, const_cast<uint32_t*>(s_seeds), (int)s_seedLen);
         uint64_t count = uint64_t(1) << step;
         for (uint64_t k = 0; k < count; ++k) sfmt_genrand_uint32(&sfmt);
-        Word ref[nRand];
-        for (size_t k = 0; k < nRand; ++k) ref[k] = sfmt_genrand_uint32(&sfmt);
+        Word ref[g_nRand];
+        for (size_t k = 0; k < g_nRand; ++k) ref[k] = sfmt_genrand_uint32(&sfmt);
         GenScalar gen;
         initGenPolyS(gen, ps);
-        for (size_t k = 0; k < nRand; ++k) {
+        for (size_t k = 0; k < g_nRand; ++k) {
             auto a = nextWordS(gen);
             if (a != ref[k]) {
                 std::ostringstream ss;
@@ -306,10 +306,10 @@ struct SFMTTraits {
         return "";
     }
 
-    static void initGenPoly(Gen& g, const Poly& p)              { g.reinit(seeds, seedLen, &p, nullptr); }
-    static void initGenMat(Gen& g, const Matrix& m)             { g.reinit(seeds, seedLen, 1, &m, nullptr); }
-    static void initGenPolyS(GenScalar& g, const PolyScalar& p) { g.reinit(seeds, seedLen, &p, nullptr); }
-    static void initGenMatS(GenScalar& g, const Matrix& m)      { g.reinit(seeds, seedLen, 1, &m, nullptr); }
+    static void initGenPoly(Gen& g, const Poly& p)              { g.reinit(s_seeds, s_seedLen, &p, nullptr); }
+    static void initGenMat(Gen& g, const Matrix& m)             { g.reinit(s_seeds, s_seedLen, 1, &m, nullptr); }
+    static void initGenPolyS(GenScalar& g, const PolyScalar& p) { g.reinit(s_seeds, s_seedLen, &p, nullptr); }
+    static void initGenMatS(GenScalar& g, const Matrix& m)      { g.reinit(s_seeds, s_seedLen, 1, &m, nullptr); }
     static Word nextWord(Gen& g)        { return g.genrand_uint32(); }
     static Word nextWordS(GenScalar& g) { return g.genrand_uint32(); }
 };
@@ -349,7 +349,7 @@ static typename T::Poly poly_sq_mod(const typename T::Poly& in, const typename T
 {
     typename T::PolyBig sq;
     PolyOps::square(in, sq);
-    PolyOps::reduce<T::reduceDegree>(sq, P);
+    PolyOps::reduce<T::s_reduceDegree>(sq, P);
     alignas(64) uint32_t tmp[65536 / 32];
     sq.m_data.store(tmp);
     typename T::Poly res;
@@ -363,7 +363,7 @@ static std::string runTest(const typename T::Poly& poly, const typename T::Matri
     typename T::Gen genPoly, genMatrix;
     T::initGenPoly(genPoly, poly);
     T::initGenMat(genMatrix, mat);
-    for (size_t k = 0; k < nRand; ++k) {
+    for (size_t k = 0; k < g_nRand; ++k) {
         auto a = T::nextWord(genPoly);
         auto b = T::nextWord(genMatrix);
         if (a != b) {
@@ -393,7 +393,7 @@ static std::string runTestScalar(const typename T::Poly& poly, const typename T:
     typename T::GenScalar genPoly, genMatrix;
     T::initGenPolyS(genPoly, ps);
     T::initGenMatS(genMatrix, mat);
-    for (size_t k = 0; k < nRand; ++k) {
+    for (size_t k = 0; k < g_nRand; ++k) {
         auto a = T::nextWordS(genPoly);
         auto b = T::nextWordS(genMatrix);
         if (a != b) {
@@ -448,13 +448,13 @@ static int runChainTest(std::string outdir, int endStep, int nThreads, int force
 
     auto polyFile = [&](int step) {
         std::ostringstream ss;
-        ss << outdir << T::chainPrefix << "poly_"
+        ss << outdir << T::s_chainPrefix << "poly_"
            << std::setw(5) << std::setfill('0') << step << ".bits";
         return ss.str();
     };
     auto matFile = [&](int step) {
         std::ostringstream ss;
-        ss << outdir << T::chainPrefix << "mat_"
+        ss << outdir << T::s_chainPrefix << "mat_"
            << std::setw(5) << std::setfill('0') << step << ".bits";
         return ss.str();
     };
@@ -462,8 +462,8 @@ static int runChainTest(std::string outdir, int endStep, int nThreads, int force
     // Load characteristic polynomial
     typename T::Poly P;
     {
-        std::ifstream ifs(T::charPolyFile);
-        if (!ifs) { std::cerr << "Cannot open " << T::charPolyFile << "\n"; return 1; }
+        std::ifstream ifs(T::s_charPolyFile);
+        if (!ifs) { std::cerr << "Cannot open " << T::s_charPolyFile << "\n"; return 1; }
         std::string line;
         while (getline(ifs, line) && (line.empty() || line[0] == '#'));
         P.fromString(line);
@@ -477,7 +477,7 @@ static int runChainTest(std::string outdir, int endStep, int nThreads, int force
     {
         std::error_code ec;
         std::vector<int> found;
-        const std::string matPrefix = std::string(T::chainPrefix) + "mat_";
+        const std::string matPrefix = std::string(T::s_chainPrefix) + "mat_";
         const std::string suffix = ".bits";
         if (fs::exists(outdir)) {
             for (const auto& entry : fs::directory_iterator(outdir, ec)) {
@@ -507,15 +507,15 @@ static int runChainTest(std::string outdir, int endStep, int nThreads, int force
 
     // Determine start: forced, resumed, or fresh
     typename T::Poly poly;
-    int startI = T::startStep;
+    int startI = T::s_startStep;
     std::string startMode;
     auto curMat = std::make_shared<typename T::Matrix>();
 
     if (forceStart >= 0) {
-        if (forceStart < T::startStep)
-            forceStart = T::startStep;
+        if (forceStart < T::s_startStep)
+            forceStart = T::s_startStep;
         startI = forceStart;
-        if (forceStart == T::startStep) {
+        if (forceStart == T::s_startStep) {
             T::initRootPoly(poly);
             // *curMat already default-constructed
         } else {
@@ -541,7 +541,7 @@ static int runChainTest(std::string outdir, int endStep, int nThreads, int force
         }
         startMode = "FORCED@" + std::to_string(forceStart);
     } else {
-        bool resumed = (resumeStep >= T::startStep);
+        bool resumed = (resumeStep >= T::s_startStep);
         if (resumed) {
             try {
                 poly = loadPoly<T>(polyFile(resumeStep));
@@ -554,7 +554,7 @@ static int runChainTest(std::string outdir, int endStep, int nThreads, int force
         if (!resumed) {
             T::initRootPoly(poly);
             // *curMat already default-constructed
-            startI = T::startStep;
+            startI = T::s_startStep;
         }
         startMode = resumed ? "RESUMED" : "FRESH";
     }
@@ -576,11 +576,11 @@ static int runChainTest(std::string outdir, int endStep, int nThreads, int force
     }
 
     std::cout << "chain_test: " << startMode
-              << "  g=" << T::gentype
+              << "  g=" << T::s_gentype
               << "  startI=" << startI
               << "  endI=" << endStep
               << "  threads=" << nThreads
-              << "  nRand=" << nRand
+              << "  g_nRand=" << g_nRand
               << "  keep=" << keepFiles << "\n"
               << "#\n"
               << "# Output columns per step:\n"
@@ -733,7 +733,7 @@ static int runChainTest(std::string outdir, int endStep, int nThreads, int force
         if (fs::exists(outdir)) {
             for (const auto& entry : fs::directory_iterator(outdir, ec)) {
                 if (!fs::is_regular_file(entry)) continue;
-                if (entry.path().filename().string().rfind(T::chainPrefix, 0) == 0)
+                if (entry.path().filename().string().rfind(T::s_chainPrefix, 0) == 0)
                     fs::remove(entry.path(), ec);
             }
         }
@@ -807,13 +807,13 @@ int main(int argc, const char** argv)
     }
 
     if (gentype == "mt32") {
-        if (outdir.empty()) outdir = MT32Traits::defaultOutdir;
+        if (outdir.empty()) outdir = MT32Traits::s_defaultOutdir;
         return runChainTest<MT32Traits>(outdir, endStep, nThreads, forceStart, keepFiles, doSerial);
     } else if (gentype == "mt64") {
-        if (outdir.empty()) outdir = MT64Traits::defaultOutdir;
+        if (outdir.empty()) outdir = MT64Traits::s_defaultOutdir;
         return runChainTest<MT64Traits>(outdir, endStep, nThreads, forceStart, keepFiles, doSerial);
     } else if (gentype == "sfmt") {
-        if (outdir.empty()) outdir = SFMTTraits::defaultOutdir;
+        if (outdir.empty()) outdir = SFMTTraits::s_defaultOutdir;
         return runChainTest<SFMTTraits>(outdir, endStep, nThreads, forceStart, keepFiles, doSerial);
     } else {
         std::cerr << "Error: Unknown generator type: " << gentype << "\n\n";

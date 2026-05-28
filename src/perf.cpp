@@ -128,33 +128,33 @@ extern "C" void init_by_array64(unsigned long long init_key[], unsigned long lon
 
 enum GenMode {orig, sfmt, mkl_mt, mkl_sfmt, xmt32, vmt, vsfmt, xsfmt, stl_mt, xmt64, stl_mt64, orig64, vmt64};
 
-const char* modename[] = {"ORIG-MT19937", "ORIG-SFMT19937", "MKL-MT19937", "MKL-SFMT19937", "X-MT19937", "V-MT19937", "V-SFMT19937", "X-SFMT19937", "STL-MT19937", "X-MT19937-64", "STL-MT19937-64", "ORIG-MT19937-64", "V-MT19937-64"};
+const char* g_modename[] = {"ORIG-MT19937", "ORIG-SFMT19937", "MKL-MT19937", "MKL-SFMT19937", "X-MT19937", "V-MT19937", "V-SFMT19937", "X-SFMT19937", "STL-MT19937", "X-MT19937-64", "STL-MT19937-64", "ORIG-MT19937-64", "V-MT19937-64"};
 
-const size_t anySize[] = {/* 1, 4, 16, 64, 256, 624, 1024, 4096,*/ 10240 };
+const size_t g_anySize[] = {/* 1, 4, 16, 64, 256, 624, 1024, 4096,*/ 10240 };
 
 template <GenMode G>
 struct GenTraits;
 
 // for maximum period, we should select the file based on the number of states
 // but these periods are so large anyway that who do not care!
-const auto pmt = std::make_unique<MT19937Matrix<32>>(g_dir + "/mt32/F19933.bits");
+const auto g_pmt = std::make_unique<MT19937Matrix<32>>(g_dir + "/mt32/F19933.bits");
 // for maximum period, we should select the file based on the number of states
 // but these periods are so large anyway that who do not care!
-const auto psfmt = std::make_unique<SFMT19937Matrix>(g_dir + "/sfmt/F19935.bits");
-const auto pvmt64 = std::make_unique<MT19937Matrix<64>>(g_dir + "/mt64/F19933.bits");
+const auto g_psfmt = std::make_unique<SFMT19937Matrix>(g_dir + "/sfmt/F19935.bits");
+const auto g_pvmt64 = std::make_unique<MT19937Matrix<64>>(g_dir + "/mt64/F19933.bits");
 
 // use the same destination memory in all tests to avoid spurious difference in test results due to memory layout
 // sized for the largest 64-bit anySize block (each element = 8 bytes)
-AlignedVector<uint32_t, 64> aligneddst(anySize[sizeof(anySize)/sizeof(anySize[0])-1] * 2);
+AlignedVector<uint32_t, 64> g_aligneddst(g_anySize[sizeof(g_anySize)/sizeof(g_anySize[0])-1] * 2);
 
 template <>
 struct GenTraits<vmt>
 {
     static const GenMode mode = vmt;
-    static const MT19937Matrix<32>* jumpMatrix() { return pmt.get(); }
+    static const MT19937Matrix<32>* jumpMatrix() { return g_pmt.get(); }
 
     template <size_t RegBitLen, QryMode QM, size_t HwRegBitLen>
-    using gen_t = VMT19937<RegBitLen, QM == QM_Block16, BitLenToIsa<HwRegBitLen>::isa>;
+    using gen_t = VMT19937<RegBitLen, QM == QM_Block16, BitLenToIsa<HwRegBitLen>::s_isa>;
 };
 
 template <>
@@ -164,17 +164,17 @@ struct GenTraits<xmt32>
     static const MT19937Matrix<32>* jumpMatrix() { return nullptr; }
 
     template <size_t RegBitLen, QryMode QM, size_t HwRegBitLen, std::enable_if_t<RegBitLen == HwRegBitLen, int> = 0>
-    using gen_t = XMT19937<BitLenToIsa<HwRegBitLen>::isa, QM == QM_Block16>;
+    using gen_t = XMT19937<BitLenToIsa<HwRegBitLen>::s_isa, QM == QM_Block16>;
 };
 
 template <>
 struct GenTraits<vsfmt>
 {
     static const GenMode mode = vsfmt;
-    static const SFMT19937Matrix* jumpMatrix() { return psfmt.get(); }
+    static const SFMT19937Matrix* jumpMatrix() { return g_psfmt.get(); }
 
     template <size_t RegBitLen, QryMode QM, size_t HwRegBitLen>
-    using gen_t = VSFMT19937<RegBitLen, QM == QM_Block16, BitLenToIsa<HwRegBitLen>::isa>;
+    using gen_t = VSFMT19937<RegBitLen, QM == QM_Block16, BitLenToIsa<HwRegBitLen>::s_isa>;
 };
 
 // X-SFMT19937: single-state SFMT (VRegBitLen == 128 == s_stateWordBits, so s_nStates == 1)
@@ -185,7 +185,7 @@ struct GenTraits<xsfmt>
     static const SFMT19937Matrix* jumpMatrix() { return nullptr; }
 
     template <size_t RegBitLen, QryMode QM, size_t HwRegBitLen, std::enable_if_t<RegBitLen == HwRegBitLen, int> = 0>
-    using gen_t = VSFMT19937<RegBitLen, QM == QM_Block16, BitLenToIsa<HwRegBitLen>::isa>;
+    using gen_t = VSFMT19937<RegBitLen, QM == QM_Block16, BitLenToIsa<HwRegBitLen>::s_isa>;
 };
 
 template <>
@@ -195,17 +195,17 @@ struct GenTraits<xmt64>
     static const MT19937Matrix<32>* jumpMatrix() { return nullptr; }
 
     template <size_t RegBitLen, QryMode QM, size_t HwRegBitLen, std::enable_if_t<RegBitLen == HwRegBitLen, int> = 0>
-    using gen_t = XMT19937_64<BitLenToIsa<HwRegBitLen>::isa, QM == QM_Block16>;
+    using gen_t = XMT19937_64<BitLenToIsa<HwRegBitLen>::s_isa, QM == QM_Block16>;
 };
 
 template <>
 struct GenTraits<vmt64>
 {
     static const GenMode mode = vmt64;
-    static const MT19937Matrix<64>* jumpMatrix() { return pvmt64.get(); }
+    static const MT19937Matrix<64>* jumpMatrix() { return g_pvmt64.get(); }
 
     template <size_t RegBitLen, QryMode QM, size_t HwRegBitLen>
-    using gen_t = VMT19937_64<RegBitLen, QM == QM_Block16, BitLenToIsa<HwRegBitLen>::isa>;
+    using gen_t = VMT19937_64<RegBitLen, QM == QM_Block16, BitLenToIsa<HwRegBitLen>::s_isa>;
 };
 
 const size_t s_messageSpacing[] = { 15, 9, 8, 8, 8, 12 };
@@ -229,7 +229,7 @@ struct Results
     {
         size_t i = 0;
         std::cout
-            << std::setw(s_messageSpacing[i++]) << modename[mode]
+            << std::setw(s_messageSpacing[i++]) << g_modename[mode]
             << std::setw(s_messageSpacing[i++]) << nBits
             << std::setw(s_messageSpacing[i++]) << nStates
             << std::setw(s_messageSpacing[i++]) << nBitsHw
@@ -411,10 +411,10 @@ void sfmtOrigPerformance(size_t BlkSize)
                 volatile uint32_t val = sfmt_genrand_uint32(&sfmtgen);
             }
             else
-                sfmt_fill_array32(&sfmtgen, aligneddst.data(), (int)BlkSize);
+                sfmt_fill_array32(&sfmtgen, g_aligneddst.data(), (int)BlkSize);
         }
         if constexpr (!ScalarQry) {
-            volatile uint32_t trap = aligneddst[0];
+            volatile uint32_t trap = g_aligneddst[0];
         }
     };
 
@@ -468,8 +468,8 @@ void mklPerformance(MKL_INT GenCode, MKL_INT BlkSize)
     size_t nIter = g_nRandom / (size_t)BlkSize;
     auto bench_func = [&]() {
         for (size_t i = 0; i < nIter; ++i)
-            viRngUniformBits32(VSL_RNG_METHOD_UNIFORMBITS32_STD, stream, (int)BlkSize, aligneddst.data());
-        volatile uint32_t trap = aligneddst[0];
+            viRngUniformBits32(VSL_RNG_METHOD_UNIFORMBITS32_STD, stream, (int)BlkSize, g_aligneddst.data());
+        volatile uint32_t trap = g_aligneddst[0];
     };
 
     BenchmarkResult br = run_adaptive_benchmark(bench_func, g_benchParams);
@@ -525,20 +525,20 @@ void vRandGenPerformance5(size_t blkSize)
             for (size_t i = 0; i < nIter; ++i) {
                 if constexpr (QM == QM_Block16) {
                     if constexpr (sizeof(output_word_t) == 8)
-                        mt.genrand_word_blk(reinterpret_cast<output_word_t*>(aligneddst.data()));
+                        mt.genrand_word_blk(reinterpret_cast<output_word_t*>(g_aligneddst.data()));
                     else
-                        mt.genrand_uint32_blk16(aligneddst.data());
+                        mt.genrand_uint32_blk16(g_aligneddst.data());
                 }
                 else if constexpr (QM == QM_Any) {
                     if constexpr (sizeof(output_word_t) == 8)
-                        mt.genrand_word_anySize(reinterpret_cast<output_word_t*>(aligneddst.data()), blkSize);
+                        mt.genrand_word_anySize(reinterpret_cast<output_word_t*>(g_aligneddst.data()), blkSize);
                     else
-                        mt.genrand_uint32_anySize(aligneddst.data(), blkSize);
+                        mt.genrand_uint32_anySize(g_aligneddst.data(), blkSize);
                 }
                 else
                     NOT_IMPLEMENTED;
             }
-            volatile auto trap = aligneddst[0];
+            volatile auto trap = g_aligneddst[0];
         }
     };
 
@@ -901,7 +901,7 @@ int main(int argc, const char** argv)
             << "\n";
         for (auto& r : sortedResults) {
             s = 0;
-            std::cout << std::setw(spacing[s++]) << std::right << modename[r.mode]
+            std::cout << std::setw(spacing[s++]) << std::right << g_modename[r.mode]
                 << std::setw(spacing[s++]) << std::right << r.nBits
                 << std::setw(spacing[s++]) << std::right << r.nStates
                 << std::setw(spacing[s++]) << std::right << r.nBitsHw

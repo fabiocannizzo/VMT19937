@@ -18,34 +18,34 @@ enum class ISA {
 };
 
 template <ISA isa> struct IsaTraits;
-template <> struct IsaTraits<ISA::Scalar> { static constexpr size_t HwBitLen = 32; };
-template <> struct IsaTraits<ISA::SSE2>   { static constexpr size_t HwBitLen = 128; };
-template <> struct IsaTraits<ISA::SSE42>  { static constexpr size_t HwBitLen = 128; };
-template <> struct IsaTraits<ISA::AVX2>   { static constexpr size_t HwBitLen = 256; };
-template <> struct IsaTraits<ISA::AVX512> { static constexpr size_t HwBitLen = 512; };
-template <> struct IsaTraits<ISA::NEON>   { static constexpr size_t HwBitLen = 128; };
-template <> struct IsaTraits<ISA::SVE256> { static constexpr size_t HwBitLen = 256; };
+template <> struct IsaTraits<ISA::Scalar> { static constexpr size_t s_hwBitLen = 32; };
+template <> struct IsaTraits<ISA::SSE2>   { static constexpr size_t s_hwBitLen = 128; };
+template <> struct IsaTraits<ISA::SSE42>  { static constexpr size_t s_hwBitLen = 128; };
+template <> struct IsaTraits<ISA::AVX2>   { static constexpr size_t s_hwBitLen = 256; };
+template <> struct IsaTraits<ISA::AVX512> { static constexpr size_t s_hwBitLen = 512; };
+template <> struct IsaTraits<ISA::NEON>   { static constexpr size_t s_hwBitLen = 128; };
+template <> struct IsaTraits<ISA::SVE256> { static constexpr size_t s_hwBitLen = 256; };
 
 namespace details {
 
 template <size_t Bits> struct BitLenToIsa;
-template <> struct BitLenToIsa<32>  { static constexpr ISA isa = ISA::Scalar; };
+template <> struct BitLenToIsa<32>  { static constexpr ISA s_isa = ISA::Scalar; };
 template <> struct BitLenToIsa<128> {
 #if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__)
-    static constexpr ISA isa = ISA::NEON;
+    static constexpr ISA s_isa = ISA::NEON;
 #else
-    static constexpr ISA isa = ISA::SSE42;
+    static constexpr ISA s_isa = ISA::SSE42;
 #endif
 };
-template <> struct BitLenToIsa<64>  { static constexpr ISA isa = ISA::Scalar; };
+template <> struct BitLenToIsa<64>  { static constexpr ISA s_isa = ISA::Scalar; };
 template <> struct BitLenToIsa<256> {
 #if defined(__ARM_FEATURE_SVE) && (defined(__aarch64__) || defined(_M_ARM64))
-    static constexpr ISA isa = ISA::SVE256;
+    static constexpr ISA s_isa = ISA::SVE256;
 #else
-    static constexpr ISA isa = ISA::AVX2;
+    static constexpr ISA s_isa = ISA::AVX2;
 #endif
 };
-template <> struct BitLenToIsa<512> { static constexpr ISA isa = ISA::AVX512; };
+template <> struct BitLenToIsa<512> { static constexpr ISA s_isa = ISA::AVX512; };
 
 } // namespace details
 
@@ -62,19 +62,19 @@ namespace details {
     template <size_t Bits>
     struct BestIsa {
 #if defined(__AVX512F__)
-        static constexpr ISA isa = (Bits >= 512) ? ISA::AVX512 : (Bits >= 256 ? ISA::AVX2 : ISA::SSE42);
+        static constexpr ISA s_isa = (Bits >= 512) ? ISA::AVX512 : (Bits >= 256 ? ISA::AVX2 : ISA::SSE42);
 #elif defined(__AVX2__)
-        static constexpr ISA isa = (Bits >= 256) ? ISA::AVX2 : ISA::SSE42;
+        static constexpr ISA s_isa = (Bits >= 256) ? ISA::AVX2 : ISA::SSE42;
 #elif defined(__SSE4_2__)
-        static constexpr ISA isa = ISA::SSE42;
+        static constexpr ISA s_isa = ISA::SSE42;
 #elif defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__)
 #  if defined(__ARM_FEATURE_SVE) && (defined(__aarch64__) || defined(_M_ARM64))
-        static constexpr ISA isa = (Bits >= 256) ? ISA::SVE256 : ISA::NEON;
+        static constexpr ISA s_isa = (Bits >= 256) ? ISA::SVE256 : ISA::NEON;
 #  else
-        static constexpr ISA isa = ISA::NEON;
+        static constexpr ISA s_isa = ISA::NEON;
 #  endif
 #else
-        static constexpr ISA isa = ISA::Scalar;
+        static constexpr ISA s_isa = ISA::Scalar;
 #endif
     };
 } // namespace details

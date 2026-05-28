@@ -10,16 +10,16 @@
 
 namespace Encoder {
 
-    static const std::string base64Chars =
+    static const std::string g_base64Chars =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         "abcdefghijklmnopqrstuvwxyz"
         "0123456789+/";
 
-    static const std::string hexChars =
+    static const std::string g_hexChars =
         "0123456789"
         "ABCDEF";
 
-    static const int8_t hexCharToDec[256] = {
+    static const int8_t g_hexCharToDec[256] = {
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, // 0
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, // 16
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, // 32
@@ -38,7 +38,7 @@ namespace Encoder {
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, // 240
     };
 
-    static const int8_t b64CharToDec[256] = {
+    static const int8_t g_b64CharToDec[256] = {
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, // 0
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, // 16
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 62, -1, -1, -1, 63, // 32
@@ -61,18 +61,18 @@ namespace Encoder {
 
     inline bool isBase64(uint8_t c) {
         //return (isalnum(c) || (c == '+') || (c == '/'));
-        return b64CharToDec[c] != -1;
+        return g_b64CharToDec[c] != -1;
     }
 
     inline bool isHex(uint8_t c) {
         //return (isdigit(c) || ((c >= 'a') && (c <= 'f')) || ((c >= 'A') && (c <= 'F')));
-        return hexCharToDec[c] != -1;
+        return g_hexCharToDec[c] != -1;
     }
 
 
     inline uint8_t hexToDec(char hex)
     {
-        int8_t h = hexCharToDec[(int)hex];
+        int8_t h = g_hexCharToDec[(int)hex];
         MYASSERT(h != -1, "not a valid hex character: " << ((int)hex));
         return h;
         //if (hex >= '0' && hex <= '9')
@@ -87,7 +87,7 @@ namespace Encoder {
 
     inline uint8_t b64ToDec(char b64)
     {
-        int8_t h = b64CharToDec[(int)b64];
+        int8_t h = g_b64CharToDec[(int)b64];
         MYASSERT(h != -1, "not a valid base64 character: " << ((int)b64));
         return h;
         //const size_t nAlpha = 'Z' - 'A' + 1;
@@ -146,18 +146,18 @@ namespace Encoder {
         const uint8_t* p = (const uint8_t*) text.c_str();
         hex.resize(m);
         for (size_t i = 0, j = 0; i < n; ++i, j += 2) {
-            hex[j] = hexChars[p[i] >> 4];
-            hex[j + 1] = hexChars[p[i] & 0xF];
+            hex[j] = g_hexChars[p[i] >> 4];
+            hex[j + 1] = g_hexChars[p[i] & 0xF];
         }
     }
 
 
     inline void dec3ToBase64(char res[4], const uint8_t dec[3])
     {
-        res[0] = base64Chars[dec[0] >> 2];
-        res[1] = base64Chars[((dec[0] & 0x3) << 4) | (dec[1] >> 4)];
-        res[2] = base64Chars[((dec[1] & 0xF) << 2) | (dec[2] >> 6)];
-        res[3] = base64Chars[dec[2] & 0x3F];
+        res[0] = g_base64Chars[dec[0] >> 2];
+        res[1] = g_base64Chars[((dec[0] & 0x3) << 4) | (dec[1] >> 4)];
+        res[2] = g_base64Chars[((dec[1] & 0xF) << 2) | (dec[2] >> 6)];
+        res[3] = g_base64Chars[dec[2] & 0x3F];
     }
 
     inline void base64ToDec3(uint8_t res[3], const uint8_t b64[4])

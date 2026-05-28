@@ -19,15 +19,15 @@ using namespace xvmt;
 using namespace xvmt::details;
 //using namespace std::placeholders;
 
-MT19937Matrix<32> j19933(std::string("./dat/matrix/mt32/F19933.mt32.bits"));
-MT19937Matrix<32> j19934(std::string("./dat/matrix/mt32/F19934.mt32.bits"));
-MT19937Matrix<32> j19935(std::string("./dat/matrix/mt32/F19935.mt32.bits"));
+MT19937Matrix<32> g_j19933(std::string("./dat/matrix/mt32/F19933.mt32.bits"));
+MT19937Matrix<32> g_j19934(std::string("./dat/matrix/mt32/F19934.mt32.bits"));
+MT19937Matrix<32> g_j19935(std::string("./dat/matrix/mt32/F19935.mt32.bits"));
 
-MT19937Matrix<32>* pjump[4] = { nullptr, &j19935, &j19934, &j19933 };
-char genNames[4][64] = { "VMT19937 (M=1)", "VMT19937 (M=4)", "VMT19937 (M=8)", "VMT19937 (M=16)"};
+MT19937Matrix<32>* g_pjump[4] = { nullptr, &g_j19935, &g_j19934, &g_j19933 };
+char g_genNames[4][64] = { "VMT19937 (M=1)", "VMT19937 (M=4)", "VMT19937 (M=8)", "VMT19937 (M=16)"};
 
-const uint32_t seedlength = 4;
-const uint32_t seedinit[seedlength] = { 0x123, 0x234, 0x345, 0x456 };
+const uint32_t g_seedlength = 4;
+const uint32_t g_seedinit[g_seedlength] = { 0x123, 0x234, 0x345, 0x456 };
 
 enum Modes { SmallCrush = 0, Crush = 1, BigCrush = 2 };
 
@@ -36,12 +36,12 @@ struct TestRunner
 {
     using gen_t = VMT19937<NBITS, QM_Scalar>;
 
-    static constexpr size_t M = NBITS / 32;
-    static constexpr size_t LOG2 = M == 16 ? 4 : // log2(M) is not constexpr until C++26
-                                   M == 8  ? 3 :
-                                   M == 4  ? 2 :
-                                   M == 2  ? 1 : 0;
-    static constexpr size_t ArrayIndex = M == 1 ? 0 : LOG2 - 1;
+    static constexpr size_t s_m = NBITS / 32;
+    static constexpr size_t s_log2 = s_m == 16 ? 4 : // log2(M) is not constexpr until C++26
+                                   s_m == 8  ? 3 :
+                                   s_m == 4  ? 2 :
+                                   s_m == 2  ? 1 : 0;
+    static constexpr size_t s_arrayIndex = s_m == 1 ? 0 : s_log2 - 1;
 
     static gen_t* s_genptr;
 
@@ -52,11 +52,11 @@ struct TestRunner
 
     static void run(size_t mode)
     {
-        gen_t g(seedinit, seedlength, 0, nullptr, pjump[ArrayIndex]);
+        gen_t g(g_seedinit, g_seedlength, 0, nullptr, g_pjump[s_arrayIndex]);
         s_genptr = &g;
 
         // create TestU01 generator wrapper
-        unif01_Gen* gen = unif01_CreateExternGenBits(genNames[ArrayIndex], getRnd);
+        unif01_Gen* gen = unif01_CreateExternGenBits(g_genNames[s_arrayIndex], getRnd);
 
         // Run the tests.
         switch (mode) {

@@ -18,18 +18,17 @@ template <
 >
 struct VirtualRegBase
 {
-    static constexpr size_t HwBitLen = IsaTraits<Isa>::HwBitLen;
-    static_assert(VirtualBitLen >= HwBitLen, "VirtualBitLen must be greater or equal than HwBitLen");
-    static_assert(VirtualBitLen % HwBitLen == 0, "VirtualBitLen must be divisble by HwBitLen");
-    static_assert(HwBitLen % 32 == 0, "HwBitLen must be divisble by 32");
-    static_assert(((HwBitLen/32)& ((HwBitLen/32)-1)) == 0, "HwBitLen/32 must be a power of 2");
+    static constexpr size_t s_hwBitLen = IsaTraits<Isa>::s_hwBitLen;
+    static_assert(VirtualBitLen >= s_hwBitLen, "VirtualBitLen must be greater or equal than s_hwBitLen");
+    static_assert(VirtualBitLen % s_hwBitLen == 0, "VirtualBitLen must be divisble by s_hwBitLen");
+    static_assert(s_hwBitLen % 32 == 0, "s_hwBitLen must be divisble by 32");
+    static_assert(((s_hwBitLen/32)& ((s_hwBitLen/32)-1)) == 0, "s_hwBitLen/32 must be a power of 2");
 
     static constexpr size_t s_virtualBitLen = VirtualBitLen;  // virtual register bit length in bits
-    static constexpr size_t s_hwBitLen = HwBitLen;            // hardware register bit length in bits
     static constexpr ISA s_isa = Isa;                        // instruction set architecture
 
 protected:
-    static_assert(((VirtualBitLen / HwBitLen)& ((VirtualBitLen / HwBitLen)-1)) == 0, "VirtualBitLen / HwBitLen must be a power of 2");
+    static_assert(((VirtualBitLen / s_hwBitLen)& ((VirtualBitLen / s_hwBitLen)-1)) == 0, "VirtualBitLen / s_hwBitLen must be a power of 2");
 };
 
 // SimdRegister template declaration
@@ -43,29 +42,29 @@ struct SimdRegister;
 // SimdRegister: specialization for VirtualBitLen > HwBitLen (emulated via multiple HW registers)
 // Excluded: VirtualBitLen==64 is always handled by the explicit SimdRegister<64, Isa, void> below.
 template <size_t VirtualBitLen, ISA Isa>
-struct SimdRegister<VirtualBitLen, Isa, std::enable_if_t<(VirtualBitLen > IsaTraits<Isa>::HwBitLen && VirtualBitLen != 64), void>>
+struct SimdRegister<VirtualBitLen, Isa, std::enable_if_t<(VirtualBitLen > IsaTraits<Isa>::s_hwBitLen && VirtualBitLen != 64), void>>
     : VirtualRegBase<VirtualBitLen, Isa>
 {
-private:
-    static constexpr size_t HwBitLen = VirtualRegBase<VirtualBitLen, Isa>::HwBitLen;
-    static constexpr size_t s_M = VirtualBitLen / HwBitLen;
-    static constexpr size_t N32 = VirtualBitLen / 32;
-    static constexpr size_t N128 = VirtualBitLen / 128;
-    using  XVHw = SimdRegister<HwBitLen, Isa>;
+    static constexpr size_t s_hwBitLen = VirtualRegBase<VirtualBitLen, Isa>::s_hwBitLen;
+    static constexpr size_t s_M = VirtualBitLen / s_hwBitLen;
+    static constexpr size_t s_n32 = VirtualBitLen / 32;
+    static constexpr size_t s_n128 = VirtualBitLen / 128;
+    using  XVHw = SimdRegister<s_hwBitLen, Isa>;
 
+private:
     struct Aux
     {
-        Aux() : ar{ {} } {}
-        Aux(XVHw v) { std::fill_n(ar, s_M, v); }
+        Aux() : m_ar{ {} } {}
+        Aux(XVHw v) { std::fill_n(m_ar, s_M, v); }
         Aux(uint32_t v) : Aux(XVHw(v)) {}
-        XVHw& operator[](size_t i) { return ar[i]; }
-        const XVHw& operator[](size_t i) const { return ar[i]; }
-        const XVHw* begin() const { return ar; }
-        XVHw* begin() { return ar; }
-        const XVHw* end() const { return ar + s_M; }
-        XVHw* end() { return ar + s_M; }
+        XVHw& operator[](size_t i) { return m_ar[i]; }
+        const XVHw& operator[](size_t i) const { return m_ar[i]; }
+        const XVHw* begin() const { return m_ar; }
+        XVHw* begin() { return m_ar; }
+        const XVHw* end() const { return m_ar + s_M; }
+        XVHw* end() { return m_ar + s_M; }
     private:
-        XVHw ar[s_M];
+        XVHw m_ar[s_M];
     };
 
 public:
@@ -78,8 +77,8 @@ public:
     FORCE_INLINE SimdRegister(uint64_t v) : m_v(XVHw(v)) {}
     FORCE_INLINE SimdRegister(uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3)
     {
-        if constexpr (HwBitLen == 32) {
-            for (size_t i = 0; i < N128; ++i) {
+        if constexpr (s_hwBitLen == 32) {
+            for (size_t i = 0; i < s_n128; ++i) {
                 m_v[0 + 4 * i] = v0;
                 m_v[1 + 4 * i] = v1;
                 m_v[2 + 4 * i] = v2;
@@ -181,10 +180,10 @@ public:
     template <int nBytes>
     FORCE_INLINE static XV shl128(const XV& a)
     {
-        static_assert(N128 > 0);
+        static_assert(s_n128 > 0);
         XV r;
-        if constexpr (HwBitLen == 32) {
-            for (size_t s = 0; s < N128; ++s) {
+        if constexpr (s_hwBitLen == 32) {
+            for (size_t s = 0; s < s_n128; ++s) {
                 XVHw current = a.m_v[4 * s];
                 r.m_v[4 * s] = current << 8;
                 for (size_t j = 1; j < 4; ++j) {
@@ -204,10 +203,10 @@ public:
     template <int nBytes>
     FORCE_INLINE static XV shr128(const XV& a)
     {
-        static_assert(N128 > 0);
+        static_assert(s_n128 > 0);
         XV r;
-        if constexpr (HwBitLen == 32) {
-            for (size_t s = 0; s < N128; ++s) {
+        if constexpr (s_hwBitLen == 32) {
+            for (size_t s = 0; s < s_n128; ++s) {
                 XVHw current = a.m_v[4 * s + 3];
                 r.m_v[4 * s + 3] = current >> 8;
                 for (int j = 2; j >= 0; --j) {
@@ -263,9 +262,9 @@ public:
 template <ISA Isa>
 struct SimdRegister<32, Isa, void>
 {
-    static const size_t s_virtualBitLen = 32;
-    static const size_t s_hwBitLen = 32;
-    static const ISA s_isa = Isa;
+    static constexpr size_t s_virtualBitLen = 32;
+    static constexpr size_t s_hwBitLen = 32;
+    static constexpr ISA s_isa = Isa;
 
     uint32_t m_v;
 

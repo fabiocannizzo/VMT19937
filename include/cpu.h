@@ -7,18 +7,18 @@
 // -------------------------------------------------------------
 struct CpuInfo
 {
-    std::string vendor;
-    std::string brand;
-    std::string simd;
-    int family = 0;
-    int model = 0;
-    int stepping = 0;
-    int l1d_kb = 0;
-    int l2_kb = 0;
-    int l3_kb = 0;
-    double mhz = 0.0;
+    std::string m_vendor;
+    std::string m_brand;
+    std::string m_simd;
+    int m_family = 0;
+    int m_model = 0;
+    int m_stepping = 0;
+    int m_l1d_kb = 0;
+    int m_l2_kb = 0;
+    int m_l3_kb = 0;
+    double m_mhz = 0.0;
 
-    std::map<std::string, size_t> cache;
+    std::map<std::string, size_t> m_cache;
 
     void print() const;
 };

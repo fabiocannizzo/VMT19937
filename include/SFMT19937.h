@@ -22,7 +22,7 @@ namespace details {
 template <size_t VRegBitLen, ISA Isa>
 class SFMT19937Base : public SFMT19937Params
 {
-    static constexpr size_t HwBitLen = IsaTraits<Isa>::HwBitLen;
+    static constexpr size_t s_hwBitLen = IsaTraits<Isa>::s_hwBitLen;
     static_assert(VRegBitLen == 128 || VRegBitLen == 256 || VRegBitLen == 512,
         "VRegBitLen must be a valid SIMD hardware register width (128, 256, or 512)");
     static_assert(VRegBitLen % s_stateWordBits == 0,
@@ -32,7 +32,7 @@ public:
     using output_word_t = uint32_t;
 
     static constexpr size_t s_regLenBits = VRegBitLen;                              // logical SIMD width driving vectorisation (may exceed hardware width)
-    static constexpr size_t s_regLenBitsHw = HwBitLen;                         // actual hardware SIMD register width in bits
+    static constexpr size_t s_regLenBitsHw = s_hwBitLen;                         // actual hardware SIMD register width in bits
     static constexpr ISA s_isa = Isa;                                                   // target ISA used for SIMD intrinsic selection
     static constexpr size_t s_nStates = VRegBitLen / s_stateWordBits;               // parallel SFMT states packed per logical SIMD register
     static constexpr size_t s_n32inReg = VRegBitLen / 32;                          // uint32 lanes per logical SIMD register

@@ -41,8 +41,8 @@ CpuInfo detectCpuInfo()
 
 #if !defined(__x86_64__) && !defined(_M_X64) && !defined(__i386__) && !defined(_M_IX86) && !defined(_WIN32)
     // ARM/Generic Linux detection
-    info.vendor = "ARM";
-    info.simd = "NEON";
+    info.m_vendor = "ARM";
+    info.m_simd = "NEON";
 
     std::ifstream f("/proc/cpuinfo");
     std::string line;
@@ -51,12 +51,12 @@ CpuInfo detectCpuInfo()
         if (line.find("Model") != std::string::npos || line.find("Hardware") != std::string::npos)
         {
             size_t pos = line.find(":");
-            if (pos != std::string::npos) info.brand = line.substr(pos + 2);
+            if (pos != std::string::npos) info.m_brand = line.substr(pos + 2);
         }
         if (line.find("cpu MHz") != std::string::npos || line.find("BogoMIPS") != std::string::npos)
         {
             double val;
-            if (sscanf(line.c_str(), "%*s %*s : %lf", &val) == 1) info.mhz = val;
+            if (sscanf(line.c_str(), "%*s %*s : %lf", &val) == 1) info.m_mhz = val;
         }
     }
     return info;
@@ -70,7 +70,7 @@ CpuInfo detectCpuInfo()
     memcpy(vendor + 4, &regs[3], 4);
     memcpy(vendor + 8, &regs[2], 4);
     vendor[12] = '\0';
-    info.vendor = vendor;
+    info.m_vendor = vendor;
 
     // Brand string
     char brand[49];
@@ -85,14 +85,14 @@ CpuInfo detectCpuInfo()
             cpuid(regs, 0x80000002 + i);
             memcpy(p + i * 4, regs, sizeof(regs));
         }
-        info.brand = brand;
+        info.m_brand = brand;
     }
 
     // Family, model, stepping
     cpuid(regs, 1);
-    info.stepping = regs[0] & 0xF;
-    info.model = (regs[0] >> 4) & 0xF;
-    info.family = (regs[0] >> 8) & 0xF;
+    info.m_stepping = regs[0] & 0xF;
+    info.m_model = (regs[0] >> 4) & 0xF;
+    info.m_family = (regs[0] >> 8) & 0xF;
 
     // SIMD detection
     bool sse2 = regs[3] & (1 << 26);
@@ -107,23 +107,23 @@ CpuInfo detectCpuInfo()
     bool avx512f = regs[1] & (1 << 16);
 
     if (avx512f)
-        info.simd = "AVX-512";
+        info.m_simd = "AVX-512";
     else if (avx2)
-        info.simd = "AVX2";
+        info.m_simd = "AVX2";
     else if (avx)
-        info.simd = "AVX";
+        info.m_simd = "AVX";
     else if (sse42)
-        info.simd = "SSE4.2";
+        info.m_simd = "SSE4.2";
     else if (sse41)
-        info.simd = "SSE4.1";
+        info.m_simd = "SSE4.1";
     else if (ssse3)
-        info.simd = "SSSE3";
+        info.m_simd = "SSSE3";
     else if (sse3)
-        info.simd = "SSE3";
+        info.m_simd = "SSE3";
     else if (sse2)
-        info.simd = "SSE2";
+        info.m_simd = "SSE2";
     else
-        info.simd = "None";
+        info.m_simd = "None";
 
 #ifdef _WIN32
     SYSTEM_INFO sysInfo;
@@ -135,7 +135,7 @@ CpuInfo detectCpuInfo()
                      "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
                      "~MHz",
                      RRF_RT_DWORD, nullptr, &mhz, &bufferSize) == ERROR_SUCCESS)
-        info.mhz = (double)mhz;
+        info.m_mhz = (double)mhz;
 #else
     std::ifstream f("/proc/cpuinfo");
     std::string line;
@@ -146,13 +146,13 @@ CpuInfo detectCpuInfo()
             int size;
             char unit[8];
             sscanf(line.c_str(), "cache size\t: %d %s", &size, unit);
-            info.l2_kb = size; // approximate
+            info.m_l2_kb = size; // approximate
         }
         if (line.find("cpu MHz") != std::string::npos)
         {
             double val;
             sscanf(line.c_str(), "cpu MHz\t\t: %lf", &val);
-            info.mhz = val;
+            info.m_mhz = val;
         }
     }
 #endif
@@ -181,7 +181,7 @@ CpuInfo detectCpuInfo()
 
         std::ostringstream key;
         key << "L" << level << typeStr;
-        info.cache[key.str()] = cacheSize;
+        info.m_cache[key.str()] = cacheSize;
     }
 #endif
 
@@ -225,13 +225,13 @@ void setPriorityHigh()
 void CpuInfo::print() const
 {
     std::cout << "=== CPU Information ===\n";
-    std::cout << "Vendor : " << vendor << "\n";
-    std::cout << "Brand  : " << brand << "\n";
-    std::cout << "Family : " << family << ", Model: " << model
-              << ", Stepping: " << stepping << "\n";
-    std::cout << "SIMD   : " << simd << "\n";
-    std::cout << "Clock  : " << mhz << " MHz\n";
-    for (auto&[k,s] : cache)
+    std::cout << "Vendor : " << m_vendor << "\n";
+    std::cout << "Brand  : " << m_brand << "\n";
+    std::cout << "Family : " << m_family << ", Model: " << m_model
+              << ", Stepping: " << m_stepping << "\n";
+    std::cout << "SIMD   : " << m_simd << "\n";
+    std::cout << "Clock  : " << m_mhz << " MHz\n";
+    for (auto&[k,s] : m_cache)
         std::cout << k << " Cache : Level " << k << ", size: " << s / 1024 << " KB\n";
     std::cout << "=======================\n";
 }
