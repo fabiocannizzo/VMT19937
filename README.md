@@ -85,18 +85,11 @@ Derives the characteristic polynomial $P(x)$ for a given generator using the Ber
 .\bin-128-cl\characteristic_poly_finder.exe -g=<mt32|mt64|sfmt> [-o=<output_file>.hex]
 ```
 
-### `jump_poly_generator.exe`
-Calculates the jump polynomial $x^J \pmod{P(x)}$ for any jump step $J$.
+### `jump_generator.exe`
+Calculates the jump polynomial $x^J \pmod{P(x)}$ and optionally the legacy jump transition matrix $F^J$ for any jump step $J$.
 ```powershell
-.\bin-128-cl\jump_poly_generator.exe -g=<mt32|mt64|sfmt> [-n=<power_of_2> | -t=<exact_steps>] -p=<char_poly_file>.hex -o=<output_mask>.bits  
+.\bin-128-cl\jump_generator.exe -g=<mt32|mt64|sfmt> [-mode=<both|matrix|poly>] [-t=<targets>] [-end=<N>] [-f=<freq>] [-j=<threads>] [-outdir=<dir>] [-charpoly=<file>]
 ```
-
-### `compute_jump_matrix.exe` (Legacy)
-Calculates the legacy jump transition matrix $F^J$ for a given generator.
-```powershell
-.\bin-128-cl\compute_jump_matrix.exe -g=<mt32|mt64|sfmt> [-t=<exponents>] [-p=<output_dir>]
-```
-
 ## Usage
 
 ### 1. Basic Scalar Usage
@@ -174,6 +167,30 @@ for (size_t i = 0; i < 10; ++i) {
 | | MKL-MT | 711 | 1668 | **6479** | n.a. | n.a. |
 | | **X-MT19937** | 711 | 1969 | 6418 | 583 | 1618 |
 | | **V-MT19937** | **858** | **2392** | 5742 | **634** | **1869** |
+
+### MT19937-64 Family (generates 64-bit random numbers)
+| Mode | Generator | SSE4.2 | AVX2 | AVX-512 | NEON | SVE256 |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
+| **Scalar** | ORIG-MT19937-64 | 140 | 180 | 338 | 203 | 337 |
+| | STL-MT19937-64 | 164 | 317 | 590 | 285 | **573** |
+| | **X-MT19937-64** | 180 | 325 | 1095 | 284 | 556 |
+| | **V-MT19937-64** | **208** | **372** | **1135** | **334** | 513 |
+| **Vectorial** | ORIG-MT19937-64 | 140 | 180 | 338 | 203 | 337 |
+| | STL-MT19937-64 | 164 | 317 | 590 | 285 | 573 |
+| | **X-MT19937-64** | 252 | 827 | 2525 | 255 | **927** |
+| | **V-MT19937-64** | **378** | **1161** | **2865** | **290** | 901 |
+
+### SFMT19937 Family (generates 32-bit random numbers)
+| Mode | Generator | SSE4.2 | AVX2 | AVX-512 | NEON | SVE256 |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
+| **Scalar** | ORIG-SFMT19937 | 440 | 792 | 1180 | 524 | 752 |
+| | MKL-SFMT | 21 | 38 | 62 | n.a. | n.a. |
+| | **X-SFMT19937** | **472** | 848 | 1193 | **555** | 672 |
+| | **V-SFMT19937** | n.a. | **944** | **1508** | n.a. | **898** |
+| **Vectorial** | ORIG-SFMT19937 | 1444 | 2504 | 4445 | **1381** | 1692 |
+| | MKL-SFMT | 1654 | 3360 | 2762 | n.a. | n.a. |
+| | **X-SFMT19937** | **1700** | 2308 | 3612 | 1234 | 1327 |
+| | **V-SFMT19937** | n.a. | **4515** | **10943** | n.a. | **2960** |
 
 ## Build Requirements
 *   **Compiler:** GCC 13+, Clang 16+, or MSVC 2022 (with `/std:c++20`).
