@@ -1,43 +1,10 @@
-Define static constant with the number of Bits s_nBits in the jump matrix
-
-review SFMT19937 matrix parameters
-
 define semantic of XMT vs VMT: I think XMT is when the vlensize = hwlensize. vmt is for vlensize > hwlensize
-
-Results
-- Generate results and save results in the log folder. For each set of results we save CPU features, OS, Compiler.
-- We will run on multiple confirguration to store multiple set of results
-- We run with the --slow option while the machine is not doing anythign else
-
-Review paper
- - general readibilty and clarity
- - show results in compact form and describe results.
- - add proper conclusions
- - any additional reference?
-
-doc Introduction: the doc does not talk about the 64-bit variation.
-For the 128 bit variation, mention that while this fits well 128 but regsiter because it has 128-bit word, it is effectively not a vectorization.
-Lets prefix hexadecimal constants with 0x to make it clear they are hexadecimal.
-d sometime is represented in hexadecimal, sometimes in binary. Let's be consistent and use hexadecimal everywhere.
-SFMT seems quite different from MT and the constants are different. Is it fair that it share the "common framework" section with the others?
-Add descipriotn of XMT, which is my vectorization of the various algos as they are, it suffers from the said limittations, I consider it as an intrastate vectorization and can act as  a benchmark.
-
-Remove jump matrix argument from XMT constructors
-
-Encapsulate as methods generators classes code which used generator constants?
 
 Introduce dynamic dispatching?
 
 Add support for Intel AVX-10 architecture? Perhaps premature.
 
 Should we remove QryBlk16 ? Does it add value?
-
-Check if per test throughput are computed correctly (try with slow), increase the number of repetatiions, the evarge time should remain constant.
-Are doing the same number of repetitions in the various cases for a fair comparison?
-
-There are some non-trivial SIMD methods. Some are etsted. Add tests for them.
-
-Simplify exposed templates
 
 Add an easy constructor which pick the correct matrix?
 
