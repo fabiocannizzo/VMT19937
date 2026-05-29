@@ -155,6 +155,20 @@ private:
 public:
     alignas(64) inline static const RefillCst s_refillMasks{};
 
+    static FORCE_INLINE void advance1_scalar(typename Params::output_word_t& p0, const typename Params::output_word_t& p1, const typename Params::output_word_t& pM)
+    {
+        typename Params::output_word_t y = (p0 & typename Params::output_word_t(Params::s_upperMask))
+                                         | (p1 & typename Params::output_word_t(Params::s_lowerMask));
+        p0 = pM ^ (y >> 1) ^ ((y & 1) ? typename Params::output_word_t(Params::s_matrixA) : typename Params::output_word_t(0));
+    }
+
+    template <bool Aligned>
+    static FORCE_INLINE void update_block(typename Params::output_word_t* dst, const XV& x0, const XV& x1, const XV& xM)
+    {
+        XV r = advance1(x0, x1, xM, s_refillMasks);
+        r.template store<Aligned>(reinterpret_cast<uint32_t*>(dst));
+    }
+
     static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, const RefillCst& masks)
     {
         XV y = XV::bitwiseSelect(masks.m_upperMask, s, sp);
@@ -393,6 +407,20 @@ private:
 public:
     alignas(64) inline static const RefillCst s_refillMasks{};
 
+    static FORCE_INLINE void advance1_scalar(typename Params::output_word_t& p0, const typename Params::output_word_t& p1, const typename Params::output_word_t& pM)
+    {
+        typename Params::output_word_t y = (p0 & typename Params::output_word_t(Params::s_upperMask))
+                                         | (p1 & typename Params::output_word_t(Params::s_lowerMask));
+        p0 = pM ^ (y >> 1) ^ ((y & 1) ? typename Params::output_word_t(Params::s_matrixA) : typename Params::output_word_t(0));
+    }
+
+    template <bool Aligned>
+    static FORCE_INLINE void update_block(typename Params::output_word_t* dst, const XV& x0, const XV& x1, const XV& xM)
+    {
+        XV r = advance1(x0, x1, xM, s_refillMasks);
+        r.template store<Aligned>(reinterpret_cast<uint32_t*>(dst));
+    }
+
     static FORCE_INLINE XV advance1(const XV& s, const XV& sp, const XV& sm, const RefillCst& masks)
     {
         XV y = XV::bitwiseSelect(masks.m_upperMask, s, sp);
@@ -406,20 +434,14 @@ public:
         int i;
         for (i = 0; i < Params::s_N - Params::s_M; ++i)
             for (size_t s = 0; s < nStates; ++s) {
-                auto x = (state[i * nStates + s] & Params::s_upperMask)
-                       | (state[(i + 1) * nStates + s] & Params::s_lowerMask);
-                state[i * nStates + s] = state[(i + Params::s_M) * nStates + s] ^ (x >> 1) ^ XVW(x).ifOddCstThenZero(Params::s_matrixA).m_v;
+                advance1_scalar(state[i * nStates + s], state[(i + 1) * nStates + s], state[(i + Params::s_M) * nStates + s]);
             }
         for (; i < Params::s_N - 1; ++i)
             for (size_t s = 0; s < nStates; ++s) {
-                auto x = (state[i * nStates + s] & Params::s_upperMask)
-                       | (state[(i + 1) * nStates + s] & Params::s_lowerMask);
-                state[i * nStates + s] = state[(i + Params::s_M - Params::s_N) * nStates + s] ^ (x >> 1) ^ XVW(x).ifOddCstThenZero(Params::s_matrixA).m_v;
+                advance1_scalar(state[i * nStates + s], state[(i + 1) * nStates + s], state[(i + Params::s_M - Params::s_N) * nStates + s]);
             }
         for (size_t s = 0; s < nStates; ++s) {
-            auto x = (state[(Params::s_N - 1) * nStates + s] & Params::s_upperMask)
-                   | (state[s] & Params::s_lowerMask);
-            state[(Params::s_N - 1) * nStates + s] = state[(Params::s_M - 1) * nStates + s] ^ (x >> 1) ^ XVW(x).ifOddCstThenZero(Params::s_matrixA).m_v;
+            advance1_scalar(state[(Params::s_N - 1) * nStates + s], state[s], state[(Params::s_M - 1) * nStates + s]);
         }
     }
 
@@ -441,8 +463,7 @@ public:
                 uint32_t* p = st + i * s_n32inReg;
                 XV x1(p + s_n32inReg);
                 XV xM(p + M * s_n32inReg);
-                XV r = advance1(x0, x1, xM, s_refillMasks);
-                r.template store<true>(p);
+                update_block<true>(reinterpret_cast<typename Params::output_word_t*>(p), x0, x1, xM);
                 x0 = x1;
             }
 
@@ -451,8 +472,7 @@ public:
                 uint32_t* p = st + i * s_n32inReg;
                 XV x1(p + s_n32inReg);
                 XV xM(st + (i + M - N) * s_n32inReg);
-                XV r = advance1(x0, x1, xM, s_refillMasks);
-                r.template store<true>(p);
+                update_block<true>(reinterpret_cast<typename Params::output_word_t*>(p), x0, x1, xM);
                 x0 = x1;
             }
 
@@ -461,8 +481,7 @@ public:
                 uint32_t* p = st + (N - 1) * s_n32inReg;
                 XV x1(st);
                 XV xM(st + (M - 1) * s_n32inReg);
-                XV r = advance1(x0, x1, xM, s_refillMasks);
-                r.template store<true>(p);
+                update_block<true>(reinterpret_cast<typename Params::output_word_t*>(p), x0, x1, xM);
             }
         }
 
@@ -544,9 +563,7 @@ public:
 
         if constexpr (MonoState) {
             // Scalar path: s_nStates==1 so SIMD loads at arbitrary offsets would be misaligned.
-            output_word_t y = (st[ja] & output_word_t(Params::s_upperMask))
-                            | (st[jc] & output_word_t(Params::s_lowerMask));
-            st[ja] = st[jb] ^ (y >> 1) ^ ((y & 1) ? output_word_t(Params::s_matrixA) : output_word_t(0));
+            Refiller::advance1_scalar(st[ja], st[jc], st[jb]);
         } else {
             output_word_t* s_a = st + ja * s_nStates;
             output_word_t* s_b = st + jb * s_nStates;
@@ -556,8 +573,7 @@ public:
             XV xB = XV::template load<true>(s_b);
             XV xC = XV::template load<true>(s_c);
 
-            XV res = Refiller::advance1(xA, xC, xB, Refiller::s_refillMasks);
-            res.template store<true>(reinterpret_cast<uint32_t*>(s_a));
+            Refiller::template update_block<true>(s_a, xA, xC, xB);
         }
 
         m_step_idx = (m_step_idx + 1) % N;

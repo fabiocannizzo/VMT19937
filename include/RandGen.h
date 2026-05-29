@@ -148,7 +148,7 @@ public:
      */
     template <typename SeedT>
     void reinit(SeedT s, size_t nRepeat, const matrix_t* common, const matrix_t* sequential) {
-        base_t::reinitMainState(s);
+        base_t::reinitMainState(static_cast<output_word_t>(s));
         completeInitialization(MatrixJumpPolicy{nRepeat, common, sequential});
         base_t::reinitPointers();
     }
@@ -158,7 +158,7 @@ public:
      */
     template <typename SeedT>
     void reinit(SeedT s, const poly_t* common, const poly_t* sequential) {
-        base_t::reinitMainState(s);
+        base_t::reinitMainState(static_cast<output_word_t>(s));
         completeInitialization(PolyJumpPolicy{common, sequential});
         base_t::reinitPointers();
     }

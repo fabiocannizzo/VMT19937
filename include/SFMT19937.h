@@ -67,13 +67,20 @@ private:
         XV xB = XV::template load<true>(st + ((m_step_idx + s_M) % N) * s_n32inReg);
         XV xC = XV::template load<true>(st + ((m_step_idx + N - 2) % N) * s_n32inReg);
         XV xD = XV::template load<true>(st + ((m_step_idx + N - 1) % N) * s_n32inReg);
-        XV res = advance1(xA, xB, xC, xD, bMask);
-        res.template store<true>(st + m_step_idx * s_n32inReg);
+        apply_advance<true>(st + m_step_idx * s_n32inReg, xA, xB, xC, xD, bMask);
         m_step_idx = (m_step_idx + 1) % N;
         m_prnd = m_state_end; // Force refill cache on next query if needed
     }
 
     private:
+
+    template <bool Aligned, typename XVCst>
+    static FORCE_INLINE XV apply_advance(uint32_t* dst, const XV& xA, const XV& xB, const XV& xC, const XV& xD, const XVCst& bMask)
+    {
+        XV res = advance1(xA, xB, xC, xD, bMask);
+        res.template store<Aligned>(dst);
+        return res;
+    }
 
     template <typename XVCst>
     static FORCE_INLINE XV advance1(const XV& xA, const XV& xB, const XV& xC, const XV& xD, const XVCst& bMask)
@@ -103,10 +110,9 @@ private:
         if constexpr (nIter > 0) {
             XV xA = XV::template load<A>(srcP + JA * s_n32inReg);
             XV xB = XV::template load<A>(xBBase + JA * s_n32inReg);
-            XV tmp = advance1(xA, xB, xC, xD, bMask);
+            XV tmp = apply_advance<A>(writeBase + (WO + JA) * s_n32inReg, xA, xB, xC, xD, bMask);
             xC = xD;
             xD = tmp;
-            tmp.template store<A>(writeBase + (WO + JA) * s_n32inReg);
             unrollD<A, nIter - 1, JA + 1, WO>(srcP, xBBase, writeBase, xC, xD, bMask);
         }
     }
@@ -168,6 +174,11 @@ public:
     }
 
     const uint32_t* begin() const
+    {
+        return m_state;
+    }
+
+    uint32_t* begin()
     {
         return m_state;
     }

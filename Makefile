@@ -353,7 +353,7 @@ $(BINDIR)/jump_generator$(EXE_EXT): LFLAGS   += -pthread
 $(BINDIR)/chain_test$(OBJ_EXT): CXXFLAGS += -pthread
 $(BINDIR)/chain_test$(EXE_EXT): LFLAGS   += -pthread
 endif
-$(BINDIR)/perf$(OBJ_EXT) $(BINDIR)/test$(OBJ_EXT) $(BINDIR)/chain_test$(OBJ_EXT): CPPFLAGS += $(SFMT_FLAGS)
+$(BINDIR)/perf$(OBJ_EXT) $(BINDIR)/test$(OBJ_EXT) $(BINDIR)/chain_test$(OBJ_EXT) $(BINDIR)/jump_generator$(OBJ_EXT): CPPFLAGS += $(SFMT_FLAGS)
 ifeq ($(MKL_AVAIL),1)
     $(BINDIR)/perf$(OBJ_EXT): CPPFLAGS += $(MKL_INC)
 endif

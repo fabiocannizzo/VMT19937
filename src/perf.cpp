@@ -110,7 +110,7 @@ bool g_skip_gen_sfmt = c_skip_gen_sfmt;
 bool g_skip_qry1 = false;
 bool g_skip_qry16 = false;
 bool g_skip_qryN = false;
-string g_dir = "dat";
+string g_dir = "dat/matrix";
 
 BenchmarkParams g_benchParams;
 size_t g_nBlocks = 800;
@@ -137,11 +137,11 @@ struct GenTraits;
 
 // for maximum period, we should select the file based on the number of states
 // but these periods are so large anyway that who do not care!
-const auto g_pmt = std::make_unique<MT19937Matrix<32>>(g_dir + "/mt32/F19933.bits");
+const auto g_pmt = std::make_unique<MT19937Matrix<32>>(g_dir + "/mt32/F19933.mt32.bits");
 // for maximum period, we should select the file based on the number of states
 // but these periods are so large anyway that who do not care!
-const auto g_psfmt = std::make_unique<SFMT19937Matrix>(g_dir + "/sfmt/F19935.bits");
-const auto g_pvmt64 = std::make_unique<MT19937Matrix<64>>(g_dir + "/mt64/F19933.bits");
+const auto g_psfmt = std::make_unique<SFMT19937Matrix>(g_dir + "/sfmt/F19935.sfmt.bits");
+const auto g_pvmt64 = std::make_unique<MT19937Matrix<64>>(g_dir + "/mt64/F19933.mt64.bits");
 
 // use the same destination memory in all tests to avoid spurious difference in test results due to memory layout
 // sized for the largest 64-bit anySize block (each element = 8 bytes)
