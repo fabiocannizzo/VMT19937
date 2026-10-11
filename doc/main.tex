@@ -578,6 +578,8 @@ This performance comes at the cost of a larger state size: for generators with l
 
 The methodology introduced here is not specific to the Mersenne Twister and generalizes naturally to any linear recurrence PRNG, offering a principled approach for exploiting modern SIMD hardware without sacrificing period, statistical guarantees, or ease of implementation.
 
+A further advantage of the V-family construction is implementation simplicity. Intra-state vectorization requires careful analysis of loop structure, remainder handling, and misalignment workarounds that are specific to each generator. By contrast, the V-family implementation is largely mechanical: it suffices to extend the state array by a factor of $M$ and replace each scalar word operation with its SIMD equivalent. This substitution is uniform across generators and ISA widths and can be fully automated via C++ templates.
+
 The methodology extends naturally to devices with massive vectorization capabilities, such as GPGPUs, which might be the topic of further studies.
 Interestingly, the V-family approach is also the \emph{only} way to fully utilise SIMD registers wider than a generator's native state size for generators with small states, such as xoshiro256 \cite{xoshiro} (256-bit state) or xoroshiro128 (128-bit state): since a single instance already maps to one register with no internal loop to vectorise, inter-state parallelism via the V-family is the sole mechanism for exploiting wider registers such as AVX-512. Applying the V-family to such generators is a natural direction for future work.
 
