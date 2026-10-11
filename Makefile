@@ -215,10 +215,12 @@ else
         # ISA - GCC flags (non-native)
         ifeq ($(ISA), avx512vl)
             SIMD := -mavx512f -mavx512vl -mavx512bw -mavx512dq -mpclmul
+        # The wider instruction sets are disabled explicitly: some toolchains enable them
+        # by default (e.g. x86-64-v3 baseline), which would defeat the purpose of NBITS.
         else ifeq ($(ISA), avx2)
-            SIMD := -mavx2 -mpclmul
+            SIMD := -mavx2 -mno-avx512f -mpclmul
         else ifeq ($(ISA), sse42)
-            SIMD := -msse4.2 -mpclmul
+            SIMD := -msse4.2 -mno-avx -mpclmul
         else ifeq ($(ISA), neon)
             ifeq ($(ARCH), armv7l)
                 SIMD := -mfpu=neon -mfloat-abi=hard
