@@ -1,0 +1,53 @@
+=== CPU Information ===
+Vendor : GenuineIntel
+Brand  : Intel(R) Xeon(R) Platinum 8488C
+Family : 6, Model: 15, Stepping: 8
+SIMD   : AVX-512
+Clock  : 3300.1 MHz
+L1d Cache : Level L1d, size: 48 KB
+L1i Cache : Level L1i, size: 32 KB
+L2u Cache : Level L2u, size: 2048 KB
+L3u Cache : Level L3u, size: 107520 KB
+=======================
+Set CPU affinity to CPU 1
+Set high process priority
+Target hardware SIMD register size (bits): 128
+Adaptive Benchmark Configuration:
+  alpha       = 0.005 (target error)
+  confidence  = 0.95
+  outlier     = 3 sigma
+  min_reps    = 100
+  max_reps    = 10000
+  warmup      = 10
+  n-blocks    = 800
+  blk-size    = 10240 (for vectorial tests)
+  n-random    = 8192000 per experiment
+skipping MKL tests
+skipping original implementation tests
+skipping STL tests
+including VMT tests
+skipping XMT tests
+including SFMT tests
+
+Running Experiments...
+      Generator     VReg nStates   HwReg BlkSize   QueryMode
+      V-MT19937      128       4     128       1      Scalar ... done (99/100 runs, nRandom=8192000), error: 0.08%
+      V-MT19937      128       4     128      16     Block16 ... done (100/100 runs, nRandom=8192000), error: 0.13%
+      V-MT19937      128       4     128   10240     AnySize ... done (99/100 runs, nRandom=8192000), error: 0.13%
+    X-SFMT19937      128       1     128       1      Scalar ... done (100/100 runs, nRandom=8192000), error: 0.11%
+    X-SFMT19937      128       1     128      16     Block16 ... done (100/100 runs, nRandom=8192000), error: 0.18%
+    X-SFMT19937      128       1     128   10240     AnySize ... done (100/100 runs, nRandom=8192000), error: 0.14%
+   V-MT19937-64      128       2     128       1      Scalar ... done (100/100 runs, nRandom=8192000), error: 0.10%
+   V-MT19937-64      128       2     128       8     Block16 ... done (100/100 runs, nRandom=8192000), error: 0.10%
+   V-MT19937-64      128       2     128   10240     AnySize ... done (98/100 runs, nRandom=8192000), error: 0.07%
+
+              prng  VReg  states  HwReg blksize   qrymode         samples     tavg_us     tdev_us     error     nRandom  throughput
+       X-SFMT19937   128       1    128       1    Scalar         100/100    7450.224      40.538     0.108%     8192000      1099.6
+         V-MT19937   128       4    128       1    Scalar          99/100   11300.524      45.384     0.080%     8192000       724.9
+      V-MT19937-64   128       2    128       1    Scalar         100/100   14550.058      76.885     0.105%     8192000       563.0
+      V-MT19937-64   128       2    128       8   Block16         100/100   14727.028      70.630     0.095%     8192000       556.3
+       X-SFMT19937   128       1    128      16   Block16         100/100    2745.597      24.255     0.175%     8192000      2983.7
+         V-MT19937   128       4    128      16   Block16         100/100    4151.611      26.223     0.125%     8192000      1973.2
+       X-SFMT19937   128       1    128   10240   AnySize         100/100    2622.505      19.122     0.145%     8192000      3123.7
+         V-MT19937   128       4    128   10240   AnySize          99/100    4143.573      27.297     0.131%     8192000      1977.0
+      V-MT19937-64   128       2    128   10240   AnySize          98/100    9147.954      30.780     0.067%     8192000       895.5

@@ -1,0 +1,95 @@
+=== CPU Information ===
+Vendor : GenuineIntel
+Brand  : Intel(R) Xeon(R) Platinum 8488C
+Family : 6, Model: 15, Stepping: 8
+SIMD   : AVX-512
+Clock  : 2400 MHz
+L1d Cache : Level L1d, size: 48 KB
+L1i Cache : Level L1i, size: 32 KB
+L2u Cache : Level L2u, size: 2048 KB
+L3u Cache : Level L3u, size: 107520 KB
+=======================
+Set CPU affinity to CPU 1
+Set high process priority
+Target hardware SIMD register size (bits): 512
+Adaptive Benchmark Configuration:
+  alpha       = 0.005 (target error)
+  confidence  = 0.95
+  outlier     = 3 sigma
+  min_reps    = 100
+  max_reps    = 10000
+  warmup      = 10
+  n-blocks    = 800
+  blk-size    = 10240 (for vectorial tests)
+  n-random    = 8192000 per experiment
+skipping MKL tests
+skipping original implementation tests
+skipping STL tests
+including VMT tests
+skipping XMT tests
+including SFMT tests
+
+Running Experiments...
+      Generator     VReg nStates   HwReg BlkSize   QueryMode
+      V-MT19937      512      16     128       1      Scalar ... done (100/100 runs, nRandom=8192000), error: 0.20%
+      V-MT19937      512      16     128      16     Block16 ... done (100/100 runs, nRandom=8192000), error: 0.30%
+      V-MT19937      512      16     128   10240     AnySize ... done (100/100 runs, nRandom=8192000), error: 0.28%
+      V-MT19937      512      16     256       1      Scalar ... done (98/100 runs, nRandom=8192000), error: 0.13%
+      V-MT19937      512      16     256      16     Block16 ... done (99/100 runs, nRandom=8192000), error: 0.19%
+      V-MT19937      512      16     256   10240     AnySize ... done (100/100 runs, nRandom=8192000), error: 0.15%
+      V-MT19937      512      16     512       1      Scalar ... done (100/100 runs, nRandom=8192000), error: 0.14%
+      V-MT19937      512      16     512      16     Block16 ... done (100/100 runs, nRandom=8192000), error: 0.09%
+      V-MT19937      512      16     512   10240     AnySize ... done (100/100 runs, nRandom=8192000), error: 0.08%
+    X-SFMT19937      128       1     128       1      Scalar ... done (98/100 runs, nRandom=8192000), error: 0.02%
+    X-SFMT19937      128       1     128      16     Block16 ... done (100/100 runs, nRandom=8192000), error: 0.03%
+    X-SFMT19937      128       1     128   10240     AnySize ... done (100/100 runs, nRandom=8192000), error: 0.04%
+    V-SFMT19937      512       4     128       1      Scalar ... done (100/100 runs, nRandom=8192000), error: 0.11%
+    V-SFMT19937      512       4     128      16     Block16 ... done (107/108 runs, nRandom=8192000), error: 0.50%
+    V-SFMT19937      512       4     128   10240     AnySize ... done (100/100 runs, nRandom=8192000), error: 0.17%
+    V-SFMT19937      512       4     256       1      Scalar ... done (100/100 runs, nRandom=8192000), error: 0.13%
+    V-SFMT19937      512       4     256      16     Block16 ... done (99/100 runs, nRandom=8192000), error: 0.44%
+    V-SFMT19937      512       4     256   10240     AnySize ... done (96/100 runs, nRandom=8192000), error: 0.09%
+    V-SFMT19937      512       4     512       1      Scalar ... done (100/100 runs, nRandom=8192000), error: 0.13%
+    V-SFMT19937      512       4     512      16     Block16 ... done (348/348 runs, nRandom=8192000), error: 0.50%
+    V-SFMT19937      512       4     512   10240     AnySize ... done (100/100 runs, nRandom=8192000), error: 0.22%
+   V-MT19937-64      512       8     128       1      Scalar ... done (99/100 runs, nRandom=8192000), error: 0.12%
+   V-MT19937-64      512       8     128       8     Block16 ... done (99/100 runs, nRandom=8192000), error: 0.05%
+   V-MT19937-64      512       8     128   10240     AnySize ... done (100/100 runs, nRandom=8192000), error: 0.12%
+   V-MT19937-64      512       8     256       1      Scalar ... done (100/100 runs, nRandom=8192000), error: 0.17%
+   V-MT19937-64      512       8     256       8     Block16 ... done (100/100 runs, nRandom=8192000), error: 0.15%
+   V-MT19937-64      512       8     256   10240     AnySize ... done (100/100 runs, nRandom=8192000), error: 0.14%
+   V-MT19937-64      512       8     512       1      Scalar ... done (100/100 runs, nRandom=8192000), error: 0.13%
+   V-MT19937-64      512       8     512       8     Block16 ... done (100/100 runs, nRandom=8192000), error: 0.07%
+   V-MT19937-64      512       8     512   10240     AnySize ... done (99/100 runs, nRandom=8192000), error: 0.05%
+
+              prng  VReg  states  HwReg blksize   qrymode         samples     tavg_us     tdev_us     error     nRandom  throughput
+       X-SFMT19937   128       1    128       1    Scalar          98/100    7412.246       5.784     0.016%     8192000      1105.2
+       V-SFMT19937   512       4    128       1    Scalar         100/100    7802.928      42.281     0.108%     8192000      1049.9
+      V-MT19937-64   512       8    128       1    Scalar          99/100   10667.089      63.945     0.120%     8192000       768.0
+         V-MT19937   512      16    128       1    Scalar         100/100   11201.831     110.233     0.195%     8192000       731.3
+      V-MT19937-64   512       8    128       8   Block16          99/100    6885.155      17.570     0.051%     8192000      1189.8
+       X-SFMT19937   128       1    128      16   Block16         100/100    2750.510       4.381     0.032%     8192000      2978.4
+       V-SFMT19937   512       4    128      16   Block16         107/108    3126.997      81.113     0.497%     8192000      2619.8
+         V-MT19937   512      16    128      16   Block16         100/100    6822.376     102.864     0.299%     8192000      1200.8
+       X-SFMT19937   128       1    128   10240   AnySize         100/100    2544.934       4.910     0.038%     8192000      3218.9
+       V-SFMT19937   512       4    128   10240   AnySize         100/100    2951.219      25.245     0.170%     8192000      2775.8
+         V-MT19937   512      16    128   10240   AnySize         100/100    6783.166      94.362     0.276%     8192000      1207.7
+      V-MT19937-64   512       8    128   10240   AnySize         100/100    6906.114      42.179     0.121%     8192000      1186.2
+       V-SFMT19937   512       4    256       1    Scalar         100/100    6081.136      40.531     0.132%     8192000      1347.1
+         V-MT19937   512      16    256       1    Scalar          98/100    7128.261      46.737     0.131%     8192000      1149.2
+      V-MT19937-64   512       8    256       1    Scalar         100/100    8242.248      69.215     0.167%     8192000       993.9
+      V-MT19937-64   512       8    256       8   Block16         100/100    4380.490      32.248     0.146%     8192000      1870.1
+       V-SFMT19937   512       4    256      16   Block16          99/100    1467.581      32.689     0.444%     8192000      5582.0
+         V-MT19937   512      16    256      16   Block16          99/100    2557.933      23.792     0.186%     8192000      3202.6
+       V-SFMT19937   512       4    256   10240   AnySize          96/100    1067.866       4.487     0.085%     8192000      7671.4
+         V-MT19937   512      16    256   10240   AnySize         100/100    2439.893      18.144     0.148%     8192000      3357.5
+      V-MT19937-64   512       8    256   10240   AnySize         100/100    3803.278      26.707     0.139%     8192000      2153.9
+       V-SFMT19937   512       4    512       1    Scalar         100/100    5739.826      37.674     0.130%     8192000      1427.2
+         V-MT19937   512      16    512       1    Scalar         100/100    6407.678      43.881     0.136%     8192000      1278.5
+      V-MT19937-64   512       8    512       1    Scalar         100/100    7312.959      49.297     0.134%     8192000      1120.2
+      V-MT19937-64   512       8    512       8   Block16         100/100    3916.994      13.431     0.068%     8192000      2091.4
+       V-SFMT19937   512       4    512      16   Block16         348/348    1495.379      70.851     0.500%     8192000      5478.2
+         V-MT19937   512      16    512      16   Block16         100/100    2041.991       9.747     0.095%     8192000      4011.8
+       V-SFMT19937   512       4    512   10240   AnySize         100/100     905.883       9.978     0.219%     8192000      9043.1
+         V-MT19937   512      16    512   10240   AnySize         100/100    1726.743       6.609     0.076%     8192000      4744.2
+      V-MT19937-64   512       8    512   10240   AnySize          99/100    2905.808       7.057     0.048%     8192000      2819.2
