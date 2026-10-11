@@ -1123,9 +1123,9 @@ struct SimdRegister<512, ISA::AVX512, void> : VirtualRegBase<512, ISA::AVX512>
         __m128i r2 = _mm_clmulepi64_si128(a2, b2, imm8);
         __m128i r3 = _mm_clmulepi64_si128(a3, b3, imm8);
         __m512i res = _mm512_castsi128_si512(r0);
-        res = _mm512_inserti32x4_epi32(res, r1, 1);
-        res = _mm512_inserti32x4_epi32(res, r2, 2);
-        res = _mm512_inserti32x4_epi32(res, r3, 3);
+        res = _mm512_inserti32x4(res, r1, 1);
+        res = _mm512_inserti32x4(res, r2, 2);
+        res = _mm512_inserti32x4(res, r3, 3);
         return res;
 #endif
     }
