@@ -296,14 +296,18 @@ Let's construct a new sequence $\boldsymbol{S}$ which interleaves the sequences 
    \boldsymbol{S}=\underbrace{z_0, z_J, z_{2J}, \dots, z_{(M-1)J}}_{\text{1-st number from each sub-sequence}}, \,\underbrace{z_1,\, z_{J+1}, \, z_{2J+1},\, \dots,\, z_{(M-1)J+1}}_{\text{2-nd number from each sub-sequence}}\,, \dots\,, \underbrace{z_{J-1}, z_{2J-1}, z_{3J-1}, \dots, z_{MJ-1}}_{\text{$J$-th number from each sub-sequence}}
 \end{equation}
 In other words, sequence $\boldsymbol{S}$ is equivalent to running $M$ independent generators in synchronized round-robin, each initialized to a different offset within the sequence via jump-ahead \cite{multistream}.
-The period of $\boldsymbol{S}$ equals that of $\boldsymbol{Z}$: the sub-sequences $\boldsymbol{Z_t}$ partition $\boldsymbol{Z}$ exactly, so their interleaving covers the full period once.
+
+The period of $\boldsymbol{S}$ equals $P$: since $\boldsymbol{S}$ is a permutation of the $P$ elements of $\boldsymbol{Z}$, it visits every element exactly once per period before repeating. As a concrete illustration, consider $P=7$, $M=2$, $J=4$: sub-sequence $\boldsymbol{Z_0}=(z_0,z_1,z_2,z_3)$ and $\boldsymbol{Z_1}=(z_4,z_5,z_6)$. The interleaved sequence is
+$$\boldsymbol{S} = z_0, z_4, z_1, z_5, z_2, z_6, z_3,\; \underbrace{z_0, z_4, z_1, \ldots}_{\text{repeats}}$$
+After 7 outputs the sequence returns to $z_0$, confirming period $P=7$ regardless of how $P$ splits unevenly between sub-sequences.
+
 The identically distributed property is also preserved: $\boldsymbol{S}$ is a reindexing of $\boldsymbol{Z}$, so the marginal distribution of each element is unchanged.
 For the broader statistical properties, no mathematical proof exists --- not even for the original MT19937, whose statistical quality is established empirically rather than analytically. We therefore adopt the same standard and validate the V-family generators using the TestU01 suite, as described in Section~\ref{sec:stats}.
 
 Let $L$ be the SIMD register width in bits available on a given CPU (128, 256, or 512 depending on whether the ISA supports SSE/NEON, AVX/SVE, or AVX-512), and let $w$ be the state word size of the base generator ($w=32$ for MT19937-32, $w=64$ for MT19937-64, $w=128$ for SFMT19937). We choose $M=L/w$ as the \emph{vectorization coefficient}, i.e.\ the number of independent generator instances that can be evolved simultaneously in a single set of SIMD operations.
-We divide the total period $P=2^{19937}\!-\!1$ into $M$ sub-sequences of length
-$$J=\myceil{\frac{P}{M}}\approx 2^{19937-\log_2 M}$$
-with the last sub-sequence having length $J\!-\!1$. Table~\ref{tab:jvalues} shows the parameters $L$, $M$ and $J$ for all three V-family generators across the supported ISA widths.
+We divide the total period $P=2^{19937}\!-\!1$ into $M$ sub-sequences: the first $M\!-\!1$ have length $J$ and the last has length $J\!-\!1$, where
+$$J = \frac{P+1}{M} = 2^{19937-\log_2 M}$$
+This is exact since $P+1=2^{19937}$ is divisible by $M$ for all $M\in\{2,4,8,16\}$. Table~\ref{tab:jvalues} shows the parameters $L$, $M$ and $J$ for all three V-family generators across the supported ISA widths.
 
 \begin{table}[h!]
 	\centering
