@@ -233,7 +233,7 @@ where $\mathbf{K}=(K_1, K_2, K_3, K_4)$ is a 128-bit constant mask, and the para
 \end{aligned}
 \end{equation}
 
-SFMT19937 shares the same huge period of $2^{19937}-1$ as the original Mersenne Twister. It does not need a separate tempering step, because its complex multi-lane mixing ensures the output is well-distributed and statistically sound right from the start.
+The period of SFMT19937 is guaranteed to be a multiple of $2^{19937}-1$, the period of the original Mersenne Twister. It does not need a separate tempering step, because its complex multi-lane mixing ensures the output is well-distributed and statistically sound right from the start.
 
 \subsection{Implementation}
 For each new random word generated the state vector is transformed by the recursion $$x_{k+n} = f(x_k, \dots, x_{k+n-1})$$ removing the least significant word $x_{k}$ on its left side and adding a new word $x_{k+n}$ on its right side.
@@ -304,31 +304,39 @@ Given a certain initial state $X_0$, a base MT PRNG produces a sequence $\boldsy
 \label{eq:mainseq}
    \boldsymbol{Z} = z_0, z_1, \dots, z_{P-1}
 \end{equation}
-The PRNs $z_k$ are independent and identically distributed, or at least they emulate such statistical properties. They have uniform distribution over words of width $w$, and the sequence has a period of $P=2^{19937}-1$.
+They are uniformly distributed over words of width $w$, and the sequence has period $P=2^{19937}-1$.
 
-Let's consider $M$ sub-sequences $\boldsymbol{Z_t}$ ($t=0\dots M-1$) of equal size $J$ obtained by partitioning sequence $\boldsymbol{Z}$ in groups of equal length $J=P/M$
+Let $M$ be a power of two and let
 \begin{equation}
-\label{eq:subseq}
-   \underbrace{z_0, z_1, \dots, z_{J-1}}_{\boldsymbol{Z_0}},\, \underbrace{z_J, z_{J+1}, \dots, z_{2J-1}}_{\boldsymbol{Z_1}}, \dots,\, \underbrace{z_{(M-1)J}, z_{(M-1)J+1}, \dots, z_{MJ-1}}_{\boldsymbol{Z_{M-1}}}
+\label{eq:jdef}
+    J = \frac{P+1}{M} = 2^{19937-\log_2 M}
 \end{equation}
-Let's construct a new sequence $\boldsymbol{S}$ which interleaves the sequences $\boldsymbol{Z_t}$
+which is an integer since $P+1 = 2^{19937}$. Consider $M$ instances $G_t$ ($t=0,\dots,M-1$) of the base generator, where $G_t$ is advanced by $t \cdot J$ steps with respect to $G_0$, so that the $i$-th output of $G_t$ is $z_{(tJ+i)\,\%\,P}$. The sequence $\boldsymbol{S}$ is obtained by polling the instances in round-robin order:
 \begin{equation}
 \label{eq:combseq}
-   \boldsymbol{S}=\underbrace{z_0, z_J, z_{2J}, \dots, z_{(M-1)J}}_{\text{1-st number from each sub-sequence}}, \,\underbrace{z_1,\, z_{J+1}, \, z_{2J+1},\, \dots,\, z_{(M-1)J+1}}_{\text{2-nd number from each sub-sequence}}\,, \dots\,, \underbrace{z_{J-1}, z_{2J-1}, z_{3J-1}, \dots, z_{MJ-1}}_{\text{$J$-th number from each sub-sequence}}
+   \boldsymbol{S}=\underbrace{z_0, z_J, z_{2J}, \dots, z_{(M-1)J}}_{\text{1-st output of each instance}}, \,\underbrace{z_1,\, z_{J+1}, \, z_{2J+1},\, \dots,\, z_{(M-1)J+1}}_{\text{2-nd output of each instance}}\,, \dots
 \end{equation}
-In other words, sequence $\boldsymbol{S}$ is equivalent to running $M$ independent generators in synchronized round-robin, each initialized to a different offset within the sequence via jump-ahead \cite{multistream}.
+In other words, sequence $\boldsymbol{S}$ is equivalent to running $M$ generators in synchronized round-robin, each initialized to a different offset within the sequence via jump-ahead \cite{multistream}.
 
-The period of $\boldsymbol{S}$ equals $P$: since $\boldsymbol{S}$ is a permutation of the $P$ elements of $\boldsymbol{Z}$, it visits every element exactly once per period before repeating. As a concrete illustration, consider $P=7$, $M=2$, $J=4$: sub-sequence $\boldsymbol{Z_0}=(z_0,z_1,z_2,z_3)$ and $\boldsymbol{Z_1}=(z_4,z_5,z_6)$. The interleaved sequence is
+Every position $j$ of $\boldsymbol{S}$ can be written uniquely as $j = Mi + t$, where $i = \lfloor j/M \rfloor$ is the round and $t = j\,\%\,M$ is the instance being polled, so that $s_j = z_{(tJ+i)\,\%\,P}$. Since $MJ = P+1$,
+$$ jJ = (Mi+t)J = i(P+1) + tJ \equiv i + tJ \pmod P $$
+and therefore
+\begin{equation}
+\label{eq:decimation}
+    s_j = z_{(jJ)\,\%\,P}, \qquad j = 0, 1, 2, \dots
+\end{equation}
+In other words, $\boldsymbol{S}$ is the decimation of $\boldsymbol{Z}$ with stride $J$. Since $J$ is a power of two and $P$ is odd, $J$ and $P$ are coprime, hence the map $j \mapsto (jJ)\,\%\,P$ is a bijection of $\{0,\dots,P-1\}$ onto itself. Two consequences follow: the first $P$ elements of $\boldsymbol{S}$ are a permutation of the $P$ elements of one period of $\boldsymbol{Z}$, so that the $M$ instances never overlap within a period; and $s_{j+P} = s_j$, so that $\boldsymbol{S}$ has period $P$. No special treatment is needed for the fact that $P$ is not a multiple of $M$: the instances simply wrap around the period.
+
+As an illustration, consider $P=7$, $M=2$, $J=4$. Equation \eqref{eq:decimation} gives the indices $0, 4, 1, 5, 2, 6, 3$ for $j=0,\dots,6$, i.e.
 $$\boldsymbol{S} = z_0, z_4, z_1, z_5, z_2, z_6, z_3,\; \underbrace{z_0, z_4, z_1, \ldots}_{\text{repeats}}$$
-After 7 outputs the sequence returns to $z_0$, confirming period $P=7$ regardless of how $P$ splits unevenly between sub-sequences.
+Conversely, since $MJ \equiv 1 \pmod P$, taking every $M$-th element of $\boldsymbol{S}$ returns $\boldsymbol{Z}$.
 
-The identically distributed property is also preserved: $\boldsymbol{S}$ is a reindexing of $\boldsymbol{Z}$, so the marginal distribution of each element is unchanged.
+This argument assumes that $P$ is the exact period of $\boldsymbol{Z}$, which is the case for MT19937 and MT19937-64. For SFMT19937 the period is only guaranteed to be a multiple of $2^{19937}-1$ \cite{sfmt19937}. In that case \eqref{eq:decimation} still holds for $j < P$, so that the $M$ instances do not overlap over the first $P$ elements of $\boldsymbol{S}$, but the period of $\boldsymbol{S}$ is not claimed to be exactly $P$.
+
+The marginal distribution is also preserved: $\boldsymbol{S}$ is a reindexing of $\boldsymbol{Z}$, so the distribution of each element is unchanged. The absence of overlap does not, however, imply that the $M$ streams are statistically independent.
 For the broader statistical properties, no mathematical proof exists --- not even for the original MT19937, whose statistical quality is established empirically rather than analytically. We therefore adopt the same standard and validate the V-family generators using the TestU01 suite, as described in Section~\ref{sec:stats}.
 
-Let $L$ be the SIMD register width in bits available on a given CPU (128, 256, or 512 depending on whether the ISA supports SSE/NEON, AVX/SVE, or AVX-512), and let $w$ be the state word size of the base generator ($w=32$ for MT19937-32, $w=64$ for MT19937-64, $w=128$ for SFMT19937). We choose $M=L/w$ as the \emph{vectorization coefficient}, i.e.\ the number of independent generator instances that can be evolved simultaneously in a single set of SIMD operations.
-We divide the total period $P=2^{19937}\!-\!1$ into $M$ sub-sequences: the first $M\!-\!1$ have length $J$ and the last has length $J\!-\!1$, where
-$$J = \frac{P+1}{M} = 2^{19937-\log_2 M}$$
-This is exact since $P+1=2^{19937}$ is divisible by $M$ for all $M\in\{2,4,8,16\}$. Table~\ref{tab:jvalues} shows the parameters $L$, $M$ and $J$ for all three V-family generators across the supported ISA widths.
+Let $L$ be the SIMD register width in bits available on a given CPU (128, 256, or 512 depending on whether the ISA supports SSE/NEON, AVX/SVE, or AVX-512), and let $w$ be the state word size of the base generator ($w=32$ for MT19937-32, $w=64$ for MT19937-64, $w=128$ for SFMT19937). We choose $M=L/w$ as the \emph{vectorization coefficient}, i.e.\ the number of generator instances that can be evolved simultaneously in a single set of SIMD operations, and $J$ follows from \eqref{eq:jdef}. Table~\ref{tab:jvalues} shows the parameters $L$, $M$ and $J$ for all three V-family generators across the supported ISA widths.
 
 \begin{table}[h!]
 	\centering
@@ -350,7 +358,7 @@ This is exact since $P+1=2^{19937}$ is divisible by $M$ for all $M\in\{2,4,8,16\
 	\caption{\label{tab:jvalues} V-family parameters $L$ (bits), $M$, and $J$ for the three generator types across ISA widths. $^{*}$V-SFMT19937 requires $L>128$ since SFMT state elements are 128-bit wide, making $M=1$ degenerate.}
 \end{table}
 
-A V-family generator producing the sequence $\boldsymbol{S}$ in \eqref{eq:combseq} is constructed by duplicating $M$ times the base MT generator with initial state $X_0$, yielding an array of $M$ generators $G_t$ ($t=0,\dots, M-1$) with identical state $X_0$. The state vector of each $G_t$ is then advanced by $t \cdot J$ steps so that it produces sub-sequence $\boldsymbol{S_t}$. Finally, the $M$ generators are combined into a single V-family generator that polls each $G_t$ in round-robin order.
+A V-family generator producing the sequence $\boldsymbol{S}$ in \eqref{eq:combseq} is constructed by duplicating $M$ times the base MT generator with initial state $X_0$, yielding an array of $M$ generators $G_t$ ($t=0,\dots, M-1$) with identical state $X_0$. The state vector of each $G_t$ is then advanced by $t \cdot J$ steps. Finally, the $M$ generators are combined into a single V-family generator that polls each $G_t$ in round-robin order.
 
 Let's add a second index $t$ to the state vector, so that $X_{k,t}$ is the state $k$-th for the $t$-th generator, i.e. $X_{0,t}=X_{t \cdot J}$, the multi-generator described below has initial state
 $$
@@ -413,29 +421,173 @@ State $X_{t \cdot J}$ can be computed as:
 Let $B=F^J$, since $J$ is a power of 2 ($J=2^{q}$, where $q$ is the exponent from Table~\ref{tab:jvalues}).
 The jump matrix $B$ is computed offline via repeated squaring $F^{2^q} = F^{2^{q-1}} \star F^{2^{q-1}}$ and stored for later use.
 
-While the specific transition matrix structure $F$ in \eqref{eq:transmat} is representative of MT-based generators, the methodology of binary matrix exponentiation for jump-ahead is general and applies to any $F_2$-linear PRNG. A distinct jump matrix $B$ must be computed and stored for each of MT19937-32, MT19937-64, and SFMT19937, since their recurrences, word sizes, and state dimensions differ.
+While the specific transition matrix structure $F$ in \eqref{eq:transmat} is representative of MT-based generators, the methodology of binary matrix exponentiation for jump-ahead is general and applies to any $F_2$-linear PRNG. A distinct jump matrix $B$ must be computed and stored for each of MT19937-32, MT19937-64, and SFMT19937, since their recurrences, word sizes, and state dimensions differ. Applying $B$ to the state (the online cost per jump) requires one binary vector-matrix multiplication, which costs $O(N^2/w)$ bit operations and $O(N^2)$ bits of storage — approximately 50\,MB per matrix for MT19937.
 
-The overhead associated with initializing the generator state vectors as in \eqref{eq:jumpahead}, which requires $M\!-\!1$ vector-matrix multiplications, is negligible in the context of generating a large stream of PRNs.
+\subsubsection{Polynomial \textit{jump ahead} (default method)}
+\label{sec:polyjump}
+More efficient \textit{jump-ahead} algorithms~\cite{jump1,jump2} exist that avoid storing the jump matrix entirely. These are the default method used in the \textbf{V-family} library.
 
-\subsubsection{Alternative \textit{jump ahead} methods}
-It is worth noting that there exist more efficient \textit{jump-ahead} algorithms that do not require storing the jump matrix and are faster than performing a vector-matrix multiplication as in \eqref{eq:jumpahead}. These algorithms, based on binary polynomial arithmetic over GF(2), have been implemented in the \textbf{V-family} library.
+Let $T$ denote the single-step state transition $T(Y_k) = Y_{k+1} = Y_k \star F$, and let $P(x)$ be the characteristic polynomial of the generator, with $N = \deg P(x)$ the number of independent state bits. Because $F$ satisfies $P(F) = 0$ (Cayley-Hamilton), advancing by $J$ steps is equivalent to evaluating the polynomial $g(x) = x^J \bmod P(x) = \sum_{i=0}^{N-1} g_i x^i$ at $F$ and applying it to the state. This gives the jump formula:
+\begin{equation}
+\label{eq:polyjump}
+Y_{(t+1)J} = g(F)\,Y_{tJ} = \sum_{i=0}^{N-1} g_i \cdot T^i(Y_{tJ})
+\end{equation}
+where $T^i(Y_{tJ})$ is the state after $i$ scalar steps from $Y_{tJ}$ and the sum is XOR.
 
-Linear Feedback Shift Registers (LFSRs) can be transitioned by $J$ steps by applying a jump-ahead matrix $F^J$ to the state vector $v$: $v_{t+J} = F^J v_t$. Alternatively, this can be viewed as multiplication by a polynomial $g(x) = x^J \pmod{P(x)}$ in the ring of polynomials GF(2)[x] modulo the characteristic polynomial $P(x)$ of the generator. The state transition is then computed as $v_{t+J} = \sum_{i=0}^{N-1} g_i \cdot T^i(v_t)$, where $T$ is the state transition operator (a single-step update) and $g_i$ are the coefficients of the jump polynomial.
-
-To support this method, the library includes utilities to:
+The coefficients $g_i \in \{0,1\}$ are computed \emph{offline} and stored as a compact $N$-bit mask. The offline computation proceeds in two steps:
 \begin{enumerate}
-    \item Derive the characteristic polynomial $P(x)$ using the Berlekamp-Massey algorithm \cite{jump1, jump2}.
-    \item Compute $x^J \pmod{P(x)}$ using binary exponentiation (squaring and reduction).
+    \item Derive $P(x)$ using the Berlekamp-Massey algorithm.
+    \item Compute $g(x) = x^J \bmod P(x)$ using binary exponentiation (squaring and reduction modulo $P(x)$).
 \end{enumerate}
 
-This polynomial method reduces the memory footprint for jump data from $O(N^2)$ to $O(N)$, which for MT19937 means a reduction from approximately 50 MB per jump matrix to only 4 KB per jump polynomial.
-Furthermore, the main contribution of this paper is the vectorization of the algorithm to advance the state vector. If a more efficient \textit{jump-ahead} method were to be adopted, it would further improve initialization time, but it would not invalidate any of the arguments presented in this paper regarding the algorithm's throughput.
+The memory footprint for the jump data is reduced from $O(N^2)$ to $O(N)$, from approximately 50\,MB per matrix to approximately 4\,KB per polynomial, for MT19937.
+
+\textbf{Theoretical initialization cost.}
+Evaluating \eqref{eq:polyjump} requires $N$ applications of the scalar state-transition operator $T$, where $N = nw - r$ is the degree of the characteristic polynomial (and the number of independent state bits). For MT19937-32, $N = 624 \times 32 - 31 = 19937$. Each application of $T$ is a single step of the scalar generator: one recurrence update applied to one state word, with cost comparable to generating one output sample in scalar mode. The initialization cost of a single jump is therefore equivalent to generating approximately $N \approx 20\,000$ scalar random numbers, or equivalently $\lceil N/n \rceil = 32$ full refill passes over the $n$-word state.
+Initializing $M$ instances requires $M-1$ jumps, so the total cost is $(M-1) \times N$ scalar steps (Table~\ref{tab:initcost}).
+
+\begin{table}[h!]
+  \centering\small
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{|c|c|c|c|}
+    \hline
+    \textbf{Generator} & $M$ & \textbf{Jumps} ($M-1$) & \textbf{Equivalent scalar samples} \\
+    \hline
+    \multirow{3}{*}{V-MT19937 / V-MT19937-64} & 4  & 3  & $\approx 60\,000$ \\
+                                               & 8  & 7  & $\approx 140\,000$ \\
+                                               & 16 & 15 & $\approx 300\,000$ \\
+    \hline
+    \multirow{2}{*}{V-SFMT19937}               & 2  & 1  & $\approx 20\,000$ \\
+                                               & 4  & 3  & $\approx 60\,000$ \\
+    \hline
+  \end{tabular}
+  \caption{\label{tab:initcost}Theoretical initialization cost of the polynomial jump method, expressed as the number of equivalent scalar generator steps. Each V-family generator of any width shares the same $N=19937$ state bits, so the cost per jump is the same across all three base generators.}
+\end{table}
+
+\subsection{Implementation notes}
+\label{sec:implementation}
+
+The V-family generators are implemented as a C++20 header-only library. This section describes the key implementation choices that bridge the mathematical construction above and the hardware.
+
+\textbf{Memory layout.}
+The $M$ generator states are stored as a single flat, cache-line-aligned array of $n \times M$ $w$-bit words, where $n=624$ for MT19937-32 and $n=312$ for MT19937-64. Position $i \cdot M + t$ holds the $i$-th word of the $t$-th generator ($t=0,\ldots,M-1$), so the $M$ copies of word $i$ form $M$ consecutive words --- a naturally $L/8$-byte-aligned group ready for a single SIMD load. No gather, scatter, or byte-shift is ever required.
+
+\textbf{Core recurrence loop.}
+Each of the $n$ iterations of the refill loop reads three SIMD-width groups --- from positions $k$, $(k+1)\bmod n$, and $(k+m)\bmod n$ ($m=397$ for MT19937-32) --- via aligned SIMD loads, and writes one group back. The recurrence~\eqref{eq:msmt19937} maps to a fixed sequence of $4$--$5$ SIMD instructions per iteration (Table~\ref{tab:intrinsics}): a bit-select merging the upper bit of $\mathbf{x}_k$ with the lower 31 bits of $\mathbf{x}_{k+1}$, a right shift by one, and a conditional XOR with matrix constant $A$ driven by the LSB of $\mathbf{x}_{k+1}$. The refill consists of exactly $n$ such SIMD iterations with no scalar remainder, regardless of $n$ or $M$.
+
+\textbf{Tempering and output.}
+After the refill, a separate pass applies tempering~\eqref{eq:tempering} in blocks of $M$ words using SIMD shifts and masked XOR-AND operations. Tempered values fill an output buffer of $n \cdot M$ words, consumed one element at a time until exhausted, at which point both passes repeat.
+
+\textbf{Portability.}
+Cross-platform portability is achieved through a portability layer specialised for each (width, ISA) pair. Each specialisation maps the abstract operations to the corresponding intrinsics (Table~\ref{tab:intrinsics}). When the virtual register width exceeds the hardware register width --- for example, emulating 256-bit virtual registers on a 128-bit SSE2 host --- operations iterate over multiple hardware registers with no change to the generator code. The entire generator is parameterised by register width and ISA; targeting a different ISA or width requires only recompilation.
+
+\begin{table}[h!]
+  \centering\footnotesize
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabular}{|l|p{2.0cm}|p{2.1cm}|p{2.4cm}|p{1.9cm}|p{2.0cm}|}
+    \hline
+    \textbf{Operation} &
+    \shortstack[c]{\textbf{SSE4.2} \\ \textbf{(128-bit)}} &
+    \shortstack[c]{\textbf{AVX2} \\ \textbf{(256-bit)}} &
+    \shortstack[c]{\textbf{AVX-512} \\ \textbf{(512-bit)}} &
+    \shortstack[c]{\textbf{NEON} \\ \textbf{(128-bit)}} &
+    \shortstack[c]{\textbf{SVE256} \\ \textbf{(256-bit)}} \\
+    \hline
+    Load / Store &
+    \texttt{MOVDQA} &
+    \texttt{VMOVDQA} &
+    \texttt{VMOVDQA} &
+    \texttt{LD1 / ST1} &
+    \texttt{LD1W / ST1W} \\
+    \hline
+    XOR / AND &
+    \texttt{PXOR / PAND} &
+    \texttt{VPXOR / VPAND} &
+    \texttt{VPXORD / VPANDD} &
+    \texttt{EOR / AND} &
+    \texttt{EOR / AND} \\
+    \hline
+    Shift 32-bit $\gg$/$\ll$ &
+    \texttt{PSRLD / PSLLD} &
+    \texttt{VPSRLD / VPSLLD} &
+    \texttt{VPSRLD / VPSLLD} &
+    \texttt{USHR / SHL} &
+    \texttt{LSR / LSL} \\
+    \hline
+    Bit-blend $(m \mathbin{\&} a) \mid (\overline{m} \mathbin{\&} b)$ &
+    \texttt{PAND+} \texttt{PANDN+} \texttt{POR} (3) &
+    \texttt{VPAND+} \texttt{VPANDN+} \texttt{VPOR} (3) &
+    \texttt{VPTERNLOGD} (1) &
+    \texttt{BSL} (1) &
+    \texttt{BSL}$^{\dagger}$ (1) / \texttt{AND+BIC+ORR} (3) \\
+    \hline
+    Cond.\ XOR: $x \oplus A$ if $x_0{=}1$ &
+    \texttt{PSLLD+} \texttt{PCMPGTD+} \texttt{PAND+} \texttt{PXOR} (4) &
+    \texttt{VPSLLD+} \texttt{VBLENDVPS+} \texttt{VPXOR} (3) &
+    \texttt{VPTESTMD+} \texttt{VPXORD} (2) &
+    \texttt{SHL+SSHR+} \texttt{AND+EOR} (4) &
+    \texttt{LSL+ASR+} \texttt{AND+EOR} (4) \\
+    \hline
+  \end{tabular}
+  \caption{\label{tab:intrinsics}Hardware instructions for the SIMD operations used in the MT19937-32 recurrence loop, across the five supported ISAs. Each operation acts on all $M = L/w$ 32-bit lanes simultaneously; instruction counts are shown in parentheses for the two non-trivial operations. AVX-512 achieves the minimum instruction count via \texttt{VPTERNLOGD} (3-input ternary logic in one instruction) and predicate mask registers. NEON provides a dedicated \texttt{BSL} (Bit Select) instruction. $^{\dagger}$SVE2 provides \texttt{BSL}; the SVE1 fallback uses three instructions.}
+\end{table}
 
 \section{Test results}
 
 \subsection{Statistical tests}
 \label{sec:stats}
-As discussed in Section~\ref{sec:simdgen}, the V-family generators produce sequences of independent and identically distributed PRNs, since they combine sub-sequences of an underlying MT generator whose statistical properties are preserved by the interleaving. All three generators in the V-family, across all vectorization factors $M \in \{1, 4, 8, 16\}$, were subjected to the \textit{TestU01} test suite proposed by L'Ecuyer and Simard in \cite{testu01}. We observe that almost all tests pass, with results consistent with those of the corresponding original reference implementations. In particular, failures in the \textit{LinearComp} test are observed for all MT-based generators (including the original ones). These results demonstrate that the inter-state vectorization strategy preserves the statistical properties of the underlying base generators.
+As discussed in Section~\ref{sec:simdgen}, the interleaved sequence $\boldsymbol{S}$ is a rearrangement of the sequence of the base generator. This preserves the period and the marginal distribution of the outputs, but it does not by itself guarantee that the joint statistical behaviour is unchanged, since outputs that are adjacent in $\boldsymbol{S}$ are $J$ steps apart in $\boldsymbol{Z}$. This is therefore verified empirically, using the \textit{TestU01} library (version 1.2.3) of L'Ecuyer and Simard \cite{testu01}.
+
+\subsubsection{Methodology}
+All three V-family generators were tested: V-MT19937 for $M \in \{1, 4, 8, 16\}$, V-MT19937-64 for $M \in \{1, 2, 4, 8\}$ and V-SFMT19937 for $M \in \{1, 2, 4\}$. The case $M=1$ consists of a single instance, with no interleaving, and serves as a reference for the base generator; the other values correspond to register widths of 128, 256 and 512 bits. In all cases the generator is seeded with the same fixed seed and is queried one output word at a time, so that TestU01 receives exactly the sequence $\boldsymbol{S}$ of \eqref{eq:combseq}. Since TestU01 operates on 32-bit words, each 64-bit output of V-MT19937-64 is split into two 32-bit words, most significant half first, while V-SFMT19937 delivers each 128-bit word as four 32-bit outputs. Each configuration was subjected to the three predefined batteries \textit{SmallCrush}, \textit{Crush} and \textit{BigCrush}, which compute 15, 144 and 160 test statistics respectively. Following \cite{testu01}, a $p$-value outside the interval $[0.001, 0.999]$ is reported as suspect, and a $p$-value outside $[10^{-10}, 1-10^{-10}]$ is regarded as a clear failure.
+
+\subsubsection{Results}
+The results are summarized in Table~\ref{table:testu01}.
+
+\begin{table}[H]
+	\centering
+	\small
+	\begin{tabular}{|l|c|c|c|c|}
+		\hline
+		\textbf{Generator} & $M$ & \textbf{SmallCrush} (15) & \textbf{Crush} (144) & \textbf{BigCrush} (160) \\
+		\hline
+		\multirow{4}{*}{V-MT19937}
+		 & 1  & all passed & LinearComp ($\times 2$) & LinearComp ($\times 2$); ClosePairs$^{*}$ \\
+		 & 4  & all passed & LinearComp ($\times 2$) & LinearComp ($\times 2$) \\
+		 & 8  & all passed & LinearComp ($\times 2$) & LinearComp ($\times 2$) \\
+		 & 16 & all passed & LinearComp ($\times 2$) & LinearComp ($\times 2$); ClosePairs$^{*}$ \\
+		\hline
+		\multirow{4}{*}{V-MT19937-64}
+		 & 1  & all passed & LinearComp ($\times 2$) & LinearComp ($\times 2$) \\
+		 & 2  & all passed & LinearComp ($\times 2$) & LinearComp ($\times 2$) \\
+		 & 4  & all passed & LinearComp ($\times 2$) & LinearComp ($\times 2$) \\
+		 & 8  & all passed & LinearComp ($\times 2$) & LinearComp ($\times 2$); CollisionPermut$^{*}$ \\
+		\hline
+		\multirow{3}{*}{V-SFMT19937}
+		 & 1  & all passed & all passed & LinearComp ($\times 2$); ClosePairs$^{*}$; Run$^{*}$ \\
+		 & 2  & all passed & all passed & LinearComp ($\times 2$) \\
+		 & 4  & all passed & LongestHeadRun$^{*}$ & WeightDistrib$^{*}$ \\
+		\hline
+	\end{tabular}
+	\caption{\label{table:testu01} TestU01 results for the V-family: statistics with a $p$-value outside $[0.001, 0.999]$, out of the number of statistics shown in the column header. LinearComp ($\times 2$) denotes the two linear complexity tests of the battery ($r=0$ and $r=29$), which fail with $p > 1-10^{-15}$. $^{*}$Suspect value, not a clear failure; the $p$-values are given in the text.}
+\end{table}
+
+Three conclusions can be drawn.
+
+First, the only clear failures are the \textit{LinearComp} tests. For V-MT19937 and V-MT19937-64 they occur in \textit{Crush} and \textit{BigCrush} identically for every $M$, including the reference case $M=1$. This is the known behaviour of MT19937 reported in \cite{testu01}: each output bit satisfies a linear recurrence over $F_2$ of order 19937, which the linear complexity test is designed to detect. The interleaving neither removes nor aggravates this defect, and this can be shown exactly. By \eqref{eq:decimation}, $\boldsymbol{S}$ is the decimation of $\boldsymbol{Z}$ by $J$, which is a power of two. Decimation by two preserves the characteristic polynomial $f$ of a linear recurring sequence over $F_2$, because $f(x^2) = f(x)^2$ in characteristic two. Each output bit of these two generators therefore satisfies the same linear recurrence as the corresponding output bit of the base generator, and has the same linear complexity, for every $M$.
+
+For V-SFMT19937 the pattern is different: the \textit{LinearComp} tests fail in \textit{BigCrush} for $M=1$ and $M=2$, but not for $M=4$, and never in \textit{Crush}. This is explained by the sample size of the test, which examines one bit of each 32-bit output over $n$ consecutive outputs ($n=120{,}000$ in \textit{Crush} and $n=400{,}020$ in \textit{BigCrush}) and can only detect a linear complexity below $n/2$. Since each 128-bit word is delivered as four 32-bit outputs, the examined bit stream interleaves $4M$ linear sequences, and its linear complexity is bounded by $4M \times 19968$, i.e. $79{,}872$, $159{,}744$ and $319{,}488$ for $M=1$, $2$ and $4$. This bound exceeds $n/2 = 60{,}000$ in all three cases, and exceeds $n/2 = 200{,}010$ only for $M=4$, in agreement with the observed results. Unlike the two MT variants, the bound grows with $M$, because the decimation argument does not apply to SFMT19937, whose period is not exactly $P$ (Section~\ref{sec:simdgen}). The absence of a failure at $M=4$ is therefore a consequence of the sample size and not an improvement in quality: the output remains $F_2$-linear.
+
+Second, six further $p$-values fall outside $[0.001, 0.999]$, none of which is a clear failure:
+\begin{itemize}
+    \item V-MT19937, \textit{BigCrush}: \textit{ClosePairs}, $p=0.9998$ for $M=1$ and $p=0.9994$ for $M=16$;
+    \item V-MT19937-64, \textit{BigCrush}: \textit{CollisionPermut}, $p=3.1\times10^{-5}$ for $M=8$;
+    \item V-SFMT19937, \textit{BigCrush}: \textit{ClosePairs}, $p=0.9994$ and \textit{Run}, $p=5.6\times10^{-5}$, both for $M=1$; \textit{WeightDistrib}, $p=0.9998$ for $M=4$;
+    \item V-SFMT19937, \textit{Crush}: \textit{LongestHeadRun}, $p=0.9990$ for $M=4$.
+\end{itemize}
+Three of them occur in a reference case $M=1$, so they cannot be attributed to the interleaving. Moreover, the eleven configurations produce $11 \times (15+144+160) = 3509$ test statistics in total, among which about $7$ suspect values are expected by chance alone.
+
+Third, apart from these isolated values, no test other than \textit{LinearComp} distinguishes a V-family generator from its base generator, for any value of $M$. Within the resolution of the TestU01 batteries, the inter-state interleaving therefore does not alter the statistical quality of the base generator.
 
 \subsection{Intra-State Vectorization: the X-Family}
 \label{sec:xfamily}
