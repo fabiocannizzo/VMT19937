@@ -383,7 +383,7 @@ This allows to transform each of the $w$-bit operations in \eqref{eq:step} into 
 \begin{pmatrix}x_{k,0} \\ x_{k,1} \\ \vdots \\ x_{k,M-1} \end{pmatrix}
 &= \begin{pmatrix}x_{k+m, 0} \\ x_{k+m,1} \\ \vdots \\ x_{k+m,M-1} \end{pmatrix} ~\XOR~ \left(\begin{pmatrix}x_{k,0} \\ x_{k,1} \\ \vdots \\ x_{k,M-1} \end{pmatrix}~\AND~h ~\OR~ \begin{pmatrix}x_{k+1,0} \\ x_{k+1,1} \\ \vdots \\ x_{k+1,M-1}  \end{pmatrix}~\AND~l\right) \star A
 \end{align}
-The analogous construction applies to MT19937-64 (with 64-bit lanes) and SFMT19937 (with 128-bit lanes), in each case replacing the scalar operation of \eqref{eq:step} or \eqref{eq:sfmt_step} with an $L$-bit SIMD operation across $M$ independent states. Because all $M$ states are advanced together in lock-step, the combined state $\hat{X}$ is always memory-contiguous and aligned, completely eliminating the alignment obstacle of Section~\ref{sec:vectorization}. The residual-iteration problem is also resolved: for a single state $n$ is not a multiple of $L/w$, but since each SIMD operation now advances all $M$ states by one step, the total work is exactly $n$ SIMD operations with no scalar remainder.
+The analogous construction applies to MT19937-64 (with 64-bit lanes) and SFMT19937 (with 128-bit lanes), in each case replacing the scalar operation of \eqref{eq:step} or \eqref{eq:sfmt_step} with an $L$-bit SIMD operation across $M$ independent states. Because all $M$ states are advanced together in lock-step, the combined state $\hat{X}$ is always memory-contiguous and aligned, completely eliminating the alignment obstacle of Section~\ref{sec:vectorization}. The residual-iteration problem is also resolved: for a single state $n$ is not a multiple of $L/w$, but since each SIMD operation now advances all $M$ states by one step, the total work is exactly $n$ SIMD operations with no scalar remainder. In summary, while intra-state approaches are fundamentally limited by both obstacles and cannot achieve full SIMD utilization, the V-family eliminates both by construction, achieving 100\% SIMD lane utilization for the recurrence step.
 
 \subsection{Initialization via jump-ahead}
 To construct the V-family generator described above, we need to advance the state vector $X_0$ by $J$ steps for each of the $M$ instances. In theory, we could apply recurrence \eqref{eq:step} $J$ times. However, in practice, since $J$ is a huge number, this operation would be astronomically expensive.
@@ -438,6 +438,73 @@ To support this method, the library includes utilities to:
 
 This polynomial method reduces the memory footprint for jump data from $O(N^2)$ to $O(N)$, which for MT19937 means a reduction from approximately 50 MB per jump matrix to only 4 KB per jump polynomial.
 Furthermore, the main contribution of this paper is the vectorization of the algorithm to advance the state vector. If a more efficient \textit{jump-ahead} method were to be adopted, it would further improve initialization time, but it would not invalidate any of the arguments presented in this paper regarding the algorithm's throughput.
+\subsection{Implementation notes}
+\label{sec:implementation}
+
+The V-family generators are implemented as a C++20 header-only library. This section describes the key implementation choices that bridge the mathematical construction above and the hardware.
+
+\textbf{Memory layout.}
+The $M$ generator states are stored as a single flat, cache-line-aligned array of $n \times M$ $w$-bit words, where $n=624$ for MT19937-32 and $n=312$ for MT19937-64. Position $i \cdot M + t$ holds the $i$-th word of the $t$-th generator ($t=0,\ldots,M-1$), so the $M$ copies of word $i$ form $M$ consecutive words --- a naturally $L/8$-byte-aligned group ready for a single SIMD load. No gather, scatter, or byte-shift is ever required.
+
+\textbf{Core recurrence loop.}
+Each of the $n$ iterations of the refill loop reads three SIMD-width groups --- from positions $k$, $(k+1)\bmod n$, and $(k+m)\bmod n$ ($m=397$ for MT19937-32) --- via aligned SIMD loads, and writes one group back. The recurrence~\eqref{eq:msmt19937} maps to a fixed sequence of $4$--$5$ SIMD instructions per iteration (Table~\ref{tab:intrinsics}): a bit-select merging the upper bit of $\mathbf{x}_k$ with the lower 31 bits of $\mathbf{x}_{k+1}$, a right shift by one, and a conditional XOR with matrix constant $A$ driven by the LSB of $\mathbf{x}_{k+1}$. The refill consists of exactly $n$ such SIMD iterations with no scalar remainder, regardless of $n$ or $M$.
+
+\textbf{Tempering and output.}
+After the refill, a separate pass applies tempering~\eqref{eq:tempering} in blocks of $M$ words using SIMD shifts and masked XOR-AND operations. Tempered values fill an output buffer of $n \cdot M$ words, consumed one element at a time until exhausted, at which point both passes repeat.
+
+\textbf{Portability.}
+Cross-platform portability is achieved through a portability layer specialised for each (width, ISA) pair. Each specialisation maps the abstract operations to the corresponding intrinsics (Table~\ref{tab:intrinsics}). When the virtual register width exceeds the hardware register width --- for example, emulating 256-bit virtual registers on a 128-bit SSE2 host --- operations iterate over multiple hardware registers with no change to the generator code. The entire generator is parameterised by register width and ISA; targeting a different ISA or width requires only recompilation.
+
+\begin{table}[h!]
+  \centering\footnotesize
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabular}{|l|p{2.0cm}|p{2.1cm}|p{2.4cm}|p{1.9cm}|p{2.0cm}|}
+    \hline
+    \textbf{Operation} &
+    \shortstack[c]{\textbf{SSE4.2} \\ \textbf{(128-bit)}} &
+    \shortstack[c]{\textbf{AVX2} \\ \textbf{(256-bit)}} &
+    \shortstack[c]{\textbf{AVX-512} \\ \textbf{(512-bit)}} &
+    \shortstack[c]{\textbf{NEON} \\ \textbf{(128-bit)}} &
+    \shortstack[c]{\textbf{SVE256} \\ \textbf{(256-bit)}} \\
+    \hline
+    Load / Store &
+    \texttt{MOVDQA} &
+    \texttt{VMOVDQA} &
+    \texttt{VMOVDQA} &
+    \texttt{LD1 / ST1} &
+    \texttt{LD1W / ST1W} \\
+    \hline
+    XOR / AND &
+    \texttt{PXOR / PAND} &
+    \texttt{VPXOR / VPAND} &
+    \texttt{VPXORD / VPANDD} &
+    \texttt{EOR / AND} &
+    \texttt{EOR / AND} \\
+    \hline
+    Shift 32-bit $\gg$/$\ll$ &
+    \texttt{PSRLD / PSLLD} &
+    \texttt{VPSRLD / VPSLLD} &
+    \texttt{VPSRLD / VPSLLD} &
+    \texttt{USHR / SHL} &
+    \texttt{LSR / LSL} \\
+    \hline
+    Bit-blend $(m \mathbin{\&} a) \mid (\overline{m} \mathbin{\&} b)$ &
+    \texttt{PAND+} \texttt{PANDN+} \texttt{POR} (3) &
+    \texttt{VPAND+} \texttt{VPANDN+} \texttt{VPOR} (3) &
+    \texttt{VPTERNLOGD} (1) &
+    \texttt{BSL} (1) &
+    \texttt{BSL}$^{\dagger}$ (1) / \texttt{AND+BIC+ORR} (3) \\
+    \hline
+    Cond.\ XOR: $x \oplus A$ if $x_0{=}1$ &
+    \texttt{PSLLD+} \texttt{PCMPGTD+} \texttt{PAND+} \texttt{PXOR} (4) &
+    \texttt{VPSLLD+} \texttt{VBLENDVPS+} \texttt{VPXOR} (3) &
+    \texttt{VPTESTMD+} \texttt{VPXORD} (2) &
+    \texttt{SHL+SSHR+} \texttt{AND+EOR} (4) &
+    \texttt{LSL+ASR+} \texttt{AND+EOR} (4) \\
+    \hline
+  \end{tabular}
+  \caption{\label{tab:intrinsics}Hardware instructions for the SIMD operations used in the MT19937-32 recurrence loop, across the five supported ISAs. Each operation acts on all $M = L/w$ 32-bit lanes simultaneously; instruction counts are shown in parentheses for the two non-trivial operations. AVX-512 achieves the minimum instruction count via \texttt{VPTERNLOGD} (3-input ternary logic in one instruction) and predicate mask registers. NEON provides a dedicated \texttt{BSL} (Bit Select) instruction. $^{\dagger}$SVE2 provides \texttt{BSL}; the SVE1 fallback uses three instructions.}
+\end{table}
 
 \section{Test results}
 
@@ -603,6 +670,7 @@ This performance comes at the cost of a larger state size: for generators with l
 The methodology introduced here is not specific to the Mersenne Twister and generalizes naturally to any linear recurrence PRNG, offering a principled approach for exploiting modern SIMD hardware without sacrificing period, statistical guarantees, or ease of implementation.
 
 The methodology extends naturally to devices with massive vectorization capabilities, such as GPGPUs, which might be the topic of further studies.
+A further advantage of the V-family construction is implementation simplicity. Intra-state vectorization requires careful analysis of loop structure, remainder handling, and misalignment workarounds that are specific to each generator. By contrast, the V-family implementation is largely mechanical: it suffices to extend the state array by a factor of $M$ and replace each scalar word operation with its SIMD equivalent. This substitution is uniform across generators and ISA widths and can be fully automated via C++ templates.
 
 %------------------------------BIBLIOGRAPHY-----------------
 \begin{thebibliography}{9}
