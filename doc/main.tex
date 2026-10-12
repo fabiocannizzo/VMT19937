@@ -324,7 +324,7 @@ with the last sub-sequence having length $J\!-\!1$. Table~\ref{tab:jvalues} show
 
 A V-family generator producing the sequence $\boldsymbol{S}$ in \eqref{eq:combseq} is constructed by duplicating $M$ times the base MT generator with initial state $X_0$, yielding an array of $M$ generators $G_t$ ($t=0,\dots, M-1$) with identical state $X_0$. The state vector of each $G_t$ is then advanced by $t\, J$ steps so that it produces sub-sequence $\boldsymbol{S_t}$. Finally, the $M$ generators are combined into a single V-family generator that polls each $G_t$ in round-robin order.
 
-Let's add a second index $t$ to the state vector, so that $X_{k,t}$ is the state $k$-th for the $t$-th generator, i.e. $X_{0,t}=X_{tJ}$, the multi-generator described below has initial state
+Let's add a second index $t$ to the state vector, so that $X_{k,t}$ is the state $k$-th for the $t$-th generator, i.e. $X_{0,t}=X_{t \cdot J}$, the multi-generator described below has initial state
 $$
 \begin{pmatrix}
     X_{0,0} \\ X_{0,1} \\ \vdots \\ X_{0,M-1}
@@ -351,7 +351,7 @@ The analogous construction applies to MT19937-64 (with 64-bit lanes) and SFMT199
 
 \subsection{Initialization via jump-ahead}
 To construct the V-family generator described above, we need to advance the state vector $X_0$ by $J$ steps for each of the $M$ instances. In theory, we could apply recurrence \eqref{eq:step} $J$ times. However, in practice, since $J$ is a huge number, this operation would be astronomically expensive.
-To overcome this, techniques known as \textit{jump ahead} are used to compute the state $X_{tJ}$ directly from $X_0$ without calculating all the intermediate states.
+To overcome this, techniques known as \textit{jump ahead} are used to compute the state $X_{t \cdot J}$ directly from $X_0$ without calculating all the intermediate states.
 
 \subsubsection{\textit{Jump ahead} via binary matrix multiplications modulo 2}
 \label{sec:jumpahead}
@@ -377,10 +377,10 @@ where $F$ is a square binary matrix of size $wn-r$
 \\ \\ \\ \leftarrow m\text{-th row} \\ \\ \\ \\
 \end{matrix}
 \end{equation}
-State $X_{tJ}$ can be computed as:
+State $X_{t \cdot J}$ can be computed as:
 \begin{equation}
 \label{eq:jumpahead}
-    Y_{tJ} = Y_{tJ-1} \star F = Y_{tJ-2}  \star F \star F = \ldots = Y_{(t-1)J}  \star F^{J}, \quad j=1,\dots,M-1
+    Y_{t \cdot J} = Y_{t \cdot J - 1} \star F = Y_{t \cdot J - 2}  \star F \star F = \ldots = Y_{(t-1) \cdot J}  \star F^{J}, \quad t=1,\dots,M-1
 \end{equation}
 Let $B=F^J$, since $J$ is a power of 2 ($J=2^{q}$, where $q$ is the exponent from Table~\ref{tab:jvalues}).
 The jump matrix $B$ is computed offline via repeated squaring $F^{2^q} = F^{2^{q-1}} \star F^{2^{q-1}}$ and stored for later use.
