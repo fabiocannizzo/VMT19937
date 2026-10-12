@@ -517,7 +517,55 @@ Cross-platform portability is achieved through a portability layer specialised f
 \section{Test results}
 
 \subsection{Statistical tests}
-As discussed in Section~\ref{sec:simdgen}, the V-family generators produce sequences of independent and identically distributed PRNs, since they combine sub-sequences of an underlying MT generator whose statistical properties are preserved by the interleaving. All three generators in the V-family, across all vectorization factors $M \in \{1, 4, 8, 16\}$, were subjected to the \textit{TestU01} test suite proposed by L'Ecuyer and Simard in \cite{testu01}. We observe that almost all tests pass, with results consistent with those of the corresponding original reference implementations. In particular, failures in the \textit{LinearComp} test are observed for all MT-based generators (including the original ones). These results demonstrate that the inter-state vectorization strategy preserves the statistical properties of the underlying base generators.
+\label{sec:stats}
+As discussed in Section~\ref{sec:simdgen}, the interleaved sequence $\boldsymbol{S}$ is a rearrangement of the sequence of the base generator. This preserves the period and the marginal distribution of the outputs, but it does not by itself guarantee that the joint statistical behaviour is unchanged, since outputs that are adjacent in $\boldsymbol{S}$ are $J$ steps apart in $\boldsymbol{Z}$. This is therefore verified empirically, using the \textit{TestU01} library (version 1.2.3) of L'Ecuyer and Simard \cite{testu01}.
+
+\subsubsection{Methodology}
+All three V-family generators were tested: V-MT19937 for $M \in \{1, 4, 8, 16\}$, V-MT19937-64 for $M \in \{1, 2, 4, 8\}$ and V-SFMT19937 for $M \in \{1, 2, 4\}$. The case $M=1$ consists of a single instance, with no interleaving, and serves as a reference for the base generator; the other values correspond to register widths of 128, 256 and 512 bits. In all cases the generator is seeded with the same fixed seed and is queried one output word at a time, so that TestU01 receives exactly the sequence $\boldsymbol{S}$ of \eqref{eq:combseq}. Since TestU01 operates on 32-bit words, each 64-bit output of V-MT19937-64 is split into two 32-bit words, most significant half first, while V-SFMT19937 delivers each 128-bit word as four 32-bit outputs. Each configuration was subjected to the three predefined batteries \textit{SmallCrush}, \textit{Crush} and \textit{BigCrush}, which compute 15, 144 and 160 test statistics respectively. Following \cite{testu01}, a $p$-value outside the interval $[0.001, 0.999]$ is reported as suspect, and a $p$-value outside $[10^{-10}, 1-10^{-10}]$ is regarded as a clear failure.
+
+\subsubsection{Results}
+The results are summarized in Table~\ref{table:testu01}.
+
+\begin{table}[H]
+	\centering
+	\small
+	\begin{tabular}{|l|c|c|c|c|}
+		\hline
+		\textbf{Generator} & $M$ & \textbf{SmallCrush} (15) & \textbf{Crush} (144) & \textbf{BigCrush} (160) \\
+		\hline
+		\multirow{4}{*}{V-MT19937}
+		 & 1  & all passed & LinearComp ($\times 2$) & LinearComp ($\times 2$); ClosePairs$^{*}$ \\
+		 & 4  & all passed & LinearComp ($\times 2$) & LinearComp ($\times 2$) \\
+		 & 8  & all passed & LinearComp ($\times 2$) & LinearComp ($\times 2$) \\
+		 & 16 & all passed & LinearComp ($\times 2$) & LinearComp ($\times 2$); ClosePairs$^{*}$ \\
+		\hline
+		\multirow{4}{*}{V-MT19937-64}
+		 & 1  & all passed & LinearComp ($\times 2$) & LinearComp ($\times 2$) \\
+		 & 2  & all passed & LinearComp ($\times 2$) & LinearComp ($\times 2$) \\
+		 & 4  & all passed & LinearComp ($\times 2$) & LinearComp ($\times 2$) \\
+		 & 8  & all passed & LinearComp ($\times 2$) & LinearComp ($\times 2$); CollisionPermut$^{*}$ \\
+		\hline
+		\multirow{3}{*}{V-SFMT19937}
+		 & 1  & all passed & all passed & LinearComp ($\times 2$); ClosePairs$^{*}$; Run$^{*}$ \\
+		 & 2  & all passed & all passed & LinearComp ($\times 2$) \\
+		 & 4  & all passed & LongestHeadRun$^{*}$ & WeightDistrib$^{*}$ \\
+		\hline
+	\end{tabular}
+	\caption{\label{table:testu01} TestU01 results for the V-family: statistics with a $p$-value outside $[0.001, 0.999]$, out of the number of statistics shown in the column header. LinearComp ($\times 2$) denotes the two linear complexity tests of the battery ($r=0$ and $r=29$), which fail with $p > 1-10^{-15}$. $^{*}$Suspect value, not a clear failure; the $p$-values are given in the text.}
+\end{table}
+
+The only clear failures are the \textit{LinearComp} tests, a known weakness of all $F_2$-linear generators \cite{testu01, multistream}. For V-MT19937 and V-MT19937-64 they occur in \textit{Crush} and \textit{BigCrush} identically for every $M$, including the reference case $M=1$. For V-SFMT19937 they occur in \textit{BigCrush} for $M=1$ and $M=2$, but not for $M=4$, and never in \textit{Crush}. We have not investigated the reason for this difference, and we do not interpret it as an improvement in quality, since the generator remains $F_2$-linear.
+
+Six further $p$-values fall outside $[0.001, 0.999]$, none of which is a clear failure:
+\begin{itemize}
+    \item V-MT19937, \textit{BigCrush}: \textit{ClosePairs}, $p=0.9998$ for $M=1$ and $p=0.9994$ for $M=16$;
+    \item V-MT19937-64, \textit{BigCrush}: \textit{CollisionPermut}, $p=3.1\times10^{-5}$ for $M=8$;
+    \item V-SFMT19937, \textit{BigCrush}: \textit{ClosePairs}, $p=0.9994$ and \textit{Run}, $p=5.6\times10^{-5}$, both for $M=1$; \textit{WeightDistrib}, $p=0.9998$ for $M=4$;
+    \item V-SFMT19937, \textit{Crush}: \textit{LongestHeadRun}, $p=0.9990$ for $M=4$.
+\end{itemize}
+Three of them occur in a reference case $M=1$.
+
+Apart from these values, the TestU01 batteries do not distinguish a V-family generator from its base generator, for any value of $M$.
 
 \subsection{Intra-State Vectorization: the X-Family}
 \label{sec:xfamily}
