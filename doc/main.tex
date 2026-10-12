@@ -233,7 +233,7 @@ where $\mathbf{K}=(K_1, K_2, K_3, K_4)$ is a 128-bit constant mask, and the para
 \end{aligned}
 \end{equation}
 
-SFMT19937 shares the same huge period of $2^{19937}-1$ as the original Mersenne Twister. It does not need a separate tempering step, because its complex multi-lane mixing ensures the output is well-distributed and statistically sound right from the start.
+The period of SFMT19937 is guaranteed to be a multiple of $2^{19937}-1$, the period of the original Mersenne Twister. It does not need a separate tempering step, because its complex multi-lane mixing ensures the output is well-distributed and statistically sound right from the start.
 
 \subsection{Implementation}
 For each new random word generated the state vector is transformed by the recursion $$x_{k+n} = f(x_k, \dots, x_{k+n-1})$$ removing the least significant word $x_{k}$ on its left side and adding a new word $x_{k+n}$ on its right side.
@@ -297,31 +297,46 @@ For SFMT19937 vectorization is even harder. While its use of 128-bit words makes
 
 \section{Inter-State Vectorization: the V-Family}
 \label{sec:simdgen}
-In this section, we introduce a family of novel random number generators --- the \textbf{V-family} --- each built from multiple instances of a base MT generator combined in a way that is specifically designed to fully exploit SIMD hardware. These generators preserve the same statistical properties and period as the underlying base generator, and their theoretical throughput scales proportionally to the SIMD register width. The construction applies uniformly to all three base generators: MT19937-32, MT19937-64, and SFMT19937.
+In this section, we introduce a family of random number generators --- the \textbf{V-family} --- each built from multiple instances of a base MT generator combined in a way that is specifically designed to fully exploit SIMD hardware. The output of these generators is a rearrangement of the sequence of the base generator, and their theoretical throughput scales proportionally to the SIMD register width. The construction applies uniformly to all three base generators: MT19937-32, MT19937-64, and SFMT19937.
 
 Given a certain initial state $X_0$, a base MT PRNG produces a sequence $\boldsymbol{Z}$ of PRNs:
 \begin{equation}
 \label{eq:mainseq}
    \boldsymbol{Z} = z_0, z_1, \dots, z_{P-1}
 \end{equation}
-The PRNs $z_k$ are independent and identically distributed, or at least they emulate such statistical properties. They have uniform distribution over words of width $w$, and the sequence has a period of $P=2^{19937}-1$.
+They are uniformly distributed over words of width $w$, and the sequence has period $P=2^{19937}-1$.
 
-Let's consider $M$ sub-sequences $\boldsymbol{Z_t}$ ($t=0\dots M-1$) of equal size $J$ obtained by partitioning sequence $\boldsymbol{Z}$ in groups of equal length $J=P/M$
+Let $M$ be a power of two and let
 \begin{equation}
-\label{eq:subseq}
-   \underbrace{z_0, z_1, \dots, z_{J-1}}_{\boldsymbol{Z_0}},\, \underbrace{z_J, z_{J+1}, \dots, z_{2J-1}}_{\boldsymbol{Z_1}}, \dots,\, \underbrace{z_{(M-1)J}, z_{(M-1)J+1}, \dots, z_{MJ-1}}_{\boldsymbol{Z_{M-1}}}
+\label{eq:jdef}
+    J = \frac{P+1}{M} = 2^{19937-\log_2 M}
 \end{equation}
-Let's construct a new sequence $\boldsymbol{S}$ which interleaves the sequences $\boldsymbol{Z_t}$
+which is an integer since $P+1 = 2^{19937}$. Consider $M$ instances $G_t$ ($t=0,\dots,M-1$) of the base generator, where $G_t$ is advanced by $t \cdot J$ steps with respect to $G_0$, so that the $i$-th output of $G_t$ is $z_{(tJ+i)\,\%\,P}$. The sequence $\boldsymbol{S}$ is obtained by polling the instances in round-robin order:
 \begin{equation}
 \label{eq:combseq}
-   \boldsymbol{S}=\underbrace{z_0, z_J, z_{2J}, \dots, z_{(M-1)J}}_{\text{1-st number from each sub-sequence}}, \,\underbrace{z_1,\, z_{J+1}, \, z_{2J+1},\, \dots,\, z_{(M-1)J+1}}_{\text{2-nd number from each sub-sequence}}\,, \dots\,, \underbrace{z_{J-1}, z_{2J-1}, z_{3J-1}, \dots, z_{MJ-1}}_{\text{$J$-th number from each sub-sequence}}
+   \boldsymbol{S}=\underbrace{z_0, z_J, z_{2J}, \dots, z_{(M-1)J}}_{\text{1-st output of each instance}}, \,\underbrace{z_1,\, z_{J+1}, \, z_{2J+1},\, \dots,\, z_{(M-1)J+1}}_{\text{2-nd output of each instance}}\,, \dots
 \end{equation}
-In other words, sequence $\boldsymbol{S}$ is obtained by polling each sub-sequence $Z_t$ in round-robin fashion. This technique is known as the leap-frog method \cite{multistream}. Because the numbers in the original sequence $\boldsymbol{Z}$ are independent and identically distributed, the numbers in the new sequence $\boldsymbol{S}$, obtained by interleaving the sub-sequences $\boldsymbol{Z_t}$, are also independent and identically distributed. The combined sequence $\boldsymbol{S}$ preserves the same overall period and statistical properties as the original MT sequence.
+In other words, sequence $\boldsymbol{S}$ is equivalent to running $M$ generators in synchronized round-robin, each initialized to a different offset within the sequence via jump-ahead \cite{multistream}.
 
-Let $L$ be the SIMD register width in bits available on a given CPU (128, 256, or 512 depending on whether the ISA supports SSE/NEON, AVX/SVE, or AVX-512), and let $w$ be the state word size of the base generator ($w=32$ for MT19937-32, $w=64$ for MT19937-64, $w=128$ for SFMT19937). We choose $M=L/w$ as the \emph{vectorization coefficient}, i.e.\ the number of independent generator instances that can be evolved simultaneously in a single set of SIMD operations.
-We divide the total period $P=2^{19937}\!-\!1$ into $M$ sub-sequences of length
-$$J=\myceil{\frac{P}{M}}\approx 2^{19937-\log_2 M}$$
-with the last sub-sequence having length $J\!-\!1$. Table~\ref{tab:jvalues} shows the parameters $L$, $M$ and $J$ for all three V-family generators across the supported ISA widths.
+Every position $j$ of $\boldsymbol{S}$ can be written uniquely as $j = Mi + t$, where $i = \lfloor j/M \rfloor$ is the round and $t = j\,\%\,M$ is the instance being polled, so that $s_j = z_{(tJ+i)\,\%\,P}$. Since $MJ = P+1$,
+$$ jJ = (Mi+t)J = i(P+1) + tJ \equiv i + tJ \pmod P $$
+and therefore
+\begin{equation}
+\label{eq:decimation}
+    s_j = z_{(jJ)\,\%\,P}, \qquad j = 0, 1, 2, \dots
+\end{equation}
+In other words, $\boldsymbol{S}$ is the decimation of $\boldsymbol{Z}$ with stride $J$. Since $J$ is a power of two and $P$ is odd, $J$ and $P$ are coprime, hence the map $j \mapsto (jJ)\,\%\,P$ is a bijection of $\{0,\dots,P-1\}$ onto itself. Two consequences follow: the first $P$ elements of $\boldsymbol{S}$ are a permutation of the $P$ elements of one period of $\boldsymbol{Z}$, so that the $M$ instances never overlap within a period; and $s_{j+P} = s_j$, so that $\boldsymbol{S}$ has period $P$. No special treatment is needed for the fact that $P$ is not a multiple of $M$: the instances simply wrap around the period.
+
+As an illustration, consider $P=7$, $M=2$, $J=4$. Equation \eqref{eq:decimation} gives the indices $0, 4, 1, 5, 2, 6, 3$ for $j=0,\dots,6$, i.e.
+$$\boldsymbol{S} = z_0, z_4, z_1, z_5, z_2, z_6, z_3,\; \underbrace{z_0, z_4, z_1, \ldots}_{\text{repeats}}$$
+Conversely, since $MJ \equiv 1 \pmod P$, taking every $M$-th element of $\boldsymbol{S}$ returns $\boldsymbol{Z}$.
+
+This argument assumes that $P$ is the exact period of $\boldsymbol{Z}$, which is the case for MT19937 and MT19937-64. For SFMT19937 the period is only guaranteed to be a multiple of $2^{19937}-1$ \cite{sfmt19937}. In that case \eqref{eq:decimation} still holds for $j < P$, so that the $M$ instances do not overlap over the first $P$ elements of $\boldsymbol{S}$, but the period of $\boldsymbol{S}$ is not claimed to be exactly $P$.
+
+The marginal distribution is also preserved: $\boldsymbol{S}$ is a reindexing of $\boldsymbol{Z}$, so the distribution of each element is unchanged. The absence of overlap does not, however, imply that the $M$ streams are statistically independent.
+The outputs of each instance, taken alone, are a contiguous segment of the original sequence and therefore retain its proven properties, such as the 623-dimensional equidistribution of MT19937 \cite{mt19937}. We have no corresponding proof for tuples that combine outputs of different instances, as consecutive elements of $\boldsymbol{S}$ do. A similar assumption underlies the customary use of sub-streams obtained by jump-ahead in parallel computations \cite{multistream}: they are treated as independent because they do not overlap, although, as noted by Fog \cite{fog}, no proof of independence is available. This is therefore assessed empirically with the TestU01 suite, as described in Section~\ref{sec:stats}.
+
+Let $L$ be the SIMD register width in bits available on a given CPU (128, 256, or 512 depending on whether the ISA supports SSE/NEON, AVX/SVE, or AVX-512), and let $w$ be the state word size of the base generator ($w=32$ for MT19937-32, $w=64$ for MT19937-64, $w=128$ for SFMT19937). We choose $M=L/w$ as the \emph{vectorization coefficient}, i.e.\ the number of generator instances that can be evolved simultaneously in a single set of SIMD operations, and $J$ follows from \eqref{eq:jdef}. Table~\ref{tab:jvalues} shows the parameters $L$, $M$ and $J$ for all three V-family generators across the supported ISA widths.
 
 \begin{table}[h!]
 	\centering
@@ -343,7 +358,7 @@ with the last sub-sequence having length $J\!-\!1$. Table~\ref{tab:jvalues} show
 	\caption{\label{tab:jvalues} V-family parameters $L$ (bits), $M$, and $J$ for the three generator types across ISA widths. $^{*}$V-SFMT19937 requires $L>128$ since SFMT state elements are 128-bit wide, making $M=1$ degenerate.}
 \end{table}
 
-A V-family generator producing the sequence $\boldsymbol{S}$ in \eqref{eq:combseq} is constructed by duplicating $M$ times the base MT generator with initial state $X_0$, yielding an array of $M$ generators $G_t$ ($t=0,\dots, M-1$) with identical state $X_0$. The state vector of each $G_t$ is then advanced by $t\, J$ steps so that it produces sub-sequence $\boldsymbol{S_t}$. Finally, the $M$ generators are combined into a single V-family generator that polls each $G_t$ in round-robin order.
+A V-family generator producing the sequence $\boldsymbol{S}$ in \eqref{eq:combseq} is constructed by duplicating $M$ times the base MT generator with initial state $X_0$, yielding an array of $M$ generators $G_t$ ($t=0,\dots, M-1$) with identical state $X_0$. The state vector of each $G_t$ is then advanced by $t \cdot J$ steps. Finally, the $M$ generators are combined into a single V-family generator that polls each $G_t$ in round-robin order.
 
 Let's add a second index $t$ to the state vector, so that $X_{k,t}$ is the state $k$-th for the $t$-th generator, i.e. $X_{0,t}=X_{t \cdot J}$, the multi-generator described below has initial state
 $$
