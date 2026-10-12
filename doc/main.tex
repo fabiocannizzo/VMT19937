@@ -779,6 +779,9 @@ The methodology introduced here is not specific to the Mersenne Twister and appl
 
 A further advantage of the V-family construction is implementation simplicity. Intra-state vectorization requires careful analysis of loop structure, remainder handling, and misalignment workarounds that are specific to each generator. By contrast, the V-family implementation is largely mechanical: it suffices to extend the state array by a factor of $M$ and replace each scalar word operation with its SIMD equivalent. This substitution is uniform across generators and ISA widths and can be fully automated via C++ templates.
 
+\section*{Declaration of generative AI and AI-assisted technologies in the manuscript preparation process}
+During the preparation of this work the author used Claude (Anthropic) and Gemini (Google), two AI agents, to assist in drafting and revising parts of the text, in comparing the work with the related literature, in checking the consistency of the manuscript, in developing and testing parts of the accompanying source code and benchmark scripts, and in running the experiments. The author reviewed and edited the output as needed and takes full responsibility for the content of the published article.
+
 %------------------------------BIBLIOGRAPHY-----------------
 \begin{thebibliography}{9}
 
