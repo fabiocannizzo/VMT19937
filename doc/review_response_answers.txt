@@ -1,0 +1,494 @@
+JPDC-D-26-00841 — VMT19937 Revision: Point-by-Point Response to Reviewers
+===========================================================================
+(Built incrementally; items added as each is resolved)
+
+Format:
+  Reviewer N, Comment X:
+    [Reviewer's comment verbatim or closely paraphrased]
+  Response:
+    [Our answer and description of changes made]
+
+---
+
+Reviewer #1, Comment 1 (MT19937 is no longer state-of-the-art):
+  We agree. The text has been revised to state explicitly that more modern
+  generators exist that are superior to MT19937 in statistical quality, speed,
+  or both (e.g. XORSHIFT, WELL, xoshiro256, PCG), and that MT19937 remains
+  widely deployed despite this, particularly in legacy and financial codebases.
+  Two new references have been added: O'Neill (2014) for PCG and Blackman &
+  Vigna (2021) for xoshiro256.
+  Changes: main.tex, line 87 (Introduction) and bibliography.
+
+Reviewer #1, Comment 3 (did the authors search for existing SIMD implementations?):
+  Yes. We looked for existing SIMD implementations of the Mersenne Twister, both
+  in the literature and among widely used libraries. What we found falls into
+  two groups, and the revised paper now says so explicitly in the new Section 1.1
+  (Related work).
+
+  (a) Implementations that vectorize within a single state (intra-state).
+  - SFMT (Saito and Matsumoto): a distinct generator designed around 128-bit
+    registers; it does not extend to wider registers.
+  - Intel MKL: provides MT19937 and SFMT19937 generators. MKL is closed source,
+    but its generators reproduce the original sequences, so they necessarily
+    operate on a single state. MKL was already one of our baselines (Tables 5
+    and 6) and is our strongest competitor: it is faster than V-MT19937 on
+    AVX-512 and slower on SSE4.2 and AVX2, and slower than V-SFMT19937 on all
+    platforms where both are available.
+  - Compiler auto-vectorization of the C++ standard library implementation
+    (the STL rows of Tables 5 and 7).
+  - Fog (2015): vectorizes MTGP with Mersenne exponent 11213, a different
+    member of the family, again within a single state.
+  - Our own X-family (X-MT19937, X-MT19937-64, X-SFMT19937), written for this
+    paper to have an optimized intra-state implementation of exactly the same
+    generators, on all five instruction sets, to compare against.
+
+  (b) Implementations that vectorize across states (inter-state). We found no
+  published implementation of MT19937, MT19937-64 or SFMT19937 of this kind.
+  The closest work is the multiply-with-carry component of Fog's RANVEC1, which
+  runs eight generators with different multipliers in the lanes of one register;
+  it is discussed in detail in Section 1.1 and in our response to Reviewer #3,
+  Comment 1.
+
+  We cannot exclude that unpublished or proprietary implementations exist, and
+  the text is worded accordingly ("we are not aware of").
+  Changes: main.tex, Section 1.1 (new paragraph on existing SIMD implementations
+  of the Mersenne Twister).
+
+Reviewer #2, Comment 1 (period, sub-sequence treatment, and IID claim):
+  We thank the reviewer for this observation. The text has been revised to address
+  the period and sub-sequence treatment explicitly.
+
+  Regarding the definition of the sub-streams: the original text defined J as
+  P/M, which is not an integer. The construction is now stated directly in terms
+  of the M generator instances. With J = (P+1)/M = 2^{19937-log2(M)}, an integer
+  since P+1 = 2^19937, instance G_t is advanced by t*J steps with respect to G_0,
+  and S is obtained by polling the instances in round-robin order (new Eq. 15
+  and revised Eq. 16).
+
+  Regarding the period and the wrap-around: the revised text replaces the
+  assertion that S is a permutation of Z with a proof. Position j of S belongs to
+  round i = floor(j/M) and instance t = j mod M, so that s_j = z_{(t*J+i) mod P}.
+  Since M*J = P+1, we have j*J = i*(P+1) + t*J = i + t*J (mod P), hence
+      s_j = z_{(j*J) mod P}                                   (new Eq. 17)
+  i.e. S is the decimation of Z with stride J. Since J is a power of two and P is
+  odd, J and P are coprime, so the map j -> (j*J) mod P is a bijection of
+  {0,...,P-1}. Two consequences follow: (a) the first P elements of S are a
+  permutation of one period of Z, so the M instances never overlap within a
+  period; (b) s_{j+P} = s_j, so S has period P. No special treatment is needed
+  for the fact that P is not a multiple of M: the instances simply wrap around
+  the period. The example with P=7, M=2, J=4 is retained as an illustration
+  (indices 0,4,1,5,2,6,3).
+
+  The argument assumes that P is the exact period of Z, which holds for MT19937
+  and MT19937-64. For SFMT19937 the period is only guaranteed to be a multiple of
+  2^19937-1; the text now says so, and for this generator claims only that the
+  instances do not overlap over the first P elements of S.
+
+  Regarding the IID claim: the revised text no longer describes the outputs as
+  independent and identically distributed, and distinguishes what is proven from
+  what is not: (1) period and non-overlap are proven analytically, as above;
+  (2) the marginal distribution is unchanged, since S is a reindexing of Z;
+  (3) the outputs of each instance, taken alone, are a contiguous segment of the
+  original sequence and therefore retain its proven properties; (4) for tuples
+  that combine outputs of different instances, as consecutive elements of S do,
+  we have no proof, and the text says so. This last point is assessed
+  empirically with the TestU01 suite (Section 4.1).
+
+  We wish to be transparent on one further point. The original MT19937 paper
+  (Matsumoto & Nishimura, 1998) establishes k-dimensional equidistribution of the
+  output sequence as a rigorous mathematical property of the specific recurrence
+  and tempering parameters chosen. We were unable to extend this argument to the
+  interleaved sequence S: the reordering changes the positions at which consecutive
+  k-tuples are drawn from the state, and we could not verify that the
+  equidistribution proof carries over. We therefore make no claim that the V-family
+  inherits the k-dimensional equidistribution of the original MT19937. The
+  statistical validation of the V-family rests entirely on empirical evidence from
+  the TestU01 suite, which is the same standard applied to most modern PRNGs.
+  Changes: main.tex, Section 3 (lines 304-339).
+
+
+Reviewer #2, Comment 3 (novelty relative to prior work):
+  We agree that the novelty statement was insufficiently precise. The Introduction
+  has been restructured and a new Section 1.1 (Related work) has been added to
+  define the novelty boundary explicitly.
+
+  The revised text acknowledges that the two ingredients are both established.
+  Splitting a sequence into sub-streams by jump-ahead is customarily used to feed
+  different threads, processes or machines: each instance runs on its own, and
+  each CPU remains poorly utilized since a single instance cannot fill its SIMD
+  registers. Running several generators in lock-step in the lanes of one SIMD
+  register has also been done before, by Fog (2015), using multiply-with-carry
+  generators with a different multiplier in each lane. The contribution of this
+  work is to combine the two: the M lanes of a SIMD register are occupied by M
+  instances of the same large-state generator, de-phased by jump-ahead so that
+  they traverse disjoint segments of a single sequence. One instruction then
+  advances all M instances, and the output is an exact rearrangement of the
+  sequence of the base generator, for any register width.
+
+  As the reviewer suggests, the contributions are now organised around the state
+  layout for inter-state SIMD execution, the uniform treatment of MT19937,
+  MT19937-64 and SFMT19937, and the systematic comparison with intra-state
+  vectorization (the X-family). Stream splitting across cores and the V-family
+  are complementary: multiple V-family generators can be deployed across cores,
+  with each core fully utilizing its vector units. The conditions under which the
+  technique applies to other generators are stated in the Conclusion (see the
+  response on the generalization claim).
+
+  A detailed comparison with the most closely related work is given in the
+  response to Reviewer #3, Comment 1.
+  Changes: main.tex, line 96 (Introduction), new Section 1.1 (Related work,
+  lines 104-121), and Section 5 (Conclusion, line 774).
+
+Reviewer #3, Comment 5 (why does the approach achieve better SIMD utilization?):
+  The paper already addresses this question across Sections 2.6 and 3, but the
+  connection was not drawn explicitly in one place. A summary sentence has been
+  added at the end of the introductory part of Section 3 (before Section 3.1) to
+  connect the two.
+
+  The detailed explanation is as follows. Section 2.6 identifies two structural
+  obstacles that prevent intra-state SIMD implementations from achieving full
+  hardware utilization:
+
+  (1) Residual scalar remainder: the state update is split into sub-loops whose
+  iteration counts are generally not multiples of the number of SIMD lanes L/w.
+  For MT19937 the first sub-loop has n-m = 624-397 = 227 iterations, which is not
+  a multiple of 4, 8 or 16; with SSE2 (4 lanes) this gives 56 vector iterations
+  followed by 3 scalar ones. Scalar fallback code is therefore required for the
+  remainder iterations.
+
+  (2) Memory misalignment: consecutive groups of state words required by the
+  recurrence (x_k, x_{k+1}, ...) are offset by w bytes = 4 bytes for 32-bit words,
+  while SIMD loads require alignment to L/8 bytes. This forces costly byte-shift
+  or blend intrinsics to assemble operands, and causes cache-line crossing penalties.
+
+  In the V-family, both obstacles are eliminated by the state layout design:
+  - Each SIMD lane is permanently assigned to one of M independent states. The
+    recurrence advances all M states simultaneously with one SIMD instruction.
+    The total recurrence loop is exactly n iterations of one SIMD instruction each,
+    with no remainder regardless of n or L/w.
+  - All M interleaved state words for position k are contiguous in memory and
+    naturally aligned to L/8 bytes, so every SIMD load is aligned with no
+    byte-shifting required.
+  The result is 100% SIMD lane utilization for the recurrence step, by construction
+  rather than as an optimisation target.
+
+  A further advantage noted in the revised Conclusion is implementation simplicity.
+  Intra-state vectorization requires careful per-generator analysis of loop structure,
+  remainder handling, and misalignment workarounds. The V-family implementation is
+  by contrast largely mechanical: extend the state array by a factor of M and replace
+  each scalar word operation with its SIMD equivalent. This substitution is uniform
+  across generators and ISA widths and can be fully automated via C++ templates.
+  Changes: main.tex, Section 3, line 388 (summary sentence) and Section 5 (Conclusion).
+
+Reviewer #2, Comment 2a (near-linear scaling claim):
+  We agree that the cross-platform figures in Tables 5--7 cannot isolate SIMD width
+  effects from hardware differences, since each column corresponds to a different
+  processor. The text has been revised to state this explicitly: the tables are
+  intended to be read column-wise, comparing algorithm families on the same hardware.
+
+  To address the reviewer's concern directly, we conducted a controlled experiment on
+  a single machine (Intel Xeon Platinum 8488C, GCC 16, -O3 -std=c++20), compiling
+  each V-family generator at 128, 256, and 512 bits using explicit ISA flags rather
+  than -march=native. The results are presented in a new Table 9 in Section 4.5.
+
+  The controlled results confirm that throughput increases with M but sub-linearly.
+  V-MT19937-64 achieves approximately 1.75x per doubling of M (1.74x at 128->256,
+  1.80x at 256->512). V-MT19937 scales well from 128 to 256 bits (1.78x) but only
+  1.35x from 256 to 512 bits, because at M=16 the combined state (~40KB) approaches
+  the L1 cache capacity of the test machine (48KB), increasing memory traffic.
+  V-SFMT19937 shows 1.52x from 256 to 512 bits for the same reason. These results
+  are consistent with the cache pressure analysis already present in Section 4.5.
+  The paper now qualifies the scaling claim as "consistent but sub-linear due to
+  memory bandwidth limitations" and attributes the deviation to cache pressure rather
+  than algorithmic inefficiency.
+  Changes: main.tex, Section 4.5 (revised Proportional Scaling text + new Table 9).
+
+Reviewer #2, Comment 2b (API and buffering differences in performance tables):
+  We agree that the speedup attribution was insufficiently explicit. A paragraph
+  has been added to the Performance Methodology section (Section 4.3) stating
+  that ORIG and STL have no native vectorial API and their scalar results are
+  reproduced in the Vectorial section for reference only. V/X are measured with
+  a 10,240-sample block query; MKL scalar mode uses block size 1. Speedups of
+  V or X over ORIG/STL in vectorial mode therefore combine three effects: (1)
+  inter-state vectorization (V-family only), (2) buffering gain from amortized
+  bulk state regeneration (both V and X), and (3) API overhead differences.
+  The V-vs-X comparison in vectorial mode best isolates contribution (1).
+  Changes: main.tex, Section 4.3.
+
+Reviewer #2, Comment 2b (generalization claim — see also R2.3b for full response):
+  The generalization claim "applies to any linear recurrence PRNG" has been replaced
+  with a qualified statement listing the three conditions a generator must satisfy:
+  (i) an efficient jump-ahead operation, (ii) a verifiable non-overlapping substream
+  partition, and (iii) a word-level state suitable for SIMD lane interleaving. The
+  claim is further hedged ("might benefit", "appear to satisfy") because applicability
+  to generators other than the MT family has not been experimentally verified.
+  Generators with small states such as xoshiro256 (256-bit state) or xoroshiro128
+  (128-bit state) appear to satisfy all three conditions and are noted as a natural
+  direction for future work.
+  Changes: main.tex, Section 5 (Conclusion).
+
+Reviewer #2, Comment 2c (reproducibility: OS and compiler flags):
+  We agree. Table 4 (Hardware Targets) has been extended with a GCC version column
+  listing the exact compiler version used on each platform (GCC 15.2.0 on the NEON
+  machine; GCC 16.0.1 on AVX2, AVX-512, and SVE256; GCC 16.1.1 on SSE4.2). The
+  accompanying text now states that all hardware targets run Linux and that all
+  benchmarks were compiled with flags -O3 -std=c++20 -march=native.
+  Regarding variability: the text now states that each test is repeated at least
+  30 times, and further if needed, until the mean throughput has converged (the
+  benchmark stops when the estimated relative error of the mean is below 1%).
+  Changes: main.tex, Table 4 (GCC column) and Section 4.3 (text, line 615).
+
+Reviewer #1, Comment 4 (benchmark an actual use case):
+  We appreciate the suggestion but respectfully decline to add application-level
+  benchmarks to this paper. The performance impact of a PRNG on an application
+  depends heavily on the application itself: in a Monte Carlo simulation, for
+  example, the fraction of total execution time spent in random number generation
+  may range from negligible (if the per-sample computation is expensive) to
+  dominant (if samples are cheap to process). A single application benchmark would
+  therefore not be representative, and a comprehensive survey of application
+  domains is beyond the scope of this work. The contribution of this paper is the
+  raw throughput improvement of the generator itself, which is the correct metric
+  for evaluating a PRNG independently of any particular use case.
+  Changes: none.
+
+Reviewer #3, Comment 3 (multi-core implementation):
+  The paper already addresses this point in the Introduction (Section 1). The
+  purpose of the V-family is to achieve full hardware utilization on a single
+  core: M instances run in lock-step so their combined state fills a SIMD register
+  exactly, enabling a single instruction to advance all M instances simultaneously.
+  Existing approaches that split a sequence into independent sub-streams across
+  cores leave each CPU's vector units underutilized — so in effect the focus of
+  this paper is precisely on closing this gap by improving utilization of the
+  available vector hardware (SIMD).
+  Multi-core parallelism is complementary and orthogonal: multiple V-family
+  generators, each initialized with a distinct jump-ahead offset to guarantee
+  non-overlapping output streams, can be deployed across cores or machines, where
+  each core now fully utilizes its own SIMD hardware, compounding the benefit of
+  both vectorization and parallelism. This complementarity is stated explicitly in
+  Section 1. A full multi-threaded implementation and benchmark is left as future
+  work.
+  Changes: none (already covered in Section 1).
+
+Reviewer #2, Comment 3 (notation in Eq. 20 of the original submission, now Eq. 21):
+  We agree with the reviewer. The range qualifier "j=1,...,M-1" was a typographic
+  error and has been corrected to "t=1,...,M-1". Additionally, all subscripts of
+  the form "tJ" have been rewritten with an explicit multiplication dot (t·J) to
+  eliminate ambiguity.
+
+Reviewer #3, Comment 1 (building blocks are established; Fog 2015, PRAND, Stpiczynski 2020):
+  We are grateful to the reviewer for bringing these works to our attention, and
+  in particular the paper by Fog, which we had regrettably missed and which is
+  indeed the closest prior work. We have studied the three references carefully.
+  They led us to correct one statement of the original manuscript and to state
+  the contribution more narrowly and, we believe, more accurately.
+
+  We agree with the reviewer that the individual building blocks are established.
+  The original Introduction claimed that all existing multi-stream approaches rely
+  on unsynchronized generator instances. In the light of Fog's paper this is not
+  correct, and the sentence has been removed. The revised manuscript now states
+  explicitly that neither jump-ahead stream separation nor lock-step execution of
+  several generators in the lanes of a SIMD register is new, and that the
+  contribution lies in their combination on a single large-state generator. A new
+  Section 1.1 (Related work) positions the V-family against each of the three works.
+  The comparison is summarised below.
+
+  (a) Fog (2015).
+  Overlap. Fog treats vector and multicore processors together, as we do. His
+  RANVEC1 generator has two components. One of them consists of eight 64-bit
+  multiply-with-carry (MWC) generators placed in the eight lanes of a 512-bit
+  register, advanced together and read in round-robin fashion. This is the same
+  structural arrangement as the V-family: one generator per SIMD lane, in
+  lock-step. We now credit Fog for it. Fog also reports, for the vectorized MTGP
+  component of RANVEC1, the same intra-state obstacles that we describe in
+  Section 2.6 (a state buffer whose size is not a multiple of the vector size,
+  wrap-around handling, misaligned memory access), and he raises the cache
+  footprint of large states as a concern, which our measurements in Section 4.5
+  confirm.
+
+  Differences.
+  (i) How the lanes are populated. In RANVEC1 each lane holds a different
+  generator, obtained with a different multiplier. This ties the construction to
+  a generator family for which at least M validated parameter sets exist. Fog
+  himself points out that only nine suitable MWC multipliers are known, so that
+  the construction cannot be extended beyond 512 bits, and that searching for new
+  parameter sets (dynamic creation) is computationally expensive. In the V-family
+  the lanes hold instances of the same generator, with its published parameters,
+  separated by jump-ahead. No parameter search or generator-specific design is
+  needed, and any power of two M is admissible.
+  (ii) What the output is. RANVEC1 is a new combined generator (MWC combined with
+  MTGP) whose statistical quality has to be established on its own. The output of
+  a V-family generator is a rearrangement of the sequence of the base generator:
+  the lanes traverse disjoint segments of one sequence, so non-overlap holds by
+  construction and the period is unchanged.
+  (iii) Where inter-state vectorization is applied. Fog lists jump-ahead among the
+  methods for producing independent streams, but does not use it to populate SIMD
+  lanes, and the large-state (Mersenne Twister type) component of RANVEC1 remains
+  vectorized within a single state. This is possible only because MTGP-11213 was
+  selected for its long shortest feedback path. Fog states that SFMT cannot be
+  implemented with vectors wider than 128 bits for this reason. The V-family
+  applies inter-state vectorization to the large-state generator itself, places
+  no requirement on the feedback path, and V-SFMT19937 runs on 256-bit and 512-bit
+  registers with the unmodified SFMT19937 recurrence.
+
+  (b) PRAND library.
+  Overlap. PRAND provides jump-ahead for MT19937 (and MRG32k3a) and uses it to
+  create streams with equally spaced starting points. This is the same operation
+  that we use to initialise the M instances.
+  Differences. In PRAND the streams are intended for different threads or
+  processes and are consumed independently of each other; to our knowledge the
+  library does not address SIMD vectorization. PRAND therefore covers the
+  stream-separation ingredient only. It is now cited in the Introduction and in
+  Section 1.1. Note that multiple independent streams obtained via jump-ahead can
+  be used also with the V generators, as it is a complementary technique.
+
+  (c) Stpiczynski (2020).
+  Overlap. This work shares with ours the general idea of exploiting the
+  linearity of the recurrence to skip ahead in the sequence: the output is split
+  into blocks, the 256 numbers that each block needs in order to start are
+  computed directly, and the blocks are then generated concurrently.
+  Difference. The parallelism is obtained differently. In Stpiczynski's work it
+  comes from cores or GPU threads, and SIMD is applied within each block to
+  consecutive elements of a single sequence, which is possible for Marsa-LFIB4
+  because no number depends on the 54 numbers that precede it. The V-family
+  instead places different instances of the generator in the lanes of a SIMD
+  register, and therefore does not require such a gap in the recurrence.
+  The two approaches are complementary: a block-parallel scheme across cores can
+  be combined with inter-state vectorization within each core.
+
+  What is novel. In summary, we do not claim any of the individual ingredients.
+  The contribution of the paper is:
+  1. the use of jump-ahead substreams of a single large-state F2-linear generator
+     as the lanes of a SIMD register, which yields full lane utilization for any
+     register width without modifying the generator or searching for parameters;
+  2. its uniform application to MT19937, MT19937-64 and SFMT19937, including the
+     extension of SFMT19937 beyond 128-bit registers;
+  3. a quantitative comparison, on five instruction sets, against optimized
+     intra-state implementations of the same generators (the X-family), including
+     the case in which the inter-state approach loses because of cache pressure
+     (MT19937 at 512 bits).
+  Changes: main.tex, line 96 (Introduction, novelty paragraph rewritten), new
+  Section 1.1 (Related work, lines 104-121), Section 5 (Conclusion, line 774), and
+  bibliography (three references added: Fog 2015, Stpiczynski 2020, PRAND).
+
+Reviewer #3, Comment 2 (TestU01 section too brief):
+  We agree. Section 4.1 has been rewritten and expanded, and the tests have been
+  extended so that all three generators are covered for every vectorization
+  factor. It now contains:
+
+  - Methodology (Section 4.1.1): the TestU01 version (1.2.3); the configurations
+    tested (V-MT19937 with M = 1, 4, 8, 16; V-MT19937-64 with M = 1, 2, 4, 8;
+    V-SFMT19937 with M = 1, 2, 4, where M = 1 is a single instance without
+    interleaving and serves as reference for the base generator); the way the
+    generators are queried (one output word at a time, so that TestU01 receives
+    exactly the interleaved sequence S; 64-bit outputs are split into two 32-bit
+    words, most significant half first); the three batteries used (SmallCrush,
+    Crush, BigCrush, with 15, 144 and 160 statistics respectively); and the
+    criteria used to classify a p-value as suspect or as a clear failure.
+
+  - Results (Section 4.1.2): a new table listing, for each generator, each M and
+    each battery, every statistic whose p-value falls outside [0.001, 0.999].
+    In total 33 battery runs and 3509 test statistics are reported.
+
+  - Conclusions drawn from the tests. We have deliberately limited them to the
+    comparison with the base generators:
+    (1) The only clear failures are the LinearComp tests, a known weakness of
+    all F2-linear generators. For V-MT19937 and V-MT19937-64 they occur in Crush
+    and BigCrush identically for every M, including the reference case M = 1.
+    For V-SFMT19937 they occur in BigCrush for M = 1 and M = 2, but not for
+    M = 4, and never in Crush. We have not investigated the reason for this
+    difference and the paper says so; it also states that we do not interpret
+    it as an improvement in quality, since the generator remains F2-linear.
+    (2) Six further p-values are outside [0.001, 0.999]; none is a clear failure
+    (the most extreme are 3.1e-5 and 5.6e-5). All are listed in the text, and
+    three of the six occur for a non-interleaved reference generator.
+    (3) Apart from these values, the TestU01 batteries do not distinguish a
+    V-family generator from its base generator, for any M.
+
+  The complete TestU01 logs are available in the repository (logs/testu01).
+  Changes: main.tex, Section 4.1 (lines 521-570).
+  Note: table and equation numbers in this document must be re-checked against
+  the final PDF, since this revision adds several tables and equations.
+
+Reviewer #1, Comment 2 / Reviewer #2, Comment 3c (jump-ahead not benchmarked; initialization time claimed "negligible" with no supporting numbers):
+  We agree, and we thank the reviewers for insisting on this point: measuring
+  the initialization showed that our original statement was too optimistic.
+  The sentence stating that the initialization overhead "is negligible" has been
+  removed, and the jump-ahead is now benchmarked.
+
+  Section 3.1.2 has been renamed "Polynomial jump-ahead (default method)" and
+  expanded. A new equation (Eq. 22) states the polynomial evaluation formula
+  explicitly, followed by a cost analysis and by measurements.
+
+  Cost analysis. Evaluating the jump polynomial requires N applications of the
+  state-transition operator (N = 19937 for MT19937 and MT19937-64). In addition,
+  for every non-zero coefficient, i.e. for about half of them, the current state
+  is accumulated into the result with an XOR over all its n words. One jump
+  therefore costs N generator steps plus about N*n/2 word operations (about
+  6 x 10^6 for MT19937), and M instances require M-1 jumps.
+
+  Measurements. A new Section 4.4 (Initialization cost), with a new Table 8,
+  reports the measured cost of the complete
+  initialization (including the M-1 jumps), for both the polynomial and the
+  matrix method. The cost is expressed as the number of random numbers that the
+  same generator produces in vectorial mode in the time taken by its
+  initialization (SSE4.2 platform of the paper, 128-bit hardware registers):
+
+                              polynomial      matrix
+    V-MT19937,    M=4          77 x 10^6     47 x 10^6
+    V-MT19937,    M=8         200 x 10^6    110 x 10^6
+    V-MT19937,    M=16        340 x 10^6    150 x 10^6
+    V-MT19937-64, M=2         6.2 x 10^6    7.0 x 10^6
+    V-MT19937-64, M=4          21 x 10^6     22 x 10^6
+    V-MT19937-64, M=8          57 x 10^6     48 x 10^6
+    V-SFMT19937,  M=2          14 x 10^6     31 x 10^6
+    V-SFMT19937,  M=4          34 x 10^6     68 x 10^6
+
+  The complete initialization therefore costs as much as generating between
+  6 x 10^6 and 3.4 x 10^8 random numbers with the polynomial method, and between
+  7 x 10^6 and 1.5 x 10^8 with the matrix method (not counting the time to load
+  the 50 MB matrix from disk). The paper now states that the initialization cost
+  is negligible only for applications drawing a much larger number of samples
+  from each generator.
+
+  Regarding the choice of method (Reviewer #2): the measurements show that the
+  polynomial method is not faster than the matrix method for MT19937. It is the
+  default because of its memory footprint (about 4 KB per jump polynomial
+  instead of about 50 MB per jump matrix), and the text now says so. The matrix
+  subsection also states its cost explicitly: one vector-matrix multiplication
+  of O(N^2/w) bit operations and O(N^2) bits of storage.
+  Changes: main.tex, Section 3.1.2 (renamed, expanded, Eq. 22) and new
+  Section 4.4 (Initialization cost, Table 8).
+
+Reviewer #3, Comment 4 (implementation details insufficient):
+  We agree that the paper described the algorithm but not its concrete realization
+  in hardware. A new Section 3.2 "Implementation notes" has been added (before the
+  Test Results section) covering four topics:
+
+  Memory layout. The M generator states are stored as a single flat, cache-line-
+  aligned array m_state[n×M] of w-bit words. Position i·M+t holds the i-th word
+  of the t-th generator, so the M copies of position i across all generators form
+  M consecutive, naturally aligned words. Every SIMD load that advances position i
+  is therefore aligned; no gather, scatter, or byte-shift is needed.
+
+  Core recurrence loop. Each of the n iterations reads three SIMD-width groups
+  (positions k, k+1 mod n, k+m mod n) via aligned loads and writes one back. The
+  recurrence (Equation 18) maps to 4--5 SIMD instructions per iteration: a bit-
+  select merging the upper bit of x_k with the lower 31 bits of x_{k+1}, a right
+  shift by one, and a conditional XOR with matrix constant A. The loop consists of
+  exactly n SIMD iterations with no scalar remainder, regardless of n or M.
+
+  Tempering and output. After refill, a separate pass applies tempering in blocks
+  of M words using SIMD shifts and masked XOR-AND operations. Tempered output is
+  buffered and consumed one element at a time until exhausted.
+
+  Portability. A template class SimdRegister<VRegBitLen, ISA> in SIMD.h is
+  specialised for each (width, ISA) pair: x86 SSE4.2, AVX2, AVX-512, and ARM
+  NEON, SVE256. A new Table (tab:intrinsics) lists the hardware instructions for
+  each abstract operation (load/store, XOR/AND, shift, bitwiseSelect,
+  xorIfOddCst32) across all five ISAs. The two non-trivial operations vary most:
+  bitwiseSelect requires 3 instructions on SSE4.2/AVX2 but only 1 on AVX-512
+  (VPTERNLOGD) and NEON/SVE2 (BSL); xorIfOddCst32 requires 4 instructions on
+  SSE4.2 and NEON/SVE, 3 on AVX2, and only 2 on AVX-512 (VPTESTMD + masked
+  VPXORD). When the virtual register width exceeds the hardware width, operations
+  are emulated automatically by iterating over multiple hardware registers.
+  Changes: main.tex, new Section 3.2 and new Table 2.

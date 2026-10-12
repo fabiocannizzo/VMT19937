@@ -1,0 +1,90 @@
+Manuscript Number: JPDC-D-26-00841  
+
+VMT19937: A SIMD-Friendly Pseudo Random Number Generator based on Mersenne Twister 19937
+
+Dear Dr Cannizzo,
+
+Thank you for submitting your manuscript to Journal of Parallel and Distributed Computing.
+
+I have completed my evaluation of your manuscript. The reviewers recommend reconsideration of your manuscript following major revision. I invite you to resubmit your manuscript after addressing the comments. Please resubmit your revised manuscript by Sep 26, 2026.
+
+To view your reviewer feedback, please log in as an author at https://www.editorialmanager.com/jpdc/ and navigate to your manuscript in the " Submissions Needing Revision " folder under the Author Main Menu. 
+ 
+When revising your manuscript, please consider all issues mentioned in the reviewers' comments carefully. Please note that your revised submission may need to be re-reviewed. 
+Journal of Parallel and Distributed Computing values your contribution and I look forward to receiving your revised manuscript.
+
+Research Elements (optional)
+This journal encourages you to share research objects - including your raw data, methods, protocols, software, hardware and more – which support your original research article in a Research Elements journal. Research Elements are open access, multidisciplinary, peer-reviewed journals which make the objects associated with your research more discoverable, trustworthy and promote replicability and reproducibility. As open access journals, there may be an Article Publishing Charge if your paper is accepted for publication. Find out more about the Research Elements journals at https://www.elsevier.com/authors/tools-and-resources/research-elements-journals?dgcid=ec_em_research_elements_email.
+
+Kind regards,  
+Ananth Kalyanaraman  
+Editor in Chief  
+
+Journal of Parallel and Distributed Computing
+
+Editor and Reviewer comments:
+
+
+
+Reviewer #1: This is a good paper worth publishing. There is good code that supports the paper.
+
+I have two main minor remarks.
+
+1. Mersenne Twister is no longer state-of-the-art. This is fine as far as I am concerned, but not necessarily well explained in the manuscript. I recommend making this clearer.
+
+2. Jump-ahead via the precomputed matrix is not benchmarked, I think it is should be benchmarked at least in part, even if it seems a bit silly.
+
+3. It is not clear to me whether the authors have looked for competitors in the wild (i.e., more SIMD implementations of Mersenne). If they did and found nothing, they should say so.
+
+4. It would be nice to benchmark an actual *use* of these random numbers. For example, maybe some array shuffling application ?
+
+
+Reviewer #2: Overall Evaluation
+This manuscript presents an inter-state SIMD vectorization framework for the Mersenne Twister family. Its core idea is to use jump-ahead transformations to construct M phase-shifted generator instances and to place corresponding state elements from different instances in the same SIMD vector. This organization avoids the alignment, residual-iteration, and partial dependency issues that constrain conventional intra-state vectorization. The approach is implemented for MT19937, MT19937-64, and SFMT19937 and evaluated on both x86 and Arm platforms.
+The topic is relevant to the scope of JPDC and the work has practical engineering value. The cross-platform implementation and the inclusion of the X-family as an intra-state SIMD baseline are also strengths. However, the current manuscript has significant weaknesses in the theoretical justification of substream period and statistical properties, the rigor of the performance conclusions, and the positioning of the contribution relative to prior work. Several claims are stronger than the presented analysis and experiments can support. I therefore recommend major revision.
+1. The period and statistical properties of the substreams require a more rigorous justification
+The manuscript describes the outputs of the original MT generator as independent and identically distributed and uses this premise to conclude that the round-robin interleaving of the substreams preserves independence, identical distribution, the original period, and the same statistical properties. This argument is not sufficiently rigorous. MT is a deterministic F2-linear generator, and reordering its outputs changes the relationships between adjacent outputs and higher-dimensional tuples. Consequently, preservation of the full statistical behavior of the interleaved sequence does not follow from marginal uniformity alone.
+Moreover, P = 2^19937 - 1 is not divisible by M = 2, 4, 8, or 16. The authors should explicitly define the treatment of the final unequal substream, the end of the period, and round-robin wraparound. A more rigorous argument is needed for the period of the combined sequence and for the non-overlap of substreams within their prescribed usage range.
+2. The performance evaluation does not yet establish near-linear scaling with SIMD width
+SSE4.2, AVX2, and AVX-512 are evaluated on different processors. These platforms differ in microarchitecture, clock frequency, and cache capacity; therefore, throughput growth across columns cannot be attributed solely to SIMD register width.
+For example, the reported throughput of V-MT19937-64 increases by approximately 7.6x from SSE4.2 to AVX-512, whereas the number of parallel instances M increases only from 2 to 8, i.e., by a factor of 4. The measured increase clearly also includes differences between the processors. The claim that throughput scales proportionally with SIMD register width should therefore be qualified or validated using an experiment that controls the hardware differences more carefully. Sufficient experimental configuration and variability information should also be provided to make the performance results reproducible.
+In addition, Tables 3 and 5 copy the Scalar results of ORIG/STL into the Vectorial sections, while V/X are measured through a 10,240-sample block interface and the Scalar MKL results are obtained by requesting blocks of size one. The reported speedups therefore combine differences in the algorithms, API overheads, and buffering strategies. The manuscript should state this limitation explicitly and avoid attributing the entire improvement to inter-state vectorization.
+3. The novelty and distinction from prior work should be clarified further
+Multiple-stream and substream random number generation, leap-frog sequence composition, and jump-ahead techniques for F2-linear generators are already well-established research topics. The manuscript also explicitly acknowledges that its substream composition follows the existing leap-frog method. However, the current version does not sufficiently clarify the specific technical novelty of applying these established techniques to inter-state SIMD vectorization, particularly in comparison with prior parallel MT, multiple-stream PRNG, and related SIMD implementations. The authors should strengthen the comparison with the most closely related work and define the novelty boundary of this study more precisely.
+Based on the current presentation, the main contributions appear to lie in the state layout designed for inter-state SIMD execution, the unified implementations of MT19937, MT19937-64, and SFMT19937, the cross-platform adaptation to x86 and Arm SIMD instruction sets, and the systematic comparison with intra-state vectorization approaches. The authors are encouraged to reorganize the novelty statement around these technical contributions. If the authors consider the proposed framework itself to constitute a methodological innovation, they should clearly identify the key technical elements that distinguish it from existing multiple-stream and leap-frog approaches.
+Furthermore, matrix-based jump-ahead may entail non-negligible precomputation, storage, and initialization costs. The manuscript currently characterizes these costs as negligible without sufficient discussion. The authors should explain their practical impact and clarify why the matrix approach was chosen instead of the more efficient polynomial approaches cited in the manuscript.
+Finally, the claim that the method generalizes naturally to any linear-recurrence PRNG should state the relevant conditions. For example, the target generator should admit an efficient jump-ahead operation, a verifiable substream partition, and a state layout suitable for SIMD execution. Notational issues, including the inconsistent use of t and j in Eq. (20), should also be corrected.
+
+
+Reviewer #3: 1. The individual building blocks of the proposed approach are well established in the literature: multiple independent streams, jump-ahead transformations, and vectorized generation of random numbers [10,12] and (very important!) [A. Fog (2015) doi:10.22237/jmasm/1430454120]
+and the PRAND Library [https://github.com/cheng-zhao/prand]. Moreover, the general idea of overcoming the data dependencies of recursive PRNGs through algorithmic parallelization is not new, as demonstrated in [Stpiczynski (2020) doi:10.1016/j.jpdc.2019.12.004] for Marsa-LFIB4. The author should therefore clarify precisely what is novel about combining jump-ahead stream separation with synchronized SIMD execution, and distinguish their contribution from previous vectorized recursive PRNGs and multi-stream approaches.
+
+2. The test using the TestU01 Library was described too briefly. Section 4.1 should be expanded to include a more detailed summary and conclusions drawn from the tests.
+
+3. The author focuses exclusively on SIMD vectorization, but parallel use of multiple cores seems natural. Therefore, the implementation could be extended to include parallel computations, which would certainly be of interest to JPDC readers.
+
+4. The author provides a link to a Github repository with the source code, but the article would benefit from a more detailed description of the implementation techniques used, in particular how SIMD was used.
+
+5. Why does the proposed approach achieve better SIMD utilization than existing approaches?
+
+
+
+
+
+*****
+
+More information and support 
+
+FAQ: How do I revise my submission in Editorial Manager?
+https://service.elsevier.com/app/answers/detail/a_id/28463/supporthub/publishing/
+
+FAQ: How can I reset a forgotten password?
+https://service.elsevier.com/app/answers/detail/a_id/28452/supporthub/publishing/
+For further assistance, please visit our customer service site: https://service.elsevier.com/app/home/supporthub/publishing/
+Here you can search for solutions on a range of topics, find answers to frequently asked questions, and learn more about Editorial Manager via interactive tutorials. You can also talk 24/7 to our customer support team by phone and 24/7 by live chat and email
+
+At Elsevier, we want to help all our authors to stay safe when publishing. Please be aware of fraudulent messages requesting money in return for the publication of your paper. If you are publishing open access with Elsevier, bear in mind that we will never request payment before the paper has been accepted. We have prepared some guidelines (https://www.elsevier.com/connect/authors-update/seven-top-tips-on-stopping-apc-scams ) that you may find helpful, including a short video on Identifying fake acceptance letters (https://www.youtube.com/watch?v=o5l8thD9XtE ). Please remember that you can contact Elsevier s Researcher Support team (https://service.elsevier.com/app/home/supporthub/publishing/) at any time if you have questions about your manuscript, and you can log into Editorial Manager to check the status of your manuscript (https://service.elsevier.com/app/answers/detail/a_id/29155/c/10530/supporthub/publishing/kw/status/).
+
+#AU_JPDC#
+
+To ensure this email reaches the intended recipient, please do not delete the above code

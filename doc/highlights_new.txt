@@ -1,0 +1,5 @@
+- V-family: SIMD-friendly generators built on MT19937, MT19937-64 and SFMT19937.
+- Jump-ahead instances of one generator fill every lane of the SIMD register.
+- Up to 14x faster than the scalar MT19937 reference on AVX-512.
+- Throughput grows with register width, sub-linearly once the state fills L1 cache.
+- Period of MT19937 is preserved; TestU01 results match those of the base generators.

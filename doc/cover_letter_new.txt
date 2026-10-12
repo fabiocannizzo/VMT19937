@@ -1,0 +1,44 @@
+[Date: October 12, 2026]
+
+Dr. Ananth Kalyanaraman
+Editor-in-Chief
+Journal of Parallel and Distributed Computing
+Elsevier
+
+Subject: Revised manuscript JPDC-D-26-00841, "VMT19937: A SIMD-Friendly Pseudo Random Number Generator based on Mersenne Twister 19937"
+
+Dear Dr. Kalyanaraman,
+
+Thank you for the opportunity to revise the manuscript JPDC-D-26-00841, entitled "VMT19937: A SIMD-Friendly Pseudo Random Number Generator based on Mersenne Twister 19937", submitted for publication as a Full Length Article in the Journal of Parallel and Distributed Computing. I am pleased to submit the revised version, together with a point-by-point response to the reviewers.
+
+The paper introduces the V-family of pseudo-random number generators, which addresses a limitation of the widely used Mersenne Twister 19937 algorithm: its recurrence is not natively amenable to SIMD parallelization. Several instances of the same generator, de-phased by jump-ahead transformations, are placed in the lanes of a SIMD register and advanced together, so that every lane is used. The approach is applied to MT19937, MT19937-64 and SFMT19937, and is evaluated on SSE4.2, AVX2, AVX-512, ARM NEON and ARM SVE.
+
+I am grateful to the three reviewers for their careful reading and constructive criticism. Their comments led to a substantial revision. The main changes are the following.
+
+- Positioning with respect to prior work. A new Related work section (Section 1.1) discusses the literature indicated by the reviewers, in particular the work of Fog, and states the contribution more precisely: neither jump-ahead stream splitting nor the lock-step execution of several generators in a SIMD register is new; the contribution is their combination on a single large-state generator, and its systematic comparison with intra-state vectorization.
+
+- Period and statistical properties. The treatment of the period is now rigorous: the interleaved sequence is shown to be a decimation of the original one, from which the non-overlap of the instances and the period follow. The claims on the statistical properties have been reduced to what is proven or tested.
+
+- Statistical testing. The TestU01 section has been rewritten. All three generators have now been tested with SmallCrush, Crush and BigCrush for every vectorization factor, and the results are reported in full.
+
+- Performance claims. A controlled experiment on a single machine has been added to isolate the effect of the SIMD register width. The claim of linear scaling has been replaced by the measured, sub-linear, scaling. Speedups of up to 14x over the reference implementation are confirmed.
+
+- Initialization cost. The cost of the jump-ahead initialization, previously described as negligible, has been measured and is now reported.
+
+- Implementation. A new section describes how the SIMD instructions are used on each of the supported instruction sets.
+
+A preprint of an earlier version of this manuscript is available on arXiv (arXiv:2309.16682).
+
+In accordance with the journal's policy, a declaration on the use of generative AI and AI-assisted technologies has been added to the manuscript, before the references.
+
+This manuscript is original work and has not been published elsewhere, nor is it currently under consideration by another journal. There are no conflicts of interest to disclose.
+
+Thank you for your time and for your consideration of this revised submission.
+
+Sincerely,
+
+Fabio Cannizzo
+Adjunct Professor, National University of Singapore
+Managing Director, Standard Chartered Bank
+Email: fabio.cannizzo@gmail.com
+Phone: +971-58-5591039
