@@ -84,7 +84,7 @@ Many simulation applications necessitate the generation of long sequences of pse
 
 Various algorithms for pseudo-random number generators (PRNGs) are available, each differing in complexity and approximating distinct properties of true randomness. In specific application domains, the simplest and fastest PRNG that satisfies the required randomness properties is typically adopted. For example, Monte Carlo simulations demand long sequences of random numbers adhering to the central limit theorem hypothesis, requiring independence and identical distribution among the numbers. Linear recurrences modulo 2 serve as widely used building blocks for constructing PRNGs meeting such requirements. They involve a long binary state vector that evolves iteratively through linear recurrences.
 
-One widely accepted pseudo-random generator from this family is the Mersenne twister 19937 (MT19937), proposed by Matsumoto and Nishimura in 1998 \cite{mt19937}. It has found implementation in several software libraries and numerical packages such as Matlab, Octave, Numerical Algorithms Group (NAG), Intel Math Kernel Library (MKL) and the C++ Standard Template Library (STL). Despite the proposal in the literature of more modern generators, such as XORSHIFT \cite{xorshift} and WELL \cite{well}, at present MT19937 remains de facto the most utilized PRNG (at least in the financial domain).
+One widely accepted pseudo-random generator from this family is the Mersenne twister 19937 (MT19937), proposed by Matsumoto and Nishimura in 1998 \cite{mt19937}. It has found implementation in several software libraries and numerical packages such as Matlab, Octave, Numerical Algorithms Group (NAG), Intel Math Kernel Library (MKL), Python and the C++ Standard Template Library (STL). Despite the existence of more modern generators producing good quality random numbers, in some cases superior to MT19937 in statistical quality, speed, or both --- such as XORSHIFT \cite{xorshift}, WELL \cite{well}, xoshiro256 \cite{xoshiro}, and PCG \cite{pcg} --- MT19937 remains de facto one of the most widely deployed PRNGs, particularly in legacy codebases and financial applications.
 
 In addition to the good quality of its statistical properties, the success of MT19937 can be attributed to the simplicity of its algorithm. The linear recurrence responsible for evolving the binary state vector can be efficiently implemented with a small set of elementary bit manipulations, resulting in fast execution. However, this recurrence is not amenable to exploiting SIMD operations available on modern hardware for further speed enhancement.
 
@@ -593,7 +593,11 @@ The methodology extends naturally to devices with massive vectorization capabili
 
 \bibitem{sfmt19937} 2008, M. Saito and M. Matsumoto, ``SIMD-oriented Fast Mersenne Twister: a 128-bit Pseudorandom Number Generator'', Monte Carlo and Quasi-Monte Carlo Methods 2006, Springer, 2008, pp. 607-622. DOI: 10.1007/978-3-540-74496-2\_36
 
+\bibitem{pcg} 2014, M. E. O'Neill, ``PCG: A Family of Simple Fast Space-Efficient Statistically Good Algorithms for Random Number Generation'', Harvey Mudd College Technical Report HMC-CS-2014-0905.
+
 \bibitem{multistream} 2015, P. L'Ecuyer,  ``Random number generation with multiple streams for sequential and parallel computing''. WSC '15: Proceedings of the 2015 Winter Simulation Conference, December 2015, pp. 31--44
+
+\bibitem{xoshiro} 2021, D. Blackman, S. Vigna, ``Scrambled Linear Pseudorandom Number Generators'', ACM Transactions on Mathematical Software, 47(4), Article 36. DOI: 10.1145/3460772.
 
 \bibitem{intel} 2023, ``Intel?? 64 and IA-32 Architectures, Optimization Reference Manual''
 
