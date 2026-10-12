@@ -97,6 +97,8 @@ Neither ingredient is new: splitting a PRNG sequence into sub-streams via jump-a
 
 Furthermore, stream splitting across cores and the V-family are complementary: multiple V-family generators, each fully utilizing its CPU's SIMD registers, can be deployed across multiple cores or machines. In contrast, deploying multiple conventional generators across cores leaves each CPU's vector units underutilised. The V-family therefore compounds the benefit of both vectorization and parallelism.
 
+The technique is not specific to MT19937: it applies to any generator that admits an efficient jump-ahead operation, whose state layout can be interleaved across $M$ instances, and whose recurrence maps to SIMD operations, making it a general tool for maximising PRNG throughput on modern hardware.
+
 The approach is applied to three base generators --- MT19937, MT19937-64, and SFMT19937 --- yielding the \textbf{V-family}: V-MT19937, V-MT19937-64, and V-SFMT19937. Benchmark comparisons also include a set of optimized intra-state SIMD implementations developed as part of this work (the X-family: X-MT19937, X-MT19937-64, X-SFMT19937) and Intel MKL, both of which serve as performance baselines.
 
 \subsection{Related work}
@@ -773,9 +775,8 @@ In this paper, we introduced the \textbf{V-family}, a framework for the inter-st
 
 This performance comes at the cost of a larger state size: for generators with large state vectors such as MT19937-32, V-family state storage can reach 40~KB at 512-bit width. In some circumstances, this increased memory footprint can introduce cache pressure and moderate the scaling advantage at the widest register sizes.
 
-The methodology introduced here is not specific to the Mersenne Twister and generalizes naturally to any linear recurrence PRNG, offering a principled approach for exploiting modern SIMD hardware without sacrificing period, statistical guarantees, or ease of implementation.
+The methodology introduced here is not specific to the Mersenne Twister and applies to any $F_2$-linear PRNG that satisfies three conditions: (i) an efficient jump-ahead operation exists to initialize the $M$ de-phased instances; (ii) the resulting substreams form a verifiable non-overlapping partition of the full output sequence; and (iii) the generator state consists of word-level elements suitable for interleaving across $M$ SIMD lanes. Generators meeting these conditions might benefit from the same vectorization framework while retaining the output sequence of the base generator, up to a rearrangement, and the ease of implementation. As a concrete illustration, generators with small states such as xoshiro256~\cite{xoshiro} (256-bit state) or xoroshiro128 (128-bit state) appear to satisfy all three conditions and might present a particularly compelling case: since a single instance already fills one SIMD register with no internal recurrence loop to vectorize, the V-family could provide a natural mechanism for exploiting wider registers such as AVX-512. Applying the V-family to such generators is a natural direction for future work.
 
-The methodology extends naturally to devices with massive vectorization capabilities, such as GPGPUs, which might be the topic of further studies.
 A further advantage of the V-family construction is implementation simplicity. Intra-state vectorization requires careful analysis of loop structure, remainder handling, and misalignment workarounds that are specific to each generator. By contrast, the V-family implementation is largely mechanical: it suffices to extend the state array by a factor of $M$ and replace each scalar word operation with its SIMD equivalent. This substitution is uniform across generators and ISA widths and can be fully automated via C++ templates.
 
 %------------------------------BIBLIOGRAPHY-----------------
