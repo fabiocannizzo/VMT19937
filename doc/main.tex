@@ -394,6 +394,7 @@ To overcome this, techniques known as \textit{jump ahead} are used to compute th
 The simplest \textit{jump ahead} methodology for the MT19937 is based on binary matrix multiplications modulo 2, as proposed by Knuth \cite{knuth}. Let $Y$ be a subset of the state vector $X$, with the first $r$ bits (where $r = 31$) removed since they are not used in recurrence \eqref{eq:step}.
 The effective state vector $Y$ is a binary matrix with dimensions $1\times (nw-r)$. Advancing the effective state vector $Y_k$ to $Y_{k+1}$ using \eqref{eq:step} is equivalent to the binary vector-matrix multiplication modulo-2:
 \begin{equation}
+\label{eq:onestep}
 Y_{k+1} = Y_k \star F
 \end{equation}
 where $F$ is a square binary matrix of size $wn-r$
@@ -421,23 +422,30 @@ State $X_{t \cdot J}$ can be computed as:
 Let $B=F^J$, since $J$ is a power of 2 ($J=2^{q}$, where $q$ is the exponent from Table~\ref{tab:jvalues}).
 The jump matrix $B$ is computed offline via repeated squaring $F^{2^q} = F^{2^{q-1}} \star F^{2^{q-1}}$ and stored for later use.
 
-While the specific transition matrix structure $F$ in \eqref{eq:transmat} is representative of MT-based generators, the methodology of binary matrix exponentiation for jump-ahead is general and applies to any $F_2$-linear PRNG. A distinct jump matrix $B$ must be computed and stored for each of MT19937-32, MT19937-64, and SFMT19937, since their recurrences, word sizes, and state dimensions differ.
+While the specific transition matrix structure $F$ in \eqref{eq:transmat} is representative of MT-based generators, the methodology of binary matrix exponentiation for jump-ahead is general and applies to any $F_2$-linear PRNG. A distinct jump matrix $B$ must be computed and stored for each of MT19937-32, MT19937-64, and SFMT19937, since their recurrences, word sizes, and state dimensions differ. Applying $B$ to the state (the online cost per jump) requires one binary vector-matrix multiplication, which costs $O(N^2/w)$ bit operations and $O(N^2)$ bits of storage — approximately 50\,MB per matrix for MT19937. The measured initialization cost is reported in Section~\ref{sec:initcost}.
 
-The overhead associated with initializing the generator state vectors as in \eqref{eq:jumpahead}, which requires $M\!-\!1$ vector-matrix multiplications, is negligible in the context of generating a large stream of PRNs.
+\subsubsection{Polynomial \textit{jump ahead} (default method)}
+\label{sec:polyjump}
+Other \textit{jump-ahead} algorithms~\cite{jump1,jump2} avoid storing the jump matrix entirely. These are the default method used in the \textbf{V-family} library.
 
-\subsubsection{Alternative \textit{jump ahead} methods}
-It is worth noting that there exist more efficient \textit{jump-ahead} algorithms that do not require storing the jump matrix and are faster than performing a vector-matrix multiplication as in \eqref{eq:jumpahead}. These algorithms, based on binary polynomial arithmetic over GF(2), have been implemented in the \textbf{V-family} library. 
+Let $T$ denote the single-step state transition of \eqref{eq:onestep}, $T(Y_k) = Y_{k+1} = Y_k \star F$, where $F$ is the transition matrix \eqref{eq:transmat}, and let $P(x)$ be the characteristic polynomial of $F$, with $N = \deg P(x)$ the number of independent state bits. Let $P(F)$ denote the matrix obtained by substituting $F$ for $x$ in $P(x)$, i.e.\ $P(F) = \sum_{i=0}^{N} p_i F^i$ if $P(x) = \sum_{i=0}^{N} p_i x^i$, with $F^0$ the identity matrix. Because $F$ satisfies $P(F) = 0$ (Cayley--Hamilton theorem \cite{lang}), advancing by $J$ steps is equivalent to evaluating the polynomial $g(x) = x^J \bmod P(x) = \sum_{i=0}^{N-1} g_i x^i$ at $F$ and applying it to the state. This gives the jump formula:
+\begin{equation}
+\label{eq:polyjump}
+Y_{(t+1)\cdot J} = g(F)\,Y_{t\cdot J} = \sum_{i=0}^{N-1} g_i \cdot T^i(Y_{t\cdot J})
+\end{equation}
+where $T^i(Y_{tJ})$ is the state after $i$ scalar steps from $Y_{tJ}$ and the sum is XOR.
 
-Linear Feedback Shift Registers (LFSRs) can be transitioned by $J$ steps by applying a jump-ahead matrix $F^J$ to the state vector $v$: $v_{t+J} = F^J v_t$. Alternatively, this can be viewed as multiplication by a polynomial $g(x) = x^J \pmod{P(x)}$ in the ring of polynomials GF(2)[x] modulo the characteristic polynomial $P(x)$ of the generator. The state transition is then computed as $v_{t+J} = \sum_{i=0}^{N-1} g_i \cdot T^i(v_t)$, where $T$ is the state transition operator (a single-step update) and $g_i$ are the coefficients of the jump polynomial.
-
-To support this method, the library includes utilities to:
+The coefficients $g_i \in \{0,1\}$ are computed \emph{offline} and stored as a compact $N$-bit mask. The offline computation proceeds in two steps:
 \begin{enumerate}
-    \item Derive the characteristic polynomial $P(x)$ using the Berlekamp-Massey algorithm \cite{jump1, jump2}.
-    \item Compute $x^J \pmod{P(x)}$ using binary exponentiation (squaring and reduction).
+    \item Derive $P(x)$ using the Berlekamp-Massey algorithm.
+    \item Compute $g(x) = x^J \bmod P(x)$ using binary exponentiation (squaring and reduction modulo $P(x)$).
 \end{enumerate}
 
-This polynomial method reduces the memory footprint for jump data from $O(N^2)$ to $O(N)$, which for MT19937 means a reduction from approximately 50 MB per jump matrix to only 4 KB per jump polynomial.
-Furthermore, the main contribution of this paper is the vectorization of the algorithm to advance the state vector. If a more efficient \textit{jump-ahead} method were to be adopted, it would further improve initialization time, but it would not invalidate any of the arguments presented in this paper regarding the algorithm's throughput.
+The memory footprint for the jump data is reduced from $O(N^2)$ to $O(N)$, from approximately 50\,MB per matrix to approximately 4\,KB per polynomial, for MT19937.
+
+Evaluating \eqref{eq:polyjump} requires $N$ applications of the state-transition operator $T$, where $N$ is the degree of the characteristic polynomial ($N = nw - r = 19937$ for MT19937 and MT19937-64). In addition, for every non-zero coefficient $g_i$, i.e.\ for about half of them, the current state has to be accumulated into the result with an XOR over all its $n$ words. One jump therefore costs $N$ generator steps plus about $N n / 2$ word operations, that is about $6 \times 10^6$ word operations for MT19937, and initializing $M$ instances requires $M-1$ jumps. The measured initialization cost is reported in Section~\ref{sec:initcost}.
+
+
 \subsection{Implementation notes}
 \label{sec:implementation}
 
@@ -634,6 +642,32 @@ Performance test results are illustrated in Tables \ref{table:mt32}, \ref{table:
 	}
 \end{table}
 
+\subsection{Initialization cost}
+\label{sec:initcost}
+Table~\ref{tab:initcost} reports the measured initialization cost for the two jump-ahead methods of Sections~\ref{sec:jumpahead} and \ref{sec:polyjump}, expressed as the number of random numbers that the same generator produces in vectorial mode in the time taken by its initialization. With the polynomial method the complete initialization, including the $M-1$ jumps, costs as much as generating between $6 \times 10^6$ and $3.4 \times 10^8$ random numbers; with the matrix method, between $7 \times 10^6$ and $1.5 \times 10^8$, not counting the time needed to load the matrix from disk. The initialization cost is therefore negligible only for applications that draw a much larger number of samples from each generator. The polynomial method is the default because of its memory footprint, not because of its speed.
+
+\begin{table}[h!]
+  \centering\small
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabular}{|l|c|c|c|c|}
+    \hline
+    \textbf{Generator} & $M$ & \textbf{Jumps} ($M-1$) & \textbf{Polynomial} & \textbf{Matrix} \\
+    \hline
+    \multirow{3}{*}{V-MT19937}    & 4  & 3  & $77 \times 10^6$  & $47 \times 10^6$  \\
+                                  & 8  & 7  & $200 \times 10^6$ & $110 \times 10^6$ \\
+                                  & 16 & 15 & $340 \times 10^6$ & $150 \times 10^6$ \\
+    \hline
+    \multirow{3}{*}{V-MT19937-64} & 2  & 1  & $6.2 \times 10^6$ & $7.0 \times 10^6$ \\
+                                  & 4  & 3  & $21 \times 10^6$  & $22 \times 10^6$  \\
+                                  & 8  & 7  & $57 \times 10^6$  & $48 \times 10^6$  \\
+    \hline
+    \multirow{2}{*}{V-SFMT19937}  & 2  & 1  & $14 \times 10^6$  & $31 \times 10^6$  \\
+                                  & 4  & 3  & $34 \times 10^6$  & $68 \times 10^6$  \\
+    \hline
+  \end{tabular}
+  \caption{\label{tab:initcost}Measured initialization cost of the V-family generators, including the $M-1$ jumps, for the polynomial and the matrix jump-ahead methods. The cost is expressed as the equivalent number of random numbers (32-bit for V-MT19937 and V-SFMT19937, 64-bit for V-MT19937-64) generated by the same generator in vectorial mode in the same time, on the SSE4.2 platform of Table~\ref{table:hardware} with 128-bit hardware registers. The time needed to load the jump polynomial or the jump matrix from disk is not included.}
+\end{table}
+
 \subsection{Discussion and Observations}
 \label{sec:obs}
 
@@ -684,6 +718,8 @@ A further advantage of the V-family construction is implementation simplicity. I
 \bibitem{knuth} 1998, D. E. Knuth, ``The Art of Computer Programming'', Seminumerical Algorithms, 3rd ed., Vol. 2. Addison-Wesley, Reading, MA.
 
 \bibitem{ecuyer} 2002, P. L'Ecuyer, R. Simard, E. J. Chen, W. D. Kelton, ``An object-oriented random-number package with many long streams and substreams." Oper. Res. 50 1073--1075.
+
+\bibitem{lang} 2002, S. Lang, ``Algebra'', revised 3rd ed., Graduate Texts in Mathematics, Vol. 211. Springer, New York. DOI: 10.1007/978-1-4613-0041-0
 
 \bibitem{xorshift} 2003, G. Marsaglia. ``Xorshift RNGs''. Journal of Statistical Software. 8 (14). DOI: 10.18637/jss.v008.i14
 
