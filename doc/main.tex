@@ -582,15 +582,15 @@ We evaluated the performance of the full generator suite across five hardware ta
 \begin{table}[H]
 	\centering
 	\small
-	\begin{tabular}{|l|l|c|c|}
+	\begin{tabular}{|l|l|c|c|c|}
 		\hline
-		\textbf{Target ISA} & \textbf{CPU Model} & \textbf{Clock} & \textbf{L1d cache} \\
+		\textbf{Target ISA} & \textbf{CPU Model} & \textbf{Clock} & \textbf{L1d cache} & \textbf{GCC} \\
 		\hline
-		x86-64 SSE4.2  & Intel Celeron J4125 & 2.0 GHz & 24 KB \\
-		x86-64 AVX2    & Intel Xeon E5-2686 v4 & 2.3 GHz & 32 KB \\
-		x86-64 AVX-512 & Intel Xeon Platinum 8375C & 2.9 GHz & 48 KB \\
-		ARM NEON       & Neoverse-N1 & 2.5 GHz & 64 KB \\
-		ARM SVE256     & Neoverse-V1 & 2.6 GHz & 64 KB \\
+		x86-64 SSE4.2  & Intel Celeron J4125        & 2.0 GHz & 24 KB & 16.1.1 \\
+		x86-64 AVX2    & Intel Xeon E5-2686 v4      & 2.3 GHz & 32 KB & 16.0.1 \\
+		x86-64 AVX-512 & Intel Xeon Platinum 8375C  & 2.9 GHz & 48 KB & 16.0.1 \\
+		ARM NEON       & Neoverse-N1                & 2.5 GHz & 64 KB & 15.2.0 \\
+		ARM SVE256     & Neoverse-V1                & 2.6 GHz & 64 KB & 16.0.1 \\
 		\hline
 	\end{tabular}
 	\caption{\label{table:hardware} Hardware targets.}
@@ -601,14 +601,16 @@ The benchmarks compare several algorithmic families:
 	\item the \textit{MT Family} (Original MT19937, STL MT19937, Intel MKL-MT, V-MT, and X-MT);
 	\item the \textit{SFMT Family} (Original SFMT, Intel MKL-SFMT, V-SFMT, and X-SFMT);
 	\item the \textit{MT-64 Family} (Original MT19937-64, STL MT19937-64, V-MT64, and X-MT64).
-\end{itemize}	
-We generate approximately $1.6 \times 10^{10}$ random numbers per hardware target (averaging 30 runs of $8.19 \times 10^6$ samples for each individual test) to ensure statistical stability.
+\end{itemize}
+We generate approximately $1.6 \times 10^{10}$ random numbers per hardware target (averaging 30 runs of $8.19 \times 10^6$ samples for each individual test) to ensure statistical stability. The number of repetitions is such that the mean throughput has converged: each test is repeated at least 30 times, and further if needed, until the estimated relative error of the mean falls below 1\%.
 Throughput is measured in Million samples per second (M/s). For 32-bit generators (MT, SFMT), samples are 32-bit words; for MT-64, samples are 64-bit words. Vectorial query mode performance is measured using a block size of 10,240 samples, which is a multiple of the generator state size.
+
+It is important to note that ORIG and STL generators have no native vectorial API; their results are therefore identical in both the Scalar and Vectorial sections of the tables, reproduced for completeness as a lower-bound reference. V-family and X-family generators are measured in vectorial mode using a block size of 10,240 samples, which amortizes the cost of state regeneration across many queries. MKL in scalar mode is tested by requesting one sample at a time, incurring significant per-call overhead. Consequently, speedups of V or X over ORIG/STL in vectorial mode combine three effects: (1) the algorithmic gain from inter-state vectorization (V-family only), (2) the buffering gain from amortized bulk state regeneration (both V and X), and (3) API overhead differences. The comparison of V against X in vectorial mode best isolates contribution (1), since X achieves the same buffering strategy without inter-state vectorization.
 
 To ensure a fair comparison in scalar mode, all scalar benchmarks use a \textit{volatile} variable trap within the query loop. This prevents the compiler from using Dead-Code Elimination (DCE) or auto-vectorization to skip or parallelize the PRNG operations, ensuring that the measured throughput reflects true sequential execution.
 
 Speedup factors cited in the discussion below are computed relative to the corresponding original scalar implementation (ORIG-MT19937, ORIG-SFMT19937, or ORIG-MT19937-64) running on the same hardware.
-The source code for the generators and the test framework is written in C++20 and is available on github\footnote{https://github.com/fabiocannizzo/VMT19937}. Tests were compiled with the GCC 16 compiler.
+The source code for the generators and the test framework is written in C++20 and is available on github\footnote{https://github.com/fabiocannizzo/VMT19937}. All hardware targets run Linux. Tests were compiled with GCC (versions as listed in Table~\ref{table:hardware}) using flags \texttt{-O3 -std=c++20 -march=native}.
 
 Performance test results are illustrated in Tables \ref{table:mt32}, \ref{table:sfmt}, and \ref{table:mt64}.
 
@@ -727,22 +729,44 @@ A notable observation from the scalar sections of Tables~\ref{table:mt32} and \r
 In contrast, Intel MKL in scalar mode (tested by requesting blocks of size 1) exhibits substantially lower throughput than even the original reference implementations. This confirms that MKL is optimized exclusively for large-block throughput and incurs a significant per-call overhead that renders it unsuitable for fine-grained scalar access.
 
 \subsubsection{Proportional Scaling with SIMD Register Width}
-The vectorial sections of Tables~\ref{table:mt32}, \ref{table:sfmt}, and \ref{table:mt64} confirm that the throughput of V-family generators in vectorial query mode scales roughly proportionally to the SIMD register width.
+\label{sec:scaling}
+The vectorial sections of Tables~\ref{table:mt32}, \ref{table:sfmt}, and \ref{table:mt64} are intended to be read column-wise: each column corresponds to a specific hardware platform (Table~\ref{table:hardware}), and the figures compare algorithm families on the same hardware. Since the three Intel platforms differ in microarchitecture, clock frequency, and cache capacity, throughput differences across columns reflect both SIMD width increases and hardware differences, and cannot be attributed to SIMD width alone.
 
-For V-MT19937, vectorial throughput relative to the original grows from approximately $5\times$ at SSE4.2 (128-bit, $M=4$) to approximately $14\times$ at AVX-512 (512-bit, $M=16$), consistent with the 4-fold increase in the number of parallel states. Comparing across ISA widths within V-MT19937 itself, throughput roughly doubles with each doubling of register width, reflecting near-linear scaling in $M$.
+To isolate the contribution of SIMD width, we conducted a controlled experiment on a single machine (Intel Xeon Platinum 8488C, GCC~16), compiling each V-family generator at three register widths using explicit ISA flags (\texttt{-msse4.2}, \texttt{-mavx2}, \texttt{-mavx512*}) rather than \texttt{-march=native}. Table~\ref{table:scaling} reports the speedup relative to the narrowest width for each generator.
 
-For V-SFMT19937, throughput at AVX-512 is approximately $2.4\times$ that at AVX2, matching the expected factor of 2 increase in $M$ ($2\to4$), while V-SFMT19937 itself delivers up to $2.5\times$ the throughput (at AVX-512) of the original SFMT at the same ISA in vectorial mode.
+\begin{table}[H]
+	\centering
+	\small
+	\begin{tabular}{|l|c|c|r|r|}
+		\hline
+		\textbf{Generator} & \textbf{VReg (bits)} & \textbf{$M$} & \textbf{Measured speedup} & \textbf{Expected} \\
+		\hline
+		\multirow{3}{*}{V-MT19937}    & 128 &  4 & $1.00\times$ & $1\times$ \\
+		                              & 256 &  8 & $1.78\times$ & $2\times$ \\
+		                              & 512 & 16 & $2.40\times$ & $4\times$ \\
+		\hline
+		\multirow{3}{*}{V-MT19937-64} & 128 &  2 & $1.00\times$ & $1\times$ \\
+		                              & 256 &  4 & $1.74\times$ & $2\times$ \\
+		                              & 512 &  8 & $3.15\times$ & $4\times$ \\
+		\hline
+		\multirow{2}{*}{V-SFMT19937}  & 256 &  2 & $1.00\times$ & $1\times$ \\
+		                              & 512 &  4 & $1.52\times$ & $2\times$ \\
+		\hline
+	\end{tabular}
+	\caption{\label{table:scaling} Controlled scaling experiment: V-family vectorial throughput speedup relative to the narrowest register width, measured on a single machine (Intel Xeon Platinum 8488C, GCC~16, \texttt{-O3 -std=c++20}). V-SFMT19937 requires a minimum of 256-bit registers ($M=2$) and has no 128-bit entry.}
+\end{table}
 
-For V-MT19937-64, throughput grows by approximately $7.6\times$ from SSE4.2 to AVX-512, consistent with the increase in $M$ from 2 to 8. Across all three variants, the observed scaling validates the core design goal of the V-family: throughput grows proportionally to the SIMD register width.
+Throughput increases with $M$ across all generators, confirming the V-family's scaling design. The scaling is consistent but sub-linear due to memory bandwidth limitations: V-MT19937-64 achieves approximately $1.75\times$ per doubling of $M$, while V-MT19937 scales well from 128 to 256 bits ($1.78\times$) but degrades from 256 to 512 bits ($1.35\times$). As discussed in Section~\ref{sec:cachepressure}, at $M=16$ the V-MT19937 state ($\approx40$~KB) approaches the L1 cache capacity of the test machine (48~KB), increasing memory traffic. V-MT19937-64 and V-SFMT19937, with smaller states, scale more consistently. On platforms with larger L1 caches, or for generators with smaller states, scaling closer to the ideal $2\times$ per register-width doubling is expected.
 
 \subsubsection{Cache Pressure and Memory Footprint}
+\label{sec:cachepressure}
 As the SIMD width increases, so does the combined state storage of the V-family. V-MT19937 with $M=16$ parallel states requires $16 \times 624 \times 4 = 39{,}936$ bytes $\approx 40$~KB of state storage, which, combined with the output storage, saturates or exceeds the L1 data cache on architectures with 32--48~KB caches. This leads to more frequent L2 accesses and explains why the vectorial-mode speedup for V-MT19937 at AVX-512 falls somewhat short of the ideal $16\times$ predicted by the state count alone.
 
 The V-MT19937-64 ($M=8$, state $\approx 20$~KB) and V-SFMT19937 ($M=4$, state $\approx 10$~KB) generators have smaller footprints and are therefore less susceptible to cache pressure, which is reflected in their more consistent scaling behavior.
 
 The X-family, by contrast, maintains a single state vector of $\approx 2.5$~KB (for both MT19937-32 and MT19937-64), which fits comfortably in L1 cache. On AVX-512 in vectorial query mode, X-MT19937 actually outperforms V-MT19937 (Table~\ref{table:mt32}) for this reason: the reduced memory pressure and superior cache locality of the smaller single-state vector more than compensate for the structural vectorization barriers.
 
-This highlights a clear architectural trade-off: for generators with very large states, the V-family's perfect vectorization can be bottlenecked by L1 cache capacity at the widest SIMD widths. This is a limitation that may disappear in the future with the continuous hardware evolution trend and increase in CPU L1 cache size.
+This highlights a clear architectural trade-off: for generators with very large states, the V-family's full lane utilization can be bottlenecked by L1 cache capacity at the widest SIMD widths. This is a limitation that may disappear in the future with the continuous hardware evolution trend and increase in CPU L1 cache size.
 
 \section{Conclusion}
 In this paper, we introduced the \textbf{V-family}, a framework for the inter-state SIMD vectorization of Mersenne Twister generators. Jump-ahead stream splitting and lock-step execution of several generators in the lanes of a SIMD register are both known techniques; the V-family applies them jointly to a single large-state generator. The core idea --- combining $M$ MT instances de-phased via jump-ahead transformations and polled in round-robin order --- uses every lane of the SIMD register for the recurrence, eliminating the alignment and residual-iteration obstacles that limit intra-state approaches. Applied to three base generators (MT19937-32, MT19937-64, and SFMT19937), the resulting generators V-MT19937, V-MT19937-64, and V-SFMT19937 demonstrate throughput that increases with the SIMD register width, sub-linearly when the combined state approaches the size of the L1 cache, yielding speedups of an order of magnitude over the corresponding original implementations in vectorial query mode.
