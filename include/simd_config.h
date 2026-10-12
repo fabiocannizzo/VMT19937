@@ -57,29 +57,6 @@ template <> struct BitLenToIsa<512> { static constexpr ISA s_isa = ISA::AVX512; 
 #  define __SSE4_2__
 #endif
 
-namespace xvmt {
-namespace details {
-    template <size_t Bits>
-    struct BestIsa {
-#if defined(__AVX512F__)
-        static constexpr ISA s_isa = (Bits >= 512) ? ISA::AVX512 : (Bits >= 256 ? ISA::AVX2 : ISA::SSE42);
-#elif defined(__AVX2__)
-        static constexpr ISA s_isa = (Bits >= 256) ? ISA::AVX2 : ISA::SSE42;
-#elif defined(__SSE4_2__)
-        static constexpr ISA s_isa = ISA::SSE42;
-#elif defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__)
-#  if defined(__ARM_FEATURE_SVE) && (defined(__aarch64__) || defined(_M_ARM64))
-        static constexpr ISA s_isa = (Bits >= 256) ? ISA::SVE256 : ISA::NEON;
-#  else
-        static constexpr ISA s_isa = ISA::NEON;
-#  endif
-#else
-        static constexpr ISA s_isa = ISA::Scalar;
-#endif
-    };
-} // namespace details
-} // namespace xvmt
-
 #ifndef SIMD_N_BITS
 #if defined(__AVX512F__)
 #   define SIMD_N_BITS 512
@@ -124,6 +101,32 @@ namespace details {
 #    define SIMD_ISA ISA::Scalar
 #  endif
 #endif /* SIMD_ISA */
+
+namespace xvmt {
+namespace details {
+    // Default ISA for a virtual register of the given width. The choice is capped by SIMD_N_BITS,
+    // because the code for wider hardware registers is compiled out, even when the compiler
+    // enables wider instruction sets by default (e.g. a toolchain with an x86-64-v3 baseline).
+    template <size_t Bits>
+    struct BestIsa {
+#if defined(__AVX512F__) && SIMD_N_BITS >= 512
+        static constexpr ISA s_isa = (Bits >= 512) ? ISA::AVX512 : (Bits >= 256 ? ISA::AVX2 : ISA::SSE42);
+#elif defined(__AVX2__) && SIMD_N_BITS >= 256
+        static constexpr ISA s_isa = (Bits >= 256) ? ISA::AVX2 : ISA::SSE42;
+#elif defined(__SSE4_2__) && SIMD_N_BITS >= 128
+        static constexpr ISA s_isa = ISA::SSE42;
+#elif (defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__)) && SIMD_N_BITS >= 128
+#  if defined(__ARM_FEATURE_SVE) && (defined(__aarch64__) || defined(_M_ARM64)) && SIMD_N_BITS >= 256
+        static constexpr ISA s_isa = (Bits >= 256) ? ISA::SVE256 : ISA::NEON;
+#  else
+        static constexpr ISA s_isa = ISA::NEON;
+#  endif
+#else
+        static constexpr ISA s_isa = ISA::Scalar;
+#endif
+    };
+} // namespace details
+} // namespace xvmt
 
 #ifdef SIMD_N_BITS
 #   if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__)
